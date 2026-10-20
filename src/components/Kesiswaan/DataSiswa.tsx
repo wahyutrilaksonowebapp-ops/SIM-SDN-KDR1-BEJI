@@ -83,7 +83,9 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
       s.nisn.includes(searchTerm) ||
       s.nis.includes(searchTerm);
 
-    const matchKelas = kelasFilter === 'ALL' || s.kelas === Number(kelasFilter);
+    const matchKelas = (userRole === 'guru' && currentUser?.kelas)
+      ? s.kelas === currentUser.kelas
+      : (kelasFilter === 'ALL' || s.kelas === Number(kelasFilter));
     const matchGender = genderFilter === 'ALL' || s.jenisKelamin === genderFilter;
     const matchAgama = agamaFilter === 'ALL' || s.agama === agamaFilter;
 
@@ -615,17 +617,30 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto text-xs">
             {/* Filter Kelas */}
             <select
-              value={kelasFilter}
+              value={userRole === 'guru' && currentUser?.kelas ? String(currentUser.kelas) : kelasFilter}
               onChange={(e) => setKelasFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+              disabled={userRole === 'guru' && !!currentUser?.kelas}
+              className={`px-2.5 py-1.5 border rounded-lg font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                userRole === 'guru' && currentUser?.kelas
+                  ? 'bg-emerald-50 border-emerald-300 font-bold text-emerald-900 cursor-not-allowed'
+                  : 'bg-slate-50 border-slate-200 cursor-pointer'
+              }`}
             >
-              <option value="ALL">Semua Kelas</option>
-              <option value="1">Kelas 1</option>
-              <option value="2">Kelas 2</option>
-              <option value="3">Kelas 3</option>
-              <option value="4">Kelas 4</option>
-              <option value="5">Kelas 5</option>
-              <option value="6">Kelas 6</option>
+              {userRole === 'guru' && currentUser?.kelas ? (
+                <option value={String(currentUser.kelas)}>
+                  Rombel Kelas {currentUser.kelas} (Tugas Anda)
+                </option>
+              ) : (
+                <>
+                  <option value="ALL">Semua Kelas</option>
+                  <option value="1">Kelas 1</option>
+                  <option value="2">Kelas 2</option>
+                  <option value="3">Kelas 3</option>
+                  <option value="4">Kelas 4</option>
+                  <option value="5">Kelas 5</option>
+                  <option value="6">Kelas 6</option>
+                </>
+              )}
             </select>
 
             {/* Filter Gender */}

@@ -142,6 +142,12 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
 
   // ASN Pegawai List (PNS & PPPK)
   const asnList = pegawai.filter((p) => {
+    if (userRole === 'guru' && currentUser?.nip) {
+      const cleanPNip = p.nip.replace(/[\s\-\.]/g, '');
+      const cleanUserNip = currentUser.nip.replace(/[\s\-\.]/g, '');
+      if (cleanPNip && cleanUserNip && cleanPNip === cleanUserNip) return true;
+      return false;
+    }
     const isAsn = p.statusKepegawaian === 'PNS' || p.statusKepegawaian === 'PPPK';
     if (!isAsn) return false;
     if (filterAsnType === 'PNS') return p.statusKepegawaian === 'PNS';
@@ -149,8 +155,20 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
     return true;
   });
 
-  // General Filter
+  // General Filter (For Guru: strictly shows according to their teacher profile & class assignment)
   const filtered = pegawai.filter((p) => {
+    if (userRole === 'guru') {
+      const cleanPNip = p.nip.replace(/[\s\-\.]/g, '');
+      const cleanUserNip = (currentUser?.nip || '').replace(/[\s\-\.]/g, '');
+      if (cleanPNip && cleanUserNip && cleanPNip === cleanUserNip) {
+        return true;
+      }
+      if (currentUser?.name && p.nama.toLowerCase().includes(currentUser.name.toLowerCase().split(' ')[0])) {
+        return true;
+      }
+      return false;
+    }
+
     const matchSearch =
       p.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.nip.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -397,9 +415,9 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>1. Direktori GTK</span>
+          <span>{userRole === 'guru' ? '1. Profil & Tugas Guru Kelas' : '1. Direktori GTK'}</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-200 text-slate-800">
-            {pegawai.length}
+            {filtered.length}
           </span>
         </button>
 

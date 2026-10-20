@@ -11,6 +11,7 @@ import {
 import { DataSiswa } from './DataSiswa';
 import { RekapRapor, ProcessedRapor } from './RekapRapor';
 import { IjazahBTQ } from './IjazahBTQ';
+import { PenilaianTerpadu } from './PenilaianTerpadu';
 import { 
   Users, 
   Award, 
@@ -61,14 +62,20 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
       count: siswa.length,
     },
     {
+      id: 'penilaian',
+      label: 'Pusat Penilaian Terpadu (Rapor, TKA & BTQ)',
+      icon: <GraduationCap className="w-4 h-4 text-emerald-300" />,
+      badge: 'Semua Nilai Terpadu',
+    },
+    {
       id: 'rapor',
-      label: 'Rekap Rapor (4 vs 5 Semester)',
+      label: 'Detail Rekap Rapor',
       icon: <Award className="w-4 h-4" />,
-      badge: 'PPDB & Kelulusan',
+      badge: '4 vs 5 Semester',
     },
     {
       id: 'btq',
-      label: "Ijazah / Sertifikat BTQ",
+      label: "Detail Ijazah / Sertifikat BTQ",
       icon: <BookOpen className="w-4 h-4" />,
       count: btq.length,
       badge: '5 Aspek Nilai',
@@ -125,6 +132,23 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
           currentUser={currentUser}
           onSaveSiswa={onSaveSiswa}
           onDeleteSiswa={onDeleteSiswa}
+        />
+      )}
+
+      {activeSubTab === 'penilaian' && (
+        <PenilaianTerpadu
+          siswa={siswa}
+          profil={profil}
+          rapor={rapor}
+          btq={btq}
+          userRole={userRole}
+          currentUser={currentUser}
+          onSaveRapor={onSaveRapor}
+          onSaveBTQ={onSaveBTQ}
+          onDeleteBTQ={onDeleteBTQ}
+          onOpenTranscriptModal={onOpenTranscriptModal}
+          onOpenCertificateModal={onOpenCertificateModal}
+          onOpenSKPModal={onOpenSKPModal}
         />
       )}
 

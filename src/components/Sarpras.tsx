@@ -47,7 +47,12 @@ export const Sarpras: React.FC<SarprasProps> = ({
   onSaveSarpras,
   onDeleteSarpras,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<SarprasSubTab>('inventaris');
+  const [activeSubTab, setActiveSubTab] = useState<SarprasSubTab>(() => {
+    if (currentUser?.role === 'guru') {
+      return 'ruang_kelas';
+    }
+    return 'inventaris';
+  });
 
   // Local state for Library data
   const [bukuList, setBukuList] = useState<BukuPerpustakaan[]>(() => {
@@ -211,29 +216,33 @@ export const Sarpras: React.FC<SarprasProps> = ({
       {/* Sub-menu Top Bar */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 sm:p-2.5 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <button
-            onClick={() => setActiveSubTab('inventaris')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeSubTab === 'inventaris'
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Building2 className="w-4 h-4 text-amber-400" />
-            <span>Inventaris Fasilitas ({sarpras.length})</span>
-          </button>
+          {currentUser?.role !== 'guru' && (
+            <>
+              <button
+                onClick={() => setActiveSubTab('inventaris')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'inventaris'
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Building2 className="w-4 h-4 text-amber-400" />
+                <span>Inventaris Fasilitas ({sarpras.length})</span>
+              </button>
 
-          <button
-            onClick={() => setActiveSubTab('perpustakaan')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeSubTab === 'perpustakaan'
-                ? 'bg-emerald-800 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <BookOpen className="w-4 h-4 text-emerald-300" />
-            <span>Perpustakaan & Spreadsheet</span>
-          </button>
+              <button
+                onClick={() => setActiveSubTab('perpustakaan')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'perpustakaan'
+                    ? 'bg-emerald-800 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <BookOpen className="w-4 h-4 text-emerald-300" />
+                <span>Perpustakaan & Spreadsheet</span>
+              </button>
+            </>
+          )}
 
           <button
             onClick={() => setActiveSubTab('ruang_kelas')}
@@ -244,7 +253,11 @@ export const Sarpras: React.FC<SarprasProps> = ({
             }`}
           >
             <School className="w-4 h-4 text-indigo-300" />
-            <span>Gedung Ruang Kelas (1 s.d. 6)</span>
+            <span>
+              {currentUser?.role === 'guru' && currentUser?.kelas
+                ? `Sarpras Kelas: Ruang Kelas ${currentUser.kelas} (${currentUser.rombel || 'Rombel Anda'})`
+                : 'Gedung Ruang Kelas (1 s.d. 6)'}
+            </span>
           </button>
         </div>
 

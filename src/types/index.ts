@@ -1,4 +1,5 @@
 export type TabType = 
+  | 'login'
   | 'dashboard' 
   | 'kepegawaian' 
   | 'kesiswaan' 
@@ -6,7 +7,7 @@ export type TabType =
   | 'keadministrasian' 
   | 'google_integration';
 
-export type KesiswaanSubTab = 'siswa' | 'rapor' | 'btq';
+export type KesiswaanSubTab = 'siswa' | 'penilaian' | 'rapor' | 'btq';
 export type KeadministrasianSubTab = 'surat_keluar' | 'surat_masuk';
 export type SarprasSubTab = 'inventaris' | 'perpustakaan' | 'ruang_kelas';
 
@@ -416,5 +417,17 @@ export interface RuangKelasDetail {
   jadwalPelajaran: JadwalPelajaranItem[];
   lms: LMSMateriKelas[];
   refleksi: RefleksiHarianKelas[];
+}
+
+export interface ActivityLog {
+  id: string;
+  timestamp: string; // ISO 8601 string
+  role: UserRole;
+  userName: string;
+  userNip?: string;
+  action: 'LOGIN' | 'LOGOUT' | 'TAMBAH' | 'UBAH' | 'HAPUS';
+  category: 'AUTENTIKASI' | 'SISWA' | 'RAPOR' | 'SURAT' | 'SARPRAS' | 'PEGAWAI' | 'SISTEM';
+  description: string;
+  details?: string;
 }
 

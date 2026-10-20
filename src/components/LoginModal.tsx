@@ -10,7 +10,8 @@ import {
   School,
   Eye,
   CheckCircle2,
-  BookOpen
+  BookOpen,
+  LogOut
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -219,9 +220,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             onClick={() => {
               onLogout();
             }}
-            className="text-[11px] font-medium text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-colors cursor-pointer shadow-xs"
+            title="Keluar dari akun saat ini"
           >
-            Keluar Akun
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Keluar Akun</span>
           </button>
         </div>
 

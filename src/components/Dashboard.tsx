@@ -24,9 +24,12 @@ import {
   AlertCircle,
   Eye,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  History,
+  Database
 } from 'lucide-react';
 import { generateAIInsight } from '../services/api';
+import { getActivityLogs } from '../services/logger';
 
 interface DashboardProps {
   profil: ProfilSekolah;
@@ -554,6 +557,71 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Administrator Audit Log Feed (LocalStorage Monitoring) */}
+      {currentUser?.role === 'admin' && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center">
+                  <History className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Pemantau Log Aktivitas & Perubahan Data (Khusus Administrator)
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Mencatat riwayat aktivitas login pengguna, penambahan surat, penghapusan data, dan manipulasi sistem yang tersimpan di localStorage browser.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setActiveTab('google_integration')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 hover:bg-purple-100 font-bold text-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+            >
+              <span>Buka Log Lengkap & Ekspor CSV</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {getActivityLogs().slice(0, 4).map((log) => {
+              let actionBadge = 'bg-slate-100 text-slate-700 border-slate-200';
+              if (log.action === 'HAPUS') actionBadge = 'bg-rose-100 text-rose-800 border-rose-300 font-bold';
+              else if (log.action === 'TAMBAH') actionBadge = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold';
+              else if (log.action === 'UBAH') actionBadge = 'bg-amber-100 text-amber-900 border-amber-300 font-bold';
+              else if (log.action === 'LOGIN') actionBadge = 'bg-blue-100 text-blue-800 border-blue-300 font-bold';
+
+              return (
+                <div key={log.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`px-2 py-0.5 rounded text-[10px] border uppercase ${actionBadge}`}>
+                      {log.action}
+                    </span>
+                    <span className="font-semibold text-slate-900">
+                      {log.userName}
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-600 line-clamp-1">
+                      {log.description}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
+                    <span className="font-mono">
+                      {new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                    </span>
+                    <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[10px]">
+                      {log.category}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

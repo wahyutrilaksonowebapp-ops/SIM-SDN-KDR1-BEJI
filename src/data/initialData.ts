@@ -2221,40 +2221,115 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * ==============================================================================
  */
 
-// Ganti ID Spreadsheet & Template Folder di bawah sesuai ID Google Drive Anda
-const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet() ? SpreadsheetApp.getActiveSpreadsheet().getId() : "PASTE_SPREADSHEET_ID_HERE";
+// ==============================================================================
+// KONFIGURASI TARGET GOOGLE DRIVE & SPREADSHEET
+// ==============================================================================
+// 1. Folder Google Drive tempat menyimpan berkas SIM SDN Kedungringin 1:
+const TARGET_GDRIVE_FOLDER_ID = "1cry49dLyjsyXfkGJIARR_PLwUV67t7ur";
+
+// 2. OPSI A: Jika menggunakan 1 Single Master Spreadsheet (Direkomendasikan):
+// Masukkan ID file spreadsheet master (atau biarkan kosong jika script terikat langsung di sheet):
+let MASTER_SPREADSHEET_ID = "";
+
+// 3. OPSI B: Jika menggunakan BANYAK file spreadsheet terpisah dalam folder di atas:
+// Script akan otomatis mencari file berdasarkan kata kunci nama berkas di folder target.
+const MULTI_FILE_MAP = {
+  pegawai: "Kepegawaian",      // mencocokkan file berisi kata 'Kepegawaian' atau 'Pegawai'
+  siswa: "Siswa",              // mencocokkan file berisi kata 'Siswa'
+  rapor: "Rapor",              // mencocokkan file berisi kata 'Rapor'
+  sarpras: "Sarpras",          // mencocokkan file berisi kata 'Sarpras'
+  perpustakaan: "Perpustakaan",// mencocokkan file berisi kata 'Perpustakaan'
+  persuratan: "Persuratan"     // mencocokkan file berisi kata 'Persuratan' atau 'Surat'
+};
+
 const DOCS_TEMPLATE_BTQ_ID = "PASTE_GOOGLE_DOCS_BTQ_TEMPLATE_ID_HERE";
 const DOCS_TEMPLATE_SURAT_ID = "PASTE_GOOGLE_DOCS_SURAT_TEMPLATE_ID_HERE";
-const OUTPUT_PDF_FOLDER_ID = "PASTE_GOOGLE_DRIVE_FOLDER_ID_HERE";
+const OUTPUT_PDF_FOLDER_ID = TARGET_GDRIVE_FOLDER_ID;
 
 /**
- * Handle HTTP GET Request
+ * Helper Cerdas: Mengambil Spreadsheet untuk Modul Tertentu
+ * (Mendukung 1 Master Spreadsheet Maupun Banyak File Terpisah di Folder)
+ */
+function getSpreadsheetFor(moduleKey) {
+  // 1. Coba Spreadsheet Master Tunggal
+  if (MASTER_SPREADSHEET_ID && MASTER_SPREADSHEET_ID !== "PASTE_SPREADSHEET_ID_HERE") {
+    try {
+      return SpreadsheetApp.openById(MASTER_SPREADSHEET_ID);
+    } catch (e) {
+      Logger.log("Master SS tidak terbuka: " + e.message);
+    }
+  }
+
+  // 2. Coba Active Spreadsheet jika script ditempel via Extensions > Apps Script
+  try {
+    const active = SpreadsheetApp.getActiveSpreadsheet();
+    if (active) return active;
+  } catch (e) {}
+
+  // 3. Mode Multi-File: Cari otomatis di Google Drive Folder berdasarkan kata kunci
+  try {
+    const folder = DriveApp.getFolderById(TARGET_GDRIVE_FOLDER_ID);
+    const keyword = MULTI_FILE_MAP[moduleKey] || moduleKey;
+    const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
+    while (files.hasNext()) {
+      const f = files.next();
+      if (f.getName().toLowerCase().includes(keyword.toLowerCase())) {
+        return SpreadsheetApp.openById(f.getId());
+      }
+    }
+  } catch (e) {
+    Logger.log("Error mencari file di folder: " + e.message);
+  }
+
+  return null;
+}
+
+/**
+ * Handle HTTP GET Request (Mengembalikan Data Live Real-time)
  */
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'ping';
   const response = { status: 'success', timestamp: new Date().toISOString() };
 
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
     if (action === 'getAllData') {
-      response.profil = getSheetDataAsObjects(ss.getSheetByName('Profil_Sekolah'))[0] || {};
-      response.pegawai = getSheetDataAsObjects(ss.getSheetByName('Data_Pegawai'));
-      response.siswa = getSheetDataAsObjects(ss.getSheetByName('Data_Siswa'));
-      response.sarpras = getSheetDataAsObjects(ss.getSheetByName('Data_Sarpras'));
-      response.btq = getSheetDataAsObjects(ss.getSheetByName('Nilai_Ijazah_BTQ'));
-      response.suratMasuk = getSheetDataAsObjects(ss.getSheetByName('Surat_Masuk'));
-      response.suratKeluar = getSheetDataAsObjects(ss.getSheetByName('Surat_Keluar'));
-      response.rapor = getSheetDataAsObjects(ss.getSheetByName('Rekap_Nilai_Rapor'));
-    } else if (action === 'getRekapRapor') {
-      // mode: '5_semester' (Sem 7-11) or '4_semester' (Sem 9-12)
-      const mode = (e.parameter.mode) || '5_semester';
-      const sheet = ss.getSheetByName('Rekap_Nilai_Rapor');
-      const rawRapor = getSheetDataAsObjects(sheet);
-      response.mode = mode;
-      response.data = processRaporCalculations(rawRapor, mode);
+      // Ambil data Pegawai
+      const ssPeg = getSpreadsheetFor('pegawai');
+      response.pegawai = ssPeg ? (getSheetDataAsObjects(ssPeg.getSheetByName('Data_Pegawai') || ssPeg.getSheets()[0])) : [];
+
+      // Ambil data Siswa
+      const ssSiswa = getSpreadsheetFor('siswa');
+      response.siswa = ssSiswa ? (getSheetDataAsObjects(ssSiswa.getSheetByName('Data_Siswa') || ssSiswa.getSheets()[0])) : [];
+
+      // Ambil data Sarpras
+      const ssSar = getSpreadsheetFor('sarpras');
+      response.sarpras = ssSar ? (getSheetDataAsObjects(ssSar.getSheetByName('Sarpras_Aset') || ssSar.getSheetByName('Data_Sarpras') || ssSar.getSheets()[0])) : [];
+
+      // Ambil data Rapor & BTQ
+      const ssRapor = getSpreadsheetFor('rapor');
+      response.rapor = ssRapor ? (getSheetDataAsObjects(ssRapor.getSheetByName('Rekap_Rapor') || ssRapor.getSheetByName('Rekap_Nilai_Rapor') || ssRapor.getSheets()[0])) : [];
+      response.btq = ssRapor ? (getSheetDataAsObjects(ssRapor.getSheetByName('Nilai_BTQ') || ssRapor.getSheetByName('Nilai_Ijazah_BTQ') || ssRapor.getSheets()[0])) : [];
+
+      // Ambil data Persuratan
+      const ssSurat = getSpreadsheetFor('persuratan');
+      response.suratMasuk = ssSurat ? (getSheetDataAsObjects(ssSurat.getSheetByName('Surat_Masuk') || ssSurat.getSheets()[0])) : [];
+      response.suratKeluar = ssSurat ? (getSheetDataAsObjects(ssSurat.getSheetByName('Surat_Keluar') || ssSurat.getSheets()[0])) : [];
+
+      response.totalPegawai = response.pegawai.length;
+      response.totalSiswa = response.siswa.length;
+      response.message = 'Data SIM berhasil ditarik secara terpadu dari spreadsheet Google Drive.';
+
+    } else if (action === 'getPegawai') {
+      const ss = getSpreadsheetFor('pegawai');
+      response.data = ss ? getSheetDataAsObjects(ss.getSheetByName('Data_Pegawai') || ss.getSheets()[0]) : [];
+    } else if (action === 'getSiswa') {
+      const ss = getSpreadsheetFor('siswa');
+      response.data = ss ? getSheetDataAsObjects(ss.getSheetByName('Data_Siswa') || ss.getSheets()[0]) : [];
+    } else if (action === 'ping') {
+      response.message = 'Backend Google Apps Script SIM SDN Kedungringin 1 Beji AKTIF (Ready).';
+      response.folderId = TARGET_GDRIVE_FOLDER_ID;
     } else {
-      response.message = 'SIM SDN Kedungringin 1 Beji API Ready';
+      response.message = 'Aksi tidak dikenal: ' + action;
     }
   } catch (err) {
     response.status = 'error';

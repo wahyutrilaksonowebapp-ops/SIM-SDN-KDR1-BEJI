@@ -182,7 +182,9 @@ export const RekapRapor: React.FC<RekapRaporProps> = ({
     const matchSearch =
       item.namaSiswa.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.nisn.includes(searchTerm);
-    const matchKelas = kelasFilter === 'ALL' || item.kelas === Number(kelasFilter);
+    const matchKelas = (userRole === 'guru' && currentUser?.kelas)
+      ? item.kelas === currentUser.kelas
+      : (kelasFilter === 'ALL' || item.kelas === Number(kelasFilter));
     return matchSearch && matchKelas;
   });
 
@@ -365,14 +367,27 @@ export const RekapRapor: React.FC<RekapRaporProps> = ({
         <div className="flex items-center gap-2 w-full sm:w-auto text-xs">
           <span className="text-slate-500 font-medium">Filter Tingkat:</span>
           <select
-            value={kelasFilter}
+            value={userRole === 'guru' && currentUser?.kelas ? String(currentUser.kelas) : kelasFilter}
             onChange={(e) => setKelasFilter(e.target.value)}
-            className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+            disabled={userRole === 'guru' && !!currentUser?.kelas}
+            className={`px-2.5 py-1.5 border rounded-lg font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+              userRole === 'guru' && currentUser?.kelas
+                ? 'bg-emerald-50 border-emerald-300 font-bold text-emerald-900 cursor-not-allowed'
+                : 'bg-slate-50 border-slate-200 cursor-pointer'
+            }`}
           >
-            <option value="6">Kelas 6 Saja ({processedList.filter(p => p.kelas === 6).length})</option>
-            <option value="5">Kelas 5 Saja ({processedList.filter(p => p.kelas === 5).length})</option>
-            <option value="4">Kelas 4 Saja ({processedList.filter(p => p.kelas === 4).length})</option>
-            <option value="ALL">Semua Tingkat ({processedList.length})</option>
+            {userRole === 'guru' && currentUser?.kelas ? (
+              <option value={String(currentUser.kelas)}>
+                Kelas {currentUser.kelas} ({currentUser.rombel || 'Tugas Rombel Anda'})
+              </option>
+            ) : (
+              <>
+                <option value="6">Kelas 6 Saja ({processedList.filter(p => p.kelas === 6).length})</option>
+                <option value="5">Kelas 5 Saja ({processedList.filter(p => p.kelas === 5).length})</option>
+                <option value="4">Kelas 4 Saja ({processedList.filter(p => p.kelas === 4).length})</option>
+                <option value="ALL">Semua Tingkat ({processedList.length})</option>
+              </>
+            )}
           </select>
         </div>
       </div>

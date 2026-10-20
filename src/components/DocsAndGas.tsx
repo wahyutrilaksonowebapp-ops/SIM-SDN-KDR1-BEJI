@@ -12,7 +12,9 @@ import {
   SendHorizontal,
   RefreshCw,
   AlertCircle,
-  FolderCheck
+  FolderCheck,
+  History,
+  Sparkles
 } from 'lucide-react';
 import { 
   GOOGLE_DOCS_SURAT_TEMPLATE, 
@@ -21,6 +23,9 @@ import {
 } from '../data/initialData';
 import { syncWithGoogleAppsScript } from '../services/api';
 import { GoogleDriveSync } from './GoogleDriveSync';
+import { ActivityLogMonitor } from './ActivityLogMonitor';
+import { SmartDataSyncPanel } from './SmartDataSyncPanel';
+import { SingleMasterDatabasePanel } from './SingleMasterDatabasePanel';
 import { 
   ProfilSekolah, 
   Siswa, 
@@ -47,6 +52,17 @@ interface DocsAndGasProps {
   presensiList?: FaceprintPresensi[];
   skpList?: SkpEKinerja[];
   userRole?: UserRole;
+  onUpdateData?: (newData: {
+    siswa?: Siswa[];
+    pegawai?: Pegawai[];
+    rapor?: RekapRaporSiswa[];
+    btq?: NilaiIjazahBTQ[];
+    sarpras?: SarprasItem[];
+    suratMasuk?: SuratMasuk[];
+    suratKeluar?: SuratKeluar[];
+  }) => void;
+  onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onPurgeDummyData?: () => void;
 }
 
 export const DocsAndGas: React.FC<DocsAndGasProps> = ({
@@ -82,8 +98,13 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
   presensiList = [],
   skpList = [],
   userRole = 'admin',
+  onUpdateData,
+  onNotify,
+  onPurgeDummyData,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'gdrive_sync' | 'skema' | 'templates' | 'gas_code' | 'sync'>('gdrive_sync');
+  const [activeSubTab, setActiveSubTab] = useState<
+    'master_database' | 'smart_sync' | 'gdrive_sync' | 'activity_log' | 'skema' | 'templates' | 'gas_code' | 'sync'
+  >('master_database');
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   // Sync test state
@@ -254,6 +275,34 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
         {/* Sub Navigation */}
         <div className="mt-5 flex items-center gap-2 flex-wrap">
           <button
+            onClick={() => setActiveSubTab('master_database')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeSubTab === 'master_database'
+                ? 'bg-gradient-to-r from-emerald-800 to-teal-900 text-white shadow-md ring-2 ring-emerald-600/20'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5 text-emerald-300" />
+            <span>⚡ Single Data Utama (Real-time Spreadsheet)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-emerald-400 text-slate-900 animate-pulse">
+              1 Database
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('smart_sync')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeSubTab === 'smart_sync'
+                ? 'bg-gradient-to-r from-purple-800 to-indigo-900 text-white shadow-md'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Deduplikasi & Timpa ID</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-400 text-slate-900">
+              Audit
+            </span>
+          </button>
+          <button
             onClick={() => setActiveSubTab('gdrive_sync')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeSubTab === 'gdrive_sync'
@@ -262,7 +311,21 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
             }`}
           >
             <FolderCheck className="w-3.5 h-3.5 text-amber-300" />
-            <span>⚡ Folder Google Drive & Auto Sync Spreadsheet</span>
+            <span>Folder Google Drive & Auto Sync</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('activity_log')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeSubTab === 'activity_log'
+                ? 'bg-purple-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <History className="w-3.5 h-3.5 text-purple-400" />
+            <span>Log Aktivitas & Audit (LocalStorage)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-purple-200 text-purple-900">
+              Audit Admin
+            </span>
           </button>
           <button
             onClick={() => setActiveSubTab('skema')}
@@ -311,6 +374,41 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
         </div>
       </div>
 
+      {/* SubTab 0: Single Master Database (Primary) */}
+      {activeSubTab === 'master_database' && (
+        <SingleMasterDatabasePanel
+          profil={profil}
+          siswa={siswa}
+          pegawai={pegawai}
+          rapor={rapor}
+          btq={btq}
+          sarpras={sarpras}
+          suratMasuk={suratMasuk}
+          suratKeluar={suratKeluar}
+          userRole={userRole}
+          onUpdateData={onUpdateData || (() => {})}
+          onNotify={onNotify || (() => {})}
+          onPurgeDummyData={onPurgeDummyData || (() => {})}
+        />
+      )}
+
+      {/* SubTab: Smart Data Sync Panel */}
+      {activeSubTab === 'smart_sync' && (
+        <SmartDataSyncPanel
+          profil={profil}
+          siswa={siswa}
+          pegawai={pegawai}
+          rapor={rapor}
+          btq={btq}
+          sarpras={sarpras}
+          suratMasuk={suratMasuk}
+          suratKeluar={suratKeluar}
+          userRole={userRole}
+          onUpdateData={onUpdateData || (() => {})}
+          onNotify={onNotify || (() => {})}
+        />
+      )}
+
       {/* SubTab 0: Google Drive Sync */}
       {activeSubTab === 'gdrive_sync' && (
         <GoogleDriveSync
@@ -326,6 +424,11 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
           skpList={skpList}
           userRole={userRole}
         />
+      )}
+
+      {/* SubTab: Activity Log Monitor */}
+      {activeSubTab === 'activity_log' && (
+        <ActivityLogMonitor currentUserRole={userRole} />
       )}
 
       {/* SubTab 1: Skema Database Spreadsheet */}
