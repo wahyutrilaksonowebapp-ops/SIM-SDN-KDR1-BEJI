@@ -1,0 +1,6 @@
+{
+  "name": "SIM SDN Kedungringin 1 Beji",
+  "description": "Sistem Informasi Manajemen SDN Kedungringin 1 Beji dengan modul Kesiswaan (Rekap Rapor 4/5 Semester & Ijazah BTQ), Kepegawaian, Sarpras, Persuratan AI Gemini, dan Integrasi Google Sheets/Docs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

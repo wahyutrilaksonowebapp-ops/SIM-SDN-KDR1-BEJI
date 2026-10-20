@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@layer utilities {
+  @media print {
+    body {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+    }
+
+    /* Hide background elements during print */
+    header,
+    footer,
+    nav,
+    main {
+      display: none !important;
+    }
+
+    /* Ensure modals display full size */
+    .fixed {
+      position: static !important;
+      background: transparent !important;
+      padding: 0 !important;
+    }
+
+    #certificate-print-area,
+    #transcript-print-area,
+    #letter-print-area {
+      display: block !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    @page {
+      size: auto;
+      margin: 10mm;
+    }
+  }
+}
