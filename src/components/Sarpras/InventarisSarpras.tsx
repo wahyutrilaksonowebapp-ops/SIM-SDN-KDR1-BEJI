@@ -298,7 +298,7 @@ export const InventarisSarpras: React.FC<InventarisSarprasProps> = ({
                 {/* Photo Thumbnail */}
                 <div className="relative h-44 w-full bg-slate-100 overflow-hidden group">
                   <img
-                    src={item.fotoUrl}
+                    src={item.fotoUrl && item.fotoUrl.trim() !== '' ? item.fotoUrl : 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80'}
                     alt={item.namaSarpras}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
@@ -557,7 +557,7 @@ export const InventarisSarpras: React.FC<InventarisSarprasProps> = ({
       )}
 
       {/* Photo Enlarge Modal */}
-      {activePhotoModal && (
+      {activePhotoModal && activePhotoModal.trim() !== '' && (
         <div 
           onClick={() => setActivePhotoModal(null)}
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
@@ -570,7 +570,7 @@ export const InventarisSarpras: React.FC<InventarisSarprasProps> = ({
               <X className="w-5 h-5" />
             </button>
             <img
-              src={activePhotoModal}
+              src={activePhotoModal || undefined}
               alt="Sarpras Foto"
               className="w-full h-auto max-h-[85vh] object-contain rounded-2xl"
             />

@@ -3,6 +3,57 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        var originalOnError = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+          var msg = String(message || '');
+          var src = String(source || '');
+          if (
+            msg.includes('WebSocket') ||
+            msg.includes('createWebSocket') ||
+            msg.includes('ModuleRunnerTransport') ||
+            msg.includes('@vite/client') ||
+            src.includes('@vite/client')
+          ) {
+            return true;
+          }
+          if (originalOnError) {
+            return originalOnError.apply(this, arguments);
+          }
+          return false;
+        };
+
+        window.addEventListener('error', function(event) {
+          var msg = String(event.message || '');
+          var src = String(event.filename || '');
+          if (
+            msg.includes('WebSocket') ||
+            msg.includes('createWebSocket') ||
+            msg.includes('ModuleRunnerTransport') ||
+            msg.includes('@vite/client') ||
+            src.includes('@vite/client')
+          ) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = String(event.reason || '');
+          if (
+            reason.includes('WebSocket') ||
+            reason.includes('createWebSocket') ||
+            reason.includes('ModuleRunnerTransport') ||
+            reason.includes('@vite/client')
+          ) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        }, true);
+      })();
+    </script>
     <title>SIM SDN Kedungringin 1 Beji - Sistem Informasi Manajemen Sekolah</title>
     <meta name="description" content="Sistem Informasi Manajemen SDN Kedungringin 1 Beji dengan modul Kesiswaan (Rekap Rapor 4/5 Semester & Ijazah BTQ), Kepegawaian, Sarpras, Persuratan AI Gemini, dan Integrasi Google Sheets/Docs." />
     <meta property="og:title" content="SIM SDN Kedungringin 1 Beji - Sistem Informasi Manajemen Sekolah" />

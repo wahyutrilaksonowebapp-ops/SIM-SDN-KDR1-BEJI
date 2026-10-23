@@ -996,7 +996,7 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
 
                 <div className="py-3 flex items-center gap-3">
                   <div className="w-14 h-18 rounded-lg bg-emerald-950/60 border border-emerald-400/60 overflow-hidden shrink-0 flex items-center justify-center">
-                    {member.fotoUrl ? (
+                    {Boolean(member.fotoUrl && member.fotoUrl.trim()) ? (
                       <img src={member.fotoUrl} alt={member.nama} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-lg">👤</span>

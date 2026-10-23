@@ -5,13 +5,18 @@
     body {
       background-color: #ffffff !important;
       color: #000000 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
     /* Hide background elements during print */
     header,
     footer,
-    nav,
-    main {
+    nav {
+      display: none !important;
+    }
+
+    .no-print {
       display: none !important;
     }
 
@@ -24,16 +29,22 @@
 
     #certificate-print-area,
     #transcript-print-area,
-    #letter-print-area {
+    #letter-print-area,
+    #perangkat-print-area {
       display: block !important;
       width: 100% !important;
+      max-width: 100% !important;
       margin: 0 !important;
       padding: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      background-color: #ffffff !important;
     }
 
     @page {
-      size: auto;
-      margin: 10mm;
+      size: A4 portrait;
+      margin: 15mm;
     }
   }
 }
+

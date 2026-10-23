@@ -446,6 +446,37 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
 
         {showRekapTable && (
           <div>
+            {/* Indikator Otomatis Rekap Sheet Data Siswa */}
+            <div className="p-4 bg-slate-50/60 border-b border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Siswa Otomatis</span>
+                <div className="text-xl font-extrabold text-emerald-950 font-mono mt-0.5">{siswa.length} Anak</div>
+                <span className="text-[10px] text-emerald-700 font-semibold">Tersinkron Sheet Data Siswa</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Laki-Laki (L)</span>
+                <div className="text-xl font-extrabold text-blue-900 font-mono mt-0.5">
+                  {grandTotalL} <span className="text-xs font-semibold text-slate-500">({grandTotal > 0 ? Math.round((grandTotalL / grandTotal) * 100) : 0}%)</span>
+                </div>
+                <span className="text-[10px] text-blue-600 font-semibold">Siswa Putra</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Perempuan (P)</span>
+                <div className="text-xl font-extrabold text-pink-900 font-mono mt-0.5">
+                  {grandTotalP} <span className="text-xs font-semibold text-slate-500">({grandTotal > 0 ? Math.round((grandTotalP / grandTotal) * 100) : 0}%)</span>
+                </div>
+                <span className="text-[10px] text-pink-600 font-semibold">Siswa Putri</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kelompok Usia & Kelas</span>
+                <div className="text-xl font-extrabold text-purple-950 font-mono mt-0.5">6 Rombel</div>
+                <span className="text-[10px] text-purple-700 font-semibold">Acuan: {formatIndoDate(refDate)}</span>
+              </div>
+            </div>
+
             {rekapTab === 'usia_jk_kelas' ? (
               /* TABEL REKAPITULASI BERDASARKAN USIA, JENIS KELAMIN, DAN KELAS */
               <div className="overflow-x-auto">

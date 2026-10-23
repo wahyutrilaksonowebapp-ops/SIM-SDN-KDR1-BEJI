@@ -14,13 +14,17 @@ import {
   FIELD_LABELS 
 } from './dataSyncDeduplicator';
 import { SheetDefinition } from './googleDriveSheets';
+import { INITIAL_PROFIL } from '../data/initialData';
 
 export const TARGET_GDRIVE_FOLDER_ID = '1cry49dLyjsyXfkGJIARR_PLwUV67t7ur';
 export const MASTER_SPREADSHEET_TITLE = 'SIM_SDN_Kedungringin1_Master_Database';
 
+export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew/exec';
+
 export const STORAGE_KEYS = {
   MASTER_SHEET_ID: 'sim_kdr1_master_sheet_id',
   MASTER_SHEET_URL: 'sim_kdr1_master_sheet_url',
+  WEB_APP_URL: 'sim_kdr1_web_app_url',
   REALTIME_ACTIVE: 'sim_kdr1_master_realtime_active',
   AUTO_SYNC_INTERVAL: 'sim_kdr1_master_sync_interval',
   LAST_SYNC_TIME: 'sim_kdr1_master_last_sync_time',
@@ -82,8 +86,11 @@ export function buildMasterDatabaseSpreadsheet(data: {
   sarpras: SarprasItem[];
   suratMasuk: SuratMasuk[];
   suratKeluar: SuratKeluar[];
+  perangkatAjar?: any[];
+  presensiList?: any[];
+  skpList?: any[];
 }): SheetDefinition[] {
-  const { profil, pegawai, siswa, rapor, btq, sarpras, suratMasuk, suratKeluar } = data;
+  const { profil, pegawai, siswa, rapor, btq, sarpras, suratMasuk, suratKeluar, perangkatAjar, presensiList, skpList } = data;
 
   // 1. Sheet: Data_Pegawai (Sumber Data Utama GTK)
   const pegHeader = [
@@ -287,6 +294,162 @@ export function buildMasterDatabaseSpreadsheet(data: {
     ['Tanggal Acuan Usia', profil.tanggalAcuanUsia || '2024-07-01']
   ];
 
+  // 9. Sheet: Perangkat_Ajar (Arsip Modul & Perangkat Pembelajaran AI)
+  const paHeader = [
+    'ID', 'Jenis Perangkat', 'Kurikulum', 'Mata Pelajaran', 'Fase', 'Kelas',
+    'Semester', 'Elemen CP', 'Nama Guru Pengampu', 'NIP Guru', 'Tanggal Dibuat',
+    'Ringkasan Materi', 'Status Validasi'
+  ];
+  const defaultPaRows = [
+    [
+      'pa-001',
+      'Modul Ajar Deep Learning',
+      'CP 020 (PAI)',
+      'Pendidikan Agama Islam dan Budi Pekerti',
+      'Fase C',
+      6,
+      1,
+      'Al-Qur\'an Hadis',
+      pegawai[0]?.nama || 'Wahyudi, S.Pd.I.',
+      pegawai[0]?.nip || '19850712 201001 1 018',
+      '2024-08-15',
+      'Surah Pendek, Tajwid & Hadis Berbuat Baik (Mindful, Meaningful, Joyful)',
+      'Disahkan Kepala Sekolah'
+    ],
+    [
+      'pa-002',
+      'ATP (Alur Tujuan Pembelajaran)',
+      'CP 020 (PAI)',
+      'Pendidikan Agama Islam dan Budi Pekerti',
+      'Fase C',
+      6,
+      1,
+      'Akidah',
+      pegawai[0]?.nama || 'Wahyudi, S.Pd.I.',
+      pegawai[0]?.nip || '19850712 201001 1 018',
+      '2024-07-20',
+      'Iman kepada Hari Akhir dan Qada Qadar dengan Penguatan Karakter P3',
+      'Disahkan Kepala Sekolah'
+    ],
+    [
+      'pa-003',
+      'Modul Ajar Deep Learning',
+      'CP 046/H/KR/2024 (Umum)',
+      'Ilmu Pengetahuan Alam dan Sosial (IPAS)',
+      'Fase C',
+      6,
+      1,
+      'Pemahaman IPAS',
+      'Sri Wahyuni, S.Pd.SD',
+      '19830219 200902 2 008',
+      '2024-08-25',
+      'Sistem Tata Surya & Rotasi-Revolusi Bumi dengan Media Model Interaktif',
+      'Disahkan Kepala Sekolah'
+    ]
+  ];
+  const paRows: (string | number)[][] = [
+    paHeader,
+    ...(perangkatAjar && perangkatAjar.length > 0
+      ? perangkatAjar.map((p) => [
+          p.id || `pa-${Date.now()}`,
+          p.jenisPerangkat || 'Modul Ajar',
+          p.kurikulum || 'CP 020 (PAI)',
+          p.mapel || 'PAI',
+          p.fase || 'Fase C',
+          p.kelas || 6,
+          p.semester || 1,
+          p.elemen || 'Al-Qur\'an Hadis',
+          p.guruNama || pegawai[0]?.nama || '-',
+          p.guruNip || pegawai[0]?.nip || '-',
+          p.tanggal || new Date().toISOString().split('T')[0],
+          p.ringkasan || '-',
+          p.status || 'Disahkan Kepala Sekolah'
+        ])
+      : defaultPaRows)
+  ];
+
+  // 10. Sheet: Presensi_Faceprint (Data Kehadiran Biometrik)
+  const fpHeader = [
+    'ID', 'Pegawai ID', 'NIP', 'Nama Pegawai', 'Tanggal', 'Jam Masuk',
+    'Jam Pulang', 'Mesin ID', 'Status Kehadiran', 'Keterlambatan (Mnt)',
+    'Jam Kerja Efektif', 'Metode Verifikasi'
+  ];
+  const fpRows: (string | number)[][] = [
+    fpHeader,
+    ...(presensiList && presensiList.length > 0
+      ? presensiList.map((fp) => [
+          fp.id,
+          fp.pegawaiId,
+          fp.nip || '-',
+          fp.nama,
+          fp.tanggal,
+          fp.jamMasuk,
+          fp.jamPulang,
+          fp.mesinId,
+          fp.statusKehadiran,
+          fp.keterlambatanMenit,
+          fp.efektifJamKerja,
+          fp.verifikasi
+        ])
+      : pegawai.slice(0, 5).map((p, idx) => [
+          `fp-00${idx + 1}`,
+          p.id,
+          p.nip || '-',
+          p.nama,
+          new Date().toISOString().split('T')[0],
+          '06:48:12',
+          '14:15:00',
+          'FP-SDNKDR1-BEJI-01',
+          'Hadir Tepat Waktu',
+          0,
+          7.5,
+          'Face Recognition Biometrik 99.8%'
+        ]))
+  ];
+
+  // 11. Sheet: E_Kinerja_SKP (Sasaran Kinerja Pegawai Triwulanan)
+  const skpHeader = [
+    'ID', 'Pegawai ID', 'NIP', 'Nama Pegawai', 'Jabatan', 'Tahun',
+    'Triwulan', 'Predikat Kinerja', 'Rating Hasil Kerja', 'Rating Perilaku',
+    'Pejabat Penilai Nama', 'NIP Penilai', 'Tanggal Penilaian'
+  ];
+  const skpRows: (string | number)[][] = [
+    skpHeader,
+    ...(skpList && skpList.length > 0
+      ? skpList.map((s) => [
+          s.id,
+          s.pegawaiId,
+          s.nip,
+          s.nama,
+          s.jabatan,
+          s.tahun,
+          `Triwulan ${s.tribulan}`,
+          s.predikatKinerja,
+          s.ratingHasilKerja,
+          s.ratingPerilaku,
+          s.pejabatPenilaiNama,
+          s.pejabatPenilaiNip,
+          s.tanggalPenilaian
+        ])
+      : [
+          [
+            'skp-001',
+            pegawai[0]?.id || 'peg-1',
+            pegawai[0]?.nip || '19850712 201001 1 018',
+            pegawai[0]?.nama || 'Wahyudi, S.Pd.I.',
+            pegawai[0]?.jabatan || 'Guru PAI',
+            2024,
+            'Triwulan 3',
+            'Sangat Baik',
+            'Diatas Ekspektasi',
+            'Diatas Ekspektasi',
+            profil.kepalaSekolah,
+            profil.nipKepalaSekolah,
+            '2024-10-02'
+          ]
+        ])
+  ];
+
   return [
     { title: 'Data_Pegawai', rows: pegRows },
     { title: 'Data_Siswa', rows: siswaRows },
@@ -296,6 +459,9 @@ export function buildMasterDatabaseSpreadsheet(data: {
     { title: 'Surat_Keluar', rows: skRows },
     { title: 'Surat_Masuk', rows: smRows },
     { title: 'Profil_Sekolah', rows: profilRows },
+    { title: 'Perangkat_Ajar', rows: paRows },
+    { title: 'Presensi_Faceprint', rows: fpRows },
+    { title: 'E_Kinerja_SKP', rows: skpRows },
   ];
 }
 
@@ -434,10 +600,76 @@ export function parseSarprasFromSheetRows(rows: any[][]): SarprasItem[] {
         satuan: String(r[5] || 'Unit').trim(),
         kondisi,
         lokasi: String(r[7] || 'Ruang Kelas').trim(),
-        fotoUrl: '',
+        fotoUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
         keterangan: String(r[8] || 'Tercatat di SIM').trim(),
       };
     });
+}
+
+export function parseProfilFromSheetRows(rows: any[][], fallback?: ProfilSekolah): ProfilSekolah {
+  const result: ProfilSekolah = {
+    ...(fallback || INITIAL_PROFIL),
+  };
+
+  if (!rows || rows.length === 0) return result;
+
+  const map: Record<string, string> = {};
+
+  // Case A: Key-Value rows (Parameter | Nilai)
+  for (const r of rows) {
+    if (!r || r.length < 2) continue;
+    const key = String(r[0] || '').trim().toLowerCase();
+    const val = String(r[1] !== undefined && r[1] !== null ? r[1] : '').trim();
+    if (key && val) {
+      map[key] = val;
+    }
+  }
+
+  // Case B: Horizontal table (Row 0 = headers, Row 1 = values)
+  if (rows.length >= 2 && rows[0] && Array.isArray(rows[0])) {
+    const headers = rows[0].map((h: any) => String(h || '').trim().toLowerCase());
+    const values = rows[1] || [];
+    headers.forEach((h, idx) => {
+      if (h && values[idx] !== undefined && values[idx] !== null) {
+        const val = String(values[idx]).trim();
+        if (val) map[h] = val;
+      }
+    });
+  }
+
+  // Flexibly assign fields from map
+  for (const [k, v] of Object.entries(map)) {
+    if (!v) continue;
+    if (k.includes('nama') && (k.includes('sekolah') || k === 'nama')) {
+      result.nama = v;
+    } else if (k === 'npsn' || k.includes('npsn')) {
+      result.npsn = v;
+    } else if (k.includes('bentuk') || k === 'jenjang') {
+      result.bentukPendidikan = v;
+    } else if (k === 'status' || k.includes('status sekolah')) {
+      result.status = v;
+    } else if (k.includes('akreditasi')) {
+      result.akreditasi = v;
+    } else if (k.includes('alamat')) {
+      result.alamat = v;
+    } else if (k.includes('kecamatan') || k === 'kec') {
+      result.kecamatan = v;
+    } else if (k.includes('kabupaten') || k.includes('kota') || k === 'kab') {
+      result.kabupaten = v;
+    } else if ((k.includes('kepala') || k.includes('kepsek')) && !k.includes('nip') && !k.includes('pangkat')) {
+      result.kepalaSekolah = v;
+    } else if (k.includes('nip') && (k.includes('kepala') || k.includes('kepsek') || k === 'nip')) {
+      result.nipKepalaSekolah = v;
+    } else if (k.includes('pangkat') && (k.includes('kepala') || k.includes('kepsek'))) {
+      result.pangkatKepalaSekolah = v;
+    } else if (k.includes('tahun') && (k.includes('pelajaran') || k.includes('ajaran'))) {
+      result.tahunPelajaranAktif = v;
+    } else if (k.includes('acuan') || (k.includes('tanggal') && k.includes('usia'))) {
+      result.tanggalAcuanUsia = v;
+    }
+  }
+
+  return result;
 }
 
 // =========================================================================
@@ -522,11 +754,13 @@ export async function fetchSheetRowsViaApiV4(
 // Unified Fetch: pulls all master tables in real-time
 export async function fetchMasterDatabaseRealtime(
   spreadsheetId: string,
-  accessToken?: string | null
+  accessToken?: string | null,
+  currentProfil?: ProfilSekolah
 ): Promise<{
   pegawai?: Pegawai[];
   siswa?: Siswa[];
   sarpras?: SarprasItem[];
+  profil?: ProfilSekolah;
   rawRows?: Record<string, any[][]>;
   timestamp: string;
 }> {
@@ -535,7 +769,7 @@ export async function fetchMasterDatabaseRealtime(
     throw new Error('ID atau link Google Spreadsheet tidak boleh kosong.');
   }
 
-  const sheetNames = ['Data_Pegawai', 'Data_Siswa', 'Sarpras_Aset'];
+  const sheetNames = ['Data_Pegawai', 'Data_Siswa', 'Sarpras_Aset', 'Profil_Sekolah'];
   let rawData: Record<string, any[][]> = {};
 
   // Try API v4 if accessToken provided
@@ -567,6 +801,9 @@ export async function fetchMasterDatabaseRealtime(
   const parsedPegawai = rawData['Data_Pegawai'] ? parsePegawaiFromSheetRows(rawData['Data_Pegawai']) : undefined;
   const parsedSiswa = rawData['Data_Siswa'] ? parseSiswaFromSheetRows(rawData['Data_Siswa']) : undefined;
   const parsedSarpras = rawData['Sarpras_Aset'] ? parseSarprasFromSheetRows(rawData['Sarpras_Aset']) : undefined;
+  const parsedProfil = rawData['Profil_Sekolah'] && rawData['Profil_Sekolah'].length > 0 
+    ? parseProfilFromSheetRows(rawData['Profil_Sekolah'], currentProfil) 
+    : undefined;
 
   const now = new Date().toLocaleTimeString('id-ID');
   try {
@@ -578,7 +815,86 @@ export async function fetchMasterDatabaseRealtime(
     pegawai: parsedPegawai,
     siswa: parsedSiswa,
     sarpras: parsedSarpras,
+    profil: parsedProfil,
     rawRows: rawData,
     timestamp: now,
   };
 }
+
+// Dedicated function to fetch and sync Profil Sekolah from Spreadsheet
+export async function fetchProfilSekolahFromSpreadsheet(
+  spreadsheetId?: string,
+  accessToken?: string | null,
+  currentProfil?: ProfilSekolah
+): Promise<ProfilSekolah> {
+  const targetId = extractSpreadsheetId(spreadsheetId || getSavedMasterSheetId());
+
+  // 1. Fetch via Google Sheet (GViz or API v4)
+  if (targetId) {
+    const candidateNames = ['Profil_Sekolah', 'Profil', 'Profil Sekolah', 'Data_Profil', 'Sekolah'];
+    for (const name of candidateNames) {
+      try {
+        let rows: any[][] = [];
+        if (accessToken) {
+          try {
+            const batch = await fetchSheetRowsViaApiV4(targetId, [name], accessToken);
+            rows = batch[name] || [];
+          } catch {
+            rows = await fetchSheetRowsViaGViz(targetId, name);
+          }
+        } else {
+          rows = await fetchSheetRowsViaGViz(targetId, name);
+        }
+
+        if (rows && rows.length > 0) {
+          const parsed = parseProfilFromSheetRows(rows, currentProfil);
+          if (parsed && parsed.nama) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        // Continue to next candidate
+      }
+    }
+  }
+
+  // 2. Fetch via Google Apps Script (LOCKED_WEB_APP_URL)
+  try {
+    const url = `${LOCKED_WEB_APP_URL}?action=getAllData`;
+    const gasRes = await fetch(url);
+    if (gasRes.ok) {
+      const data = await gasRes.json();
+      if (data && data.profil && Array.isArray(data.profil) && data.profil.length > 0) {
+        const rows: any[][] = [];
+        for (const item of data.profil) {
+          if (Array.isArray(item)) {
+            rows.push(item);
+          } else if (typeof item === 'object' && item !== null) {
+            const vals = Object.values(item);
+            if (vals.length >= 2) {
+              rows.push([vals[0], vals[1]]);
+            } else if (vals.length === 1) {
+              const keys = Object.keys(item);
+              rows.push([keys[0], vals[0]]);
+            }
+          }
+        }
+        if (rows.length > 0) {
+          const parsed = parseProfilFromSheetRows(rows, currentProfil);
+          if (parsed && parsed.nama) {
+            return parsed;
+          }
+        }
+      }
+    }
+  } catch (gasErr) {
+    console.warn('Apps Script Profil fetch fallback error:', gasErr);
+  }
+
+  if (!targetId) {
+    throw new Error('ID Spreadsheet master belum terhubung. Silakan hubungkan spreadsheet di menu Setting atau tombol sinkronisasi.');
+  }
+
+  throw new Error(`Sheet "Profil_Sekolah" tidak ditemukan pada Spreadsheet ID: ${targetId}. Pastikan sheet bernama "Profil_Sekolah" ada dan dapat diakses publik/viewer.`);
+}
+

@@ -105,7 +105,15 @@ export default function App() {
   const [siswa, setSiswa] = useState<Siswa[]>(() => loadStored('siswa', INITIAL_SISWA));
   const [rapor, setRapor] = useState<RekapRaporSiswa[]>(() => loadStored('rapor', INITIAL_REKAP_RAPOR));
   const [btq, setBtq] = useState<NilaiIjazahBTQ[]>(() => loadStored('btq', INITIAL_NILAI_BTQ));
-  const [sarpras, setSarpras] = useState<SarprasItem[]>(() => loadStored('sarpras', INITIAL_SARPRAS));
+  const [sarpras, setSarpras] = useState<SarprasItem[]>(() => {
+    const items = loadStored('sarpras', INITIAL_SARPRAS);
+    return items.map((item: SarprasItem) => ({
+      ...item,
+      fotoUrl: (item.fotoUrl && item.fotoUrl.trim() !== '') 
+        ? item.fotoUrl 
+        : 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
+    }));
+  });
   const [suratKeluar, setSuratKeluar] = useState<SuratKeluar[]>(() => loadStored('surat_keluar', INITIAL_SURAT_KELUAR));
   const [suratMasuk, setSuratMasuk] = useState<SuratMasuk[]>(() => loadStored('surat_masuk', INITIAL_SURAT_MASUK));
   const [presensiList, setPresensiList] = useState<FaceprintPresensi[]>(() => loadStored('presensi', INITIAL_PRESENSI_FACEPRINT));
@@ -606,6 +614,17 @@ export default function App() {
             hasChanges = true;
           }
         }
+        if (res.profil && res.profil.nama) {
+          if (
+            res.profil.nama !== profil.nama ||
+            res.profil.kepalaSekolah !== profil.kepalaSekolah ||
+            res.profil.npsn !== profil.npsn ||
+            res.profil.tahunPelajaranAktif !== profil.tahunPelajaranAktif
+          ) {
+            setProfil(res.profil);
+            hasChanges = true;
+          }
+        }
         if (hasChanges) {
           addToast('Pembaruan data dari Google Spreadsheet terdeteksi dan disinkronkan secara real-time!', 'info');
         }
@@ -615,7 +634,7 @@ export default function App() {
     }, 25000);
 
     return () => clearInterval(interval);
-  }, [isLoggedIn, pegawai.length, siswa.length]);
+  }, [isLoggedIn, pegawai.length, siswa.length, profil.nama, profil.kepalaSekolah, profil.npsn, profil.tahunPelajaranAktif]);
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans antialiased flex flex-col justify-between">
@@ -656,6 +675,8 @@ export default function App() {
               btq={btq}
               currentUser={currentUser}
               setActiveTab={setActiveTab}
+              onUpdateProfil={setProfil}
+              onNotify={addToast}
             />
           )}
 
@@ -705,27 +726,27 @@ export default function App() {
           )}
 
           {activeTab === 'keadministrasian' && (
-            currentUser.role !== 'admin' ? (
+            (currentUser.role === 'guest' || currentUser.role === 'siswa') ? (
               <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center max-w-lg mx-auto mt-12 shadow-sm animate-in fade-in">
                 <div className="w-14 h-14 bg-amber-50 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-200 shadow-xs">
                   <Lock className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-2">Akses Menu Keadministrasian Ditutup</h3>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">Akses Terbatas untuk Pengunjung</h3>
                 <p className="text-xs text-slate-600 mb-6 leading-relaxed">
-                  Berdasarkan hak akses sistem, menu Keadministrasian dan persuratan resmi sekolah hanya dapat diakses oleh akun <strong>Administrator</strong>. Menu ini ditutup untuk akun <strong>{currentUser.role === 'guest' ? 'Guest (Tamu)' : 'Guru'}</strong>.
+                  Menu Keadministrasian dan Perangkat Pembelajaran AI hanya dapat diakses oleh akun <strong>Guru</strong> dan <strong>Administrator</strong>.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-2.5">
                   <button
-                    onClick={() => setActiveTab(currentUser.role === 'guru' ? 'kepegawaian' : 'dashboard')}
+                    onClick={() => setActiveTab('dashboard')}
                     className="px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold hover:bg-emerald-900 transition-colors shadow-xs cursor-pointer"
                   >
-                    Kembali ke {currentUser.role === 'guru' ? 'Menu Guru' : 'Dashboard'}
+                    Kembali ke Dashboard
                   </button>
                   <button
                     onClick={() => setLoginModalOpen(true)}
                     className="px-4 py-2 bg-purple-100 text-purple-900 border border-purple-300 rounded-xl text-xs font-bold hover:bg-purple-200 transition-colors cursor-pointer"
                   >
-                    Masuk Sebagai Administrator
+                    Masuk Sebagai Guru / Admin
                   </button>
                 </div>
               </div>
@@ -736,6 +757,7 @@ export default function App() {
                 profil={profil}
                 pegawai={pegawai}
                 siswa={siswa}
+                userRole={currentUser.role}
                 onSaveSuratKeluar={handleSaveSuratKeluar}
                 onDeleteSuratKeluar={handleDeleteSuratKeluar}
                 onSaveSuratMasuk={handleSaveSuratMasuk}
@@ -775,6 +797,7 @@ export default function App() {
                 presensiList={presensiList}
                 skpList={skpList}
                 userRole={currentUser.role}
+                onUpdateProfil={setProfil}
                 onUpdateData={handleBatchUpdateData}
                 onNotify={(msg, type) => addToast(msg, type || 'info')}
                 onPurgeDummyData={handlePurgeDummyData}

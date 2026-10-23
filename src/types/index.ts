@@ -8,7 +8,7 @@ export type TabType =
   | 'google_integration';
 
 export type KesiswaanSubTab = 'siswa' | 'penilaian' | 'rapor' | 'btq';
-export type KeadministrasianSubTab = 'surat_keluar' | 'surat_masuk';
+export type KeadministrasianSubTab = 'surat_keluar' | 'surat_masuk' | 'perangkat_pembelajaran';
 export type SarprasSubTab = 'inventaris' | 'perpustakaan' | 'ruang_kelas';
 
 export interface ProfilSekolah {
@@ -36,15 +36,20 @@ export interface ProfilSekolah {
 
 export interface SKPangkat {
   nomor: string;
-  tanggal: string; // YYYY-MM-DD
-  tmt: string;     // YYYY-MM-DD
-  pejabatPenetap: string;
+  tanggal: string; // YYYY-MM-DD (Tanggal Surat)
+  tmt: string;     // YYYY-MM-DD (TMT Pangkat)
+  masaKerjaTahun?: number;
+  masaKerjaBulan?: number;
+  gajiPokok?: number; // Rupiah
+  pejabatPenetap?: string;
 }
 
 export interface SKBerkala {
   nomor: string;
-  tanggal: string; // YYYY-MM-DD
-  tmt: string;     // YYYY-MM-DD
+  tanggal: string; // YYYY-MM-DD (Tanggal Surat)
+  tmt: string;     // YYYY-MM-DD (TMT KGB)
+  masaKerjaTahun?: number;
+  masaKerjaBulan?: number;
   gajiPokok: number; // Rupiah
   tmtBerikutnya: string; // YYYY-MM-DD (2 tahun kemudian)
   pejabatPenetap?: string;

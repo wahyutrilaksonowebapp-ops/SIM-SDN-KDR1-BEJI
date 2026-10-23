@@ -65,7 +65,7 @@ export const CetakKartuPerpusModal: React.FC<CetakKartuPerpusModalProps> = ({
           <div className="py-3 flex items-center gap-4 relative z-10">
             {/* Foto Anggota */}
             <div className="w-20 h-24 rounded-lg bg-emerald-950/60 border-2 border-emerald-400/60 overflow-hidden shrink-0 flex items-center justify-center shadow-inner">
-              {member.fotoUrl ? (
+              {Boolean(member.fotoUrl && member.fotoUrl.trim()) ? (
                 <img src={member.fotoUrl} alt={member.nama} className="w-full h-full object-cover" />
               ) : (
                 <div className="text-center p-1 text-emerald-200">

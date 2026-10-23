@@ -70,8 +70,13 @@ import {
   ChevronUp,
   ShieldAlert,
   DownloadCloud,
-  UploadCloud
+  UploadCloud,
+  Code,
+  Copy,
+  Lock
 } from 'lucide-react';
+import { GOOGLE_APPS_SCRIPT_CODE } from '../data/initialData';
+import { LOCKED_WEB_APP_URL, syncWithGoogleAppsScript } from '../services/api';
 import { ConfirmModal } from './ConfirmModal';
 import { SyncConflictModal } from './SyncConflictModal';
 
@@ -85,6 +90,7 @@ interface SingleMasterDatabasePanelProps {
   suratMasuk: SuratMasuk[];
   suratKeluar: SuratKeluar[];
   userRole?: UserRole;
+  onUpdateProfil?: (updated: ProfilSekolah) => void;
   onUpdateData: (newData: {
     siswa?: Siswa[];
     pegawai?: Pegawai[];
@@ -108,6 +114,7 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
   suratMasuk,
   suratKeluar,
   userRole = 'admin',
+  onUpdateProfil,
   onUpdateData,
   onNotify,
   onPurgeDummyData,
@@ -144,6 +151,8 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
   // Tabs for preview
   const [activePreviewTab, setActivePreviewTab] = useState<'pegawai' | 'siswa' | 'sarpras'>('pegawai');
   const [activeMainSection, setActiveMainSection] = useState<'sync' | 'audit_log'>('sync');
+  const [copiedGas, setCopiedGas] = useState<boolean>(false);
+  const [showGasModal, setShowGasModal] = useState<boolean>(false);
 
   // Conflict & Duplicate Validation State
   const [syncConflicts, setSyncConflicts] = useState<DataConflictItem[]>([]);
@@ -346,6 +355,10 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
         onUpdateData(updates);
       }
 
+      if (res.profil && onUpdateProfil) {
+        onUpdateProfil(res.profil);
+      }
+
       setLastSyncTime(res.timestamp);
       setSyncStatus('success');
       setStatusMessage(`Real-time sync berhasil pada ${res.timestamp}. ${totalUpdated > 0 ? `${totalUpdated} baris diperbarui.` : 'Data sudah sinkron sempurna.'}`);
@@ -477,6 +490,59 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
     }
   };
 
+  // =========================================================================
+  // CONFLICT RESOLUTION HANDLERS (SEBELUM DATA DISIMPAN)
+  // =========================================================================
+  const handleConfirmOverwrite = () => {
+    if (!pendingSyncData) return;
+    onUpdateData(pendingSyncData.updates);
+    setLastSyncTime(pendingSyncData.timestamp);
+    setSyncStatus('success');
+    setStatusMessage(
+      `Pembaruan selesai pada ${pendingSyncData.timestamp}. Seluruh data lama ditimpa dengan dataset spreadsheet terbaru tanpa duplikasi ID.`
+    );
+    setShowConflictModal(false);
+    setPendingSyncData(null);
+    reloadChangeLogs();
+    onNotify(
+      `Konflik berhasil diselesaikan! Data lama telah ditimpa dengan data spreadsheet terbaru (${pendingSyncData.totalUpdated} baris diperbarui).`,
+      'success'
+    );
+  };
+
+  const handleKeepLocal = () => {
+    if (!pendingSyncData) return;
+    setShowConflictModal(false);
+    setPendingSyncData(null);
+    setStatusMessage('Data lokal dipertahankan. Data konflik dari spreadsheet diabaikan.');
+    onNotify('Data lokal dipertahankan. Data konflik dari spreadsheet dilewati.', 'info');
+  };
+
+  const handleClearLogs = () => {
+    clearDataChangeRecords();
+    setChangeLogs([]);
+    setShowClearLogsConfirm(false);
+    onNotify('Riwayat log audit perubahan data berhasil dibersihkan.', 'info');
+  };
+
+  const filteredLogs = changeLogs.filter((log) => {
+    const matchSearch =
+      log.description.toLowerCase().includes(logSearchTerm.toLowerCase()) ||
+      log.entityName.toLowerCase().includes(logSearchTerm.toLowerCase()) ||
+      log.entityId.toLowerCase().includes(logSearchTerm.toLowerCase()) ||
+      log.diffs.some(
+        (d) =>
+          d.label.toLowerCase().includes(logSearchTerm.toLowerCase()) ||
+          String(d.oldValue).toLowerCase().includes(logSearchTerm.toLowerCase()) ||
+          String(d.newValue).toLowerCase().includes(logSearchTerm.toLowerCase())
+      );
+
+    const matchModule = logModuleFilter === 'ALL' || log.module === logModuleFilter;
+    const matchType = logTypeFilter === 'ALL' || log.changeType === logTypeFilter;
+
+    return matchSearch && matchModule && matchType;
+  });
+
   return (
     <div className="space-y-6">
       {/* Top Banner: Single Database Architecture */}
@@ -573,8 +639,116 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
         </div>
       </div>
 
-      {/* Connection Card: Google Spreadsheet Input & Controls */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+      {/* 1 Menu Unified Control: Tarik & Kirim vs Log Riwayat Audit Perubahan */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap">
+        <button
+          onClick={() => setActiveMainSection('sync')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeMainSection === 'sync'
+              ? 'bg-emerald-800 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          <Database className="w-3.5 h-3.5 text-emerald-300" />
+          <span>⚡ Pusat Tarik & Kirim Data (Pembaruan Spreadsheet)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMainSection('audit_log')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeMainSection === 'audit_log'
+              ? 'bg-purple-800 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          <History className="w-3.5 h-3.5 text-purple-300" />
+          <span>📜 Log Riwayat Perubahan Data (Audit Diff Sebelum vs Sesudah)</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-purple-200 text-purple-900">
+            {changeLogs.length}
+          </span>
+        </button>
+      </div>
+
+      {/* SECTION A: TARIK & KIRIM DATA PEMBARUAN SPREADSHEET */}
+      {activeMainSection === 'sync' && (
+        <div className="space-y-6">
+          {/* ARCHITECTURE HIGHLIGHT BANNER: 1 MASTER SPREADSHEET (DATA + APPS SCRIPT) */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-linear-to-r from-emerald-950 via-slate-900 to-teal-950 text-white shadow-md border border-emerald-800/40 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black uppercase tracking-wider border border-emerald-400/30">
+                  <Database className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Sistem Database Master Terpadu (1 File Spreadsheet)</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  1 Master Spreadsheet Ganda: Database Utama & Wadah Google Apps Script
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed font-normal">
+                  Seluruh modul SIM disatukan dalam <strong>1 Google Spreadsheet tunggal</strong>. Tidak perlu membuat banyak file terpisah. Google Apps Script ditempel langsung pada menu <em>Ekstensi → Apps Script</em> di dalam spreadsheet master ini.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
+                    setCopiedGas(true);
+                    setTimeout(() => setCopiedGas(false), 2500);
+                    onNotify('Kode Google Apps Script Master berhasil disalin!', 'success');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                >
+                  {copiedGas ? <Check className="w-4 h-4 text-emerald-200" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedGas ? 'Kode Tersalin!' : 'Salin Kode Apps Script'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowGasModal(!showGasModal)}
+                  className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs transition-all cursor-pointer border border-white/20 whitespace-nowrap"
+                >
+                  <Code className="w-4 h-4 text-amber-300" />
+                  <span>{showGasModal ? 'Tutup Script' : 'Lihat Script (Code.gs)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 11 Sheets In 1 Master File */}
+            <div className="pt-2 border-t border-emerald-800/60">
+              <p className="text-[11px] font-bold text-emerald-200 mb-2">
+                11 Sheet yang Termuat Otomatis dalam 1 Master Spreadsheet:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'Data_Pegawai', 'Data_Siswa', 'Rekap_Rapor', 'Nilai_BTQ',
+                  'Sarpras_Aset', 'Surat_Keluar', 'Surat_Masuk', 'Profil_Sekolah',
+                  'Perangkat_Ajar', 'Presensi_Faceprint', 'E_Kinerja_SKP'
+                ].map((name) => (
+                  <span
+                    key={name}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-900/80 text-emerald-200 border border-emerald-700/60 shadow-2xs"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Expanded GAS Code Modal/Drawer */}
+            {showGasModal && (
+              <div className="pt-3 border-t border-emerald-800/60 space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-300">
+                  <span className="font-mono text-[11px]">Salin dan tempel ke <strong>Ekstensi → Apps Script</strong> pada spreadsheet master Anda:</span>
+                  <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-amber-300 font-mono">Code.gs (Container-Bound)</span>
+                </div>
+                <pre className="bg-slate-950 p-4 rounded-xl text-[10px] font-mono text-emerald-300 overflow-x-auto max-h-60 border border-slate-800 scrollbar-thin">
+                  {GOOGLE_APPS_SCRIPT_CODE}
+                </pre>
+              </div>
+            )}
+          </div>
+
+          {/* Connection Card: Google Spreadsheet Input & Controls */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -603,6 +777,34 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
               <Trash2 className="w-4 h-4" />
               <span>Hapus Data Dummy Web</span>
             </button>
+          </div>
+        </div>
+
+        {/* Locked Web App Endpoint Indicator */}
+        <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-emerald-700 shrink-0" />
+            <div>
+              <span className="font-bold text-emerald-950">URL Web App Backend Terkunci Resmi:</span>
+              <span className="block font-mono text-[11px] text-emerald-800 break-all select-all">
+                {LOCKED_WEB_APP_URL}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(LOCKED_WEB_APP_URL);
+                onNotify('URL Web App resmi terkunci berhasil disalin!', 'success');
+              }}
+              className="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+            >
+              <Copy className="w-3 h-3" />
+              <span>Salin URL</span>
+            </button>
+            <span className="text-[10px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+              Terkunci
+            </span>
           </div>
         </div>
 
@@ -918,43 +1120,241 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
           )}
         </div>
       </div>
-
-      {/* Confirmation Modals */}
-      <ConfirmModal
-        isOpen={showPurgeConfirm}
-        title="Bersihkan Data Dummy Web"
-        message="Tindakan ini akan menghapus data dummy dan placeholder dari tampilan web dan penyimpanan lokal, sehingga web 100% hanya menampilkan data murni dari Master Google Spreadsheet utama. Lanjutkan?"
-        confirmText="Ya, Bersihkan Data Dummy"
-        cancelText="Batal"
-        variant="warning"
-        onConfirm={() => {
-          setShowPurgeConfirm(false);
-          onPurgeDummyData();
-        }}
-        onCancel={() => setShowPurgeConfirm(false)}
-      />
-
-      <ConfirmModal
-        isOpen={showCreateMasterConfirm}
-        title="Buat 1 Master Spreadsheet di Google Drive"
-        message={`Sistem akan membuat 1 file Google Spreadsheet tunggal (${MASTER_SPREADSHEET_TITLE}) berisi seluruh sheet data (Pegawai, Siswa, Sarpras, Rapor, Persuratan) langsung di Google Drive folder ID: ${TARGET_GDRIVE_FOLDER_ID}. Apakah Anda setuju?`}
-        confirmText="Buat Master Spreadsheet"
-        cancelText="Batal"
-        variant="info"
-        onConfirm={handleCreateMasterSpreadsheet}
-        onCancel={() => setShowCreateMasterConfirm(false)}
-      />
-
-      <ConfirmModal
-        isOpen={showPushConfirm}
-        title="Unggah Data Bersih ke Master Spreadsheet"
-        message="Sistem akan menyinkronkan data yang sedang aktif di aplikasi web ke dalam Master Google Spreadsheet, menimpa baris lama jika memiliki ID yang sama sehingga spreadsheet tetap rapi tanpa baris ganda bertumpuk. Lanjutkan?"
-        confirmText="Unggah & Sinkronkan"
-        cancelText="Batal"
-        variant="info"
-        onConfirm={handlePushToMasterSpreadsheet}
-        onCancel={() => setShowPushConfirm(false)}
-      />
     </div>
+  )}
+
+  {/* SECTION B: AUDIT LOG RIWAYAT PERUBAHAN DATA (SEBELUM VS SESUDAH) */}
+  {activeMainSection === 'audit_log' && (
+    <div className="space-y-4">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <History className="w-4 h-4 text-purple-700" />
+            <span>Log Riwayat Audit Perubahan Data (Diff Sebelum vs Sesudah)</span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Mencatat setiap proses update, penimpaan ID, dan penyelarasan spreadsheet untuk audit integritas data.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => exportDataChangesToCSV(filteredLogs)}
+            disabled={filteredLogs.length === 0}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold transition-colors border border-purple-200 cursor-pointer disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Ekspor CSV</span>
+          </button>
+
+          <button
+            onClick={() => setShowClearLogsConfirm(true)}
+            disabled={changeLogs.length === 0}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors border border-rose-200 cursor-pointer disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Bersihkan Log</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          <span className="font-bold text-slate-700 flex items-center gap-1">
+            <Filter className="w-3.5 h-3.5 text-slate-500" />
+            <span>Modul:</span>
+          </span>
+          {[
+            { id: 'ALL', label: 'Semua' },
+            { id: 'pegawai', label: 'Pegawai' },
+            { id: 'siswa', label: 'Siswa' },
+            { id: 'sarpras', label: 'Sarpras' },
+            { id: 'surat_keluar', label: 'Surat Keluar' },
+            { id: 'surat_masuk', label: 'Surat Masuk' },
+          ].map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setLogModuleFilter(m.id)}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
+                logModuleFilter === m.id
+                  ? 'bg-purple-800 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full md:w-72">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Cari entitas, ID, bidang, perubahan..."
+            value={logSearchTerm}
+            onChange={(e) => setLogSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500"
+          />
+        </div>
+      </div>
+
+      {/* Audit Logs List */}
+      <div className="space-y-3">
+        {filteredLogs.length === 0 ? (
+          <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400 text-xs">
+            Tidak ada catatan perubahan data yang sesuai kriteria pencarian.
+          </div>
+        ) : (
+          filteredLogs.map((log) => {
+            const isExpanded = expandedLogId === log.id;
+            return (
+              <div
+                key={log.id}
+                className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 hover:border-purple-300 transition-all"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                      <History className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-slate-900 text-xs sm:text-sm">
+                          {log.entityName}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">
+                          ID: {log.entityId}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                          {log.moduleLabel}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                          {log.changeType}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1">{log.description}</p>
+                      <span className="text-[10px] text-slate-400 mt-0.5 inline-block">
+                        {new Date(log.timestamp).toLocaleString('id-ID', {
+                          dateStyle: 'medium',
+                          timeStyle: 'medium',
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center">
+                    <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-100">
+                      {log.diffs.length} Perubahan Field
+                    </span>
+                    <button
+                      onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                      className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded Diff View: Sebelum (Old) vs Sesudah (New) */}
+                {isExpanded && log.diffs.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-slate-100 overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="text-slate-400 text-[10px] uppercase font-bold border-b border-slate-100">
+                          <th className="py-1.5 px-2">Bidang Data</th>
+                          <th className="py-1.5 px-2 bg-rose-50/60 text-rose-900">Sebelum (Nilai Lama)</th>
+                          <th className="py-1.5 px-2 bg-emerald-50/60 text-emerald-900">Sesudah (Nilai Baru)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {log.diffs.map((d, dIdx) => (
+                          <tr key={dIdx} className="hover:bg-slate-50/50">
+                            <td className="py-2 px-2 font-bold text-slate-800">
+                              {d.label}
+                            </td>
+                            <td className="py-2 px-2 bg-rose-50/30 text-rose-800 font-mono text-[11px]">
+                              {String(d.oldValue || '-')}
+                            </td>
+                            <td className="py-2 px-2 bg-emerald-50/30 text-emerald-800 font-mono font-bold text-[11px]">
+                              {String(d.newValue || '-')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  )}
+
+  {/* Modal Konfirmasi Deteksi Konflik & Validasi ID Ganda */}
+  <SyncConflictModal
+    isOpen={showConflictModal}
+    conflicts={syncConflicts}
+    duplicateCount={syncDuplicateCount}
+    onConfirmOverwrite={handleConfirmOverwrite}
+    onKeepCurrent={handleKeepLocal}
+    onCancel={() => {
+      setShowConflictModal(false);
+      setPendingSyncData(null);
+      setStatusMessage('Sinkronisasi dibatalkan oleh pengguna.');
+    }}
+  />
+
+  {/* Clear Logs Confirmation Modal */}
+  <ConfirmModal
+    isOpen={showClearLogsConfirm}
+    title="Bersihkan Log Riwayat Perubahan"
+    message="Apakah Anda yakin ingin menghapus seluruh rekaman log riwayat perubahan data? Tindakan ini tidak dapat dibatalkan."
+    confirmText="Ya, Bersihkan Log"
+    cancelText="Batal"
+    variant="danger"
+    onConfirm={handleClearLogs}
+    onCancel={() => setShowClearLogsConfirm(false)}
+  />
+
+  {/* Confirmation Modals */}
+  <ConfirmModal
+    isOpen={showPurgeConfirm}
+    title="Bersihkan Data Dummy Web"
+    message="Tindakan ini akan menghapus data dummy dan placeholder dari tampilan web dan penyimpanan lokal, sehingga web 100% hanya menampilkan data murni dari Master Google Spreadsheet utama. Lanjutkan?"
+    confirmText="Ya, Bersihkan Data Dummy"
+    cancelText="Batal"
+    variant="warning"
+    onConfirm={() => {
+      setShowPurgeConfirm(false);
+      onPurgeDummyData();
+    }}
+    onCancel={() => setShowPurgeConfirm(false)}
+  />
+
+  <ConfirmModal
+    isOpen={showCreateMasterConfirm}
+    title="Buat 1 Master Spreadsheet di Google Drive"
+    message={`Sistem akan membuat 1 file Google Spreadsheet tunggal (${MASTER_SPREADSHEET_TITLE}) berisi seluruh sheet data (Pegawai, Siswa, Sarpras, Rapor, Persuratan) langsung di Google Drive folder ID: ${TARGET_GDRIVE_FOLDER_ID}. Apakah Anda setuju?`}
+    confirmText="Buat Master Spreadsheet"
+    cancelText="Batal"
+    variant="info"
+    onConfirm={handleCreateMasterSpreadsheet}
+    onCancel={() => setShowCreateMasterConfirm(false)}
+  />
+
+  <ConfirmModal
+    isOpen={showPushConfirm}
+    title="Unggah Data Bersih ke Master Spreadsheet"
+    message="Sistem akan menyinkronkan data yang sedang aktif di aplikasi web ke dalam Master Google Spreadsheet, menimpa baris lama jika memiliki ID yang sama sehingga spreadsheet tetap rapi tanpa baris ganda bertumpuk. Lanjutkan?"
+    confirmText="Unggah & Sinkronkan"
+    cancelText="Batal"
+    variant="info"
+    onConfirm={handlePushToMasterSpreadsheet}
+    onCancel={() => setShowPushConfirm(false)}
+  />
+</div>
   );
 };

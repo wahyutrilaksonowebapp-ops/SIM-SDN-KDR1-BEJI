@@ -382,7 +382,7 @@ export const GedungRuangKelas: React.FC<GedungRuangKelasProps> = ({
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
             <div className="relative rounded-xl overflow-hidden aspect-video border border-slate-200">
               <img
-                src={currentKelas.fotoUrl}
+                src={currentKelas.fotoUrl && currentKelas.fotoUrl.trim() !== '' ? currentKelas.fotoUrl : 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80'}
                 alt={currentKelas.namaRuang}
                 className="w-full h-full object-cover"
               />

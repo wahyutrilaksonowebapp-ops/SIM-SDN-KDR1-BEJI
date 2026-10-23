@@ -57,29 +57,26 @@ export const Navbar: React.FC<NavbarProps> = ({
       navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
         { id: 'kepegawaian', label: 'Kepegawaian', icon: <Users className="w-4 h-4" /> },
-        { id: 'kesiswaan', label: 'Kesiswaan', icon: <GraduationCap className="w-4 h-4" />, badge: 'Info Umum' },
+        { id: 'kesiswaan', label: 'Kesiswaan', icon: <GraduationCap className="w-4 h-4" /> },
         { id: 'sarpras', label: 'Sarpras', icon: <Building2 className="w-4 h-4" /> },
       ];
     } else if (currentUser.role === 'guru') {
-      // sebagai Guru : kepegawaian (hanya muncul sesuai tugas guru kelasnya), kesiswaan (hanya muncul sesuai tugas guru kelasnya), sarpras (sarpras kelas sesuai rombel yang diampu guru kelas pada menu login)
+      // sebagai Guru : kepegawaian, kesiswaan, sarpras
       navItems = [
         { 
           id: 'kepegawaian', 
           label: 'Kepegawaian Guru', 
-          icon: <Users className="w-4 h-4" />, 
-          badge: 'Tugas Guru' 
+          icon: <Users className="w-4 h-4" /> 
         },
         { 
           id: 'kesiswaan', 
           label: currentUser.rombel ? `Kesiswaan (${currentUser.rombel})` : 'Kesiswaan Kelas', 
-          icon: <GraduationCap className="w-4 h-4" />, 
-          badge: 'Rombel Binaan' 
+          icon: <GraduationCap className="w-4 h-4" /> 
         },
         { 
           id: 'sarpras', 
           label: currentUser.rombel ? `Sarpras (${currentUser.rombel})` : 'Sarpras Kelas', 
-          icon: <Building2 className="w-4 h-4" />, 
-          badge: 'Ruang Kelas' 
+          icon: <Building2 className="w-4 h-4" /> 
         },
       ];
     } else {
@@ -87,10 +84,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
         { id: 'kepegawaian', label: 'Kepegawaian', icon: <Users className="w-4 h-4" /> },
-        { id: 'kesiswaan', label: 'Kesiswaan', icon: <GraduationCap className="w-4 h-4" />, badge: 'Rapor & BTQ' },
+        { id: 'kesiswaan', label: 'Kesiswaan', icon: <GraduationCap className="w-4 h-4" /> },
         { id: 'sarpras', label: 'Sarpras', icon: <Building2 className="w-4 h-4" /> },
-        { id: 'keadministrasian', label: 'Keadministrasian', icon: <FileText className="w-4 h-4" />, badge: 'AI Persuratan' },
-        { id: 'google_integration', label: 'Setting (Google Drive & Sheet)', icon: <Database className="w-4 h-4" />, badge: 'Audit & Drive' },
+        { id: 'keadministrasian', label: 'Keadministrasian', icon: <FileText className="w-4 h-4" /> },
+        { id: 'google_integration', label: 'Setting (Google Drive & Sheet)', icon: <Database className="w-4 h-4" /> },
       ];
     }
   }
@@ -190,57 +187,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Sistem Informasi Manajemen Sekolah Terpadu Google Workspace & Gemini AI
               </p>
             </div>
-          </div>
-
-          {/* Mobile Right Controls: User Badge & Logout */}
-          <div className="flex lg:hidden items-center gap-1.5 shrink-0">
-            {isLoggedIn ? (
-              <>
-                <button
-                  onClick={onOpenLoginModal}
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-all border cursor-pointer ${
-                    currentUser.role === 'admin'
-                      ? 'bg-purple-50 text-purple-900 border-purple-200'
-                      : currentUser.role === 'guru'
-                      ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                      : 'bg-slate-100 text-slate-800 border-slate-300'
-                  }`}
-                  title="Ganti Mode Pengguna"
-                >
-                  {currentUser.role === 'admin' && <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />}
-                  {currentUser.role === 'guru' && <GraduationCap className="w-3.5 h-3.5 text-emerald-700" />}
-                  {(currentUser.role === 'guest' || currentUser.role === 'siswa') && <Eye className="w-3.5 h-3.5 text-slate-600" />}
-                  <span className="truncate max-w-[75px]">
-                    {currentUser.role === 'admin'
-                      ? 'Admin'
-                      : currentUser.role === 'guru'
-                      ? currentUser.kelas
-                        ? `Kls ${currentUser.kelas}`
-                        : 'Guru'
-                      : 'Guest'}
-                  </span>
-                </button>
-
-                {onLogout && (
-                  <button
-                    onClick={onLogout}
-                    title="Keluar dari akun saat ini dan kembali ke menu login"
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-[11px] transition-colors cursor-pointer shadow-xs"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Keluar</span>
-                  </button>
-                )}
-              </>
-            ) : (
-              <button
-                onClick={() => setActiveTab('login')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-800 text-white font-bold text-xs"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Masuk</span>
-              </button>
-            )}
           </div>
 
           {/* Navigation Tabs (Desktop) */}

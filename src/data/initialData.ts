@@ -64,12 +64,17 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       nomor: '823.4/1042/424.103/2021',
       tanggal: '2021-03-24',
       tmt: '2021-04-01',
+      masaKerjaTahun: 23,
+      masaKerjaBulan: 0,
+      gajiPokok: 4980000,
       pejabatPenetap: 'Gubernur Jawa Timur',
     },
     skBerkalaTerakhir: {
       nomor: '822.3/088/424.072/2023',
       tanggal: '2023-02-15',
       tmt: '2023-03-01',
+      masaKerjaTahun: 25,
+      masaKerjaBulan: 0,
       gajiPokok: 5211500,
       tmtBerikutnya: '2025-03-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
@@ -102,12 +107,17 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       nomor: '823.4/412/424.103/2022',
       tanggal: '2022-09-12',
       tmt: '2022-10-01',
+      masaKerjaTahun: 16,
+      masaKerjaBulan: 0,
+      gajiPokok: 4560000,
       pejabatPenetap: 'Bupati Pasuruan',
     },
     skBerkalaTerakhir: {
       nomor: '822.3/190/424.072/2024',
       tanggal: '2024-03-10',
       tmt: '2024-04-01',
+      masaKerjaTahun: 18,
+      masaKerjaBulan: 0,
       gajiPokok: 4890200,
       tmtBerikutnya: '2026-04-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
@@ -140,12 +150,17 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       nomor: '823.3/215/424.103/2021',
       tanggal: '2021-03-18',
       tmt: '2021-04-01',
+      masaKerjaTahun: 12,
+      masaKerjaBulan: 0,
+      gajiPokok: 3950000,
       pejabatPenetap: 'Bupati Pasuruan',
     },
     skBerkalaTerakhir: {
       nomor: '822.3/044/424.072/2023',
       tanggal: '2023-01-20',
       tmt: '2023-02-01',
+      masaKerjaTahun: 14,
+      masaKerjaBulan: 0,
       gajiPokok: 4125800,
       tmtBerikutnya: '2025-02-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
@@ -178,12 +193,17 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       nomor: '823.3/330/424.103/2022',
       tanggal: '2022-09-22',
       tmt: '2022-10-01',
+      masaKerjaTahun: 8,
+      masaKerjaBulan: 0,
+      gajiPokok: 3500000,
       pejabatPenetap: 'Bupati Pasuruan',
     },
     skBerkalaTerakhir: {
       nomor: '822.3/112/424.072/2024',
       tanggal: '2024-02-28',
       tmt: '2024-03-01',
+      masaKerjaTahun: 10,
+      masaKerjaBulan: 0,
       gajiPokok: 3670000,
       tmtBerikutnya: '2026-03-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
@@ -216,12 +236,17 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       nomor: '823.3/118/424.103/2023',
       tanggal: '2023-03-15',
       tmt: '2023-04-01',
+      masaKerjaTahun: 4,
+      masaKerjaBulan: 0,
+      gajiPokok: 2980000,
       pejabatPenetap: 'Bupati Pasuruan',
     },
     skBerkalaTerakhir: {
       nomor: '822.3/089/424.072/2023',
       tanggal: '2023-02-20',
       tmt: '2023-03-01',
+      masaKerjaTahun: 5,
+      masaKerjaBulan: 0,
       gajiPokok: 3105000,
       tmtBerikutnya: '2025-03-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
@@ -2211,125 +2236,104 @@ NIP. {{penguji_nip}}                        NIP. {{pejabat_nip}}`;
 
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * ==============================================================================
- * BACKEND GOOGLE APPS SCRIPT (GAS) - SIM SDN KEDUNGRINGIN 1 BEJI
+ * 1 MASTER SPREADSHEET BACKEND APPS SCRIPT - SIM SDN KEDUNGRINGIN 1 BEJI
  * ==============================================================================
- * Fungsi:
- * 1. CRUD Database Google Spreadsheet
- * 2. Logika Seleksi & Perhitungan Rapor (Opsi 5 Semester vs 4 Semester)
- * 3. Penyimpanan Nilai BTQ & Merge Dokumen Google Docs Ijazah / Sertifikat BTQ
- * 4. API Endpoints (doGet, doPost) untuk Frontend Web Apps
+ * Petunjuk Penyiapan Cepat:
+ * 1. Buka 1 Spreadsheet Master Anda di Google Sheets.
+ * 2. Klik menu "Ekstensi" (Extensions) -> "Apps Script".
+ * 3. Hapus seluruh isi Code.gs, lalu TEMPEL seluruh kode script ini.
+ * 4. Klik "Deploy" -> "Kelola Deployment" -> "Deployment Baru" -> Pilih "Aplikasi Web" (Web App).
+ *    - Akses (Who has access): Pilih "Siapa Saja" (Anyone / Anyone with link).
+ * 5. Salin URL Web App yang dihasilkan, lalu tempel ke SIM SDN Kedungringin 1.
  * ==============================================================================
  */
 
-// ==============================================================================
-// KONFIGURASI TARGET GOOGLE DRIVE & SPREADSHEET
-// ==============================================================================
-// 1. Folder Google Drive tempat menyimpan berkas SIM SDN Kedungringin 1:
-const TARGET_GDRIVE_FOLDER_ID = "1cry49dLyjsyXfkGJIARR_PLwUV67t7ur";
-
-// 2. OPSI A: Jika menggunakan 1 Single Master Spreadsheet (Direkomendasikan):
-// Masukkan ID file spreadsheet master (atau biarkan kosong jika script terikat langsung di sheet):
-let MASTER_SPREADSHEET_ID = "";
-
-// 3. OPSI B: Jika menggunakan BANYAK file spreadsheet terpisah dalam folder di atas:
-// Script akan otomatis mencari file berdasarkan kata kunci nama berkas di folder target.
-const MULTI_FILE_MAP = {
-  pegawai: "Kepegawaian",      // mencocokkan file berisi kata 'Kepegawaian' atau 'Pegawai'
-  siswa: "Siswa",              // mencocokkan file berisi kata 'Siswa'
-  rapor: "Rapor",              // mencocokkan file berisi kata 'Rapor'
-  sarpras: "Sarpras",          // mencocokkan file berisi kata 'Sarpras'
-  perpustakaan: "Perpustakaan",// mencocokkan file berisi kata 'Perpustakaan'
-  persuratan: "Persuratan"     // mencocokkan file berisi kata 'Persuratan' atau 'Surat'
+// Konfigurasi ID Spreadsheet (Opsional - Jika script ditempel di dalam sheet, biarkan kosong):
+const CONFIG = {
+  MASTER_SPREADSHEET_ID: "", // Biarkan kosong jika Script Container-Bound (Ekstensi -> Apps Script)
+  DOCS_TEMPLATE_BTQ_ID: "",
+  DOCS_TEMPLATE_SURAT_ID: "",
+  TARGET_FOLDER_ID: "1cry49dLyjsyXfkGJIARR_PLwUV67t7ur"
 };
 
-const DOCS_TEMPLATE_BTQ_ID = "PASTE_GOOGLE_DOCS_BTQ_TEMPLATE_ID_HERE";
-const DOCS_TEMPLATE_SURAT_ID = "PASTE_GOOGLE_DOCS_SURAT_TEMPLATE_ID_HERE";
-const OUTPUT_PDF_FOLDER_ID = TARGET_GDRIVE_FOLDER_ID;
+// Daftar Sheet Resmi dalam 1 Master Spreadsheet
+const SHEET_NAMES = {
+  PEGAWAI: "Data_Pegawai",
+  SISWA: "Data_Siswa",
+  RAPOR: "Rekap_Rapor",
+  BTQ: "Nilai_BTQ",
+  SARPRAS: "Sarpras_Aset",
+  SURAT_KELUAR: "Surat_Keluar",
+  SURAT_MASUK: "Surat_Masuk",
+  PROFIL: "Profil_Sekolah",
+  PERANGKAT_AJAR: "Perangkat_Ajar",
+  PRESENSI: "Presensi_Faceprint",
+  SKP: "E_Kinerja_SKP"
+};
 
 /**
- * Helper Cerdas: Mengambil Spreadsheet untuk Modul Tertentu
- * (Mendukung 1 Master Spreadsheet Maupun Banyak File Terpisah di Folder)
+ * Mendapatkan referensi 1 Master Spreadsheet aktif
  */
-function getSpreadsheetFor(moduleKey) {
-  // 1. Coba Spreadsheet Master Tunggal
-  if (MASTER_SPREADSHEET_ID && MASTER_SPREADSHEET_ID !== "PASTE_SPREADSHEET_ID_HERE") {
-    try {
-      return SpreadsheetApp.openById(MASTER_SPREADSHEET_ID);
-    } catch (e) {
-      Logger.log("Master SS tidak terbuka: " + e.message);
-    }
-  }
-
-  // 2. Coba Active Spreadsheet jika script ditempel via Extensions > Apps Script
+function getMasterSS() {
   try {
     const active = SpreadsheetApp.getActiveSpreadsheet();
     if (active) return active;
   } catch (e) {}
 
-  // 3. Mode Multi-File: Cari otomatis di Google Drive Folder berdasarkan kata kunci
-  try {
-    const folder = DriveApp.getFolderById(TARGET_GDRIVE_FOLDER_ID);
-    const keyword = MULTI_FILE_MAP[moduleKey] || moduleKey;
-    const files = folder.getFilesByType(MimeType.GOOGLE_SHEETS);
-    while (files.hasNext()) {
-      const f = files.next();
-      if (f.getName().toLowerCase().includes(keyword.toLowerCase())) {
-        return SpreadsheetApp.openById(f.getId());
-      }
-    }
-  } catch (e) {
-    Logger.log("Error mencari file di folder: " + e.message);
+  if (CONFIG.MASTER_SPREADSHEET_ID && CONFIG.MASTER_SPREADSHEET_ID !== "") {
+    return SpreadsheetApp.openById(CONFIG.MASTER_SPREADSHEET_ID);
   }
-
-  return null;
+  
+  throw new Error("Master Spreadsheet tidak ditemukan. Buka spreadsheet melalui Ekstensi -> Apps Script atau isi CONFIG.MASTER_SPREADSHEET_ID.");
 }
 
 /**
- * Handle HTTP GET Request (Mengembalikan Data Live Real-time)
+ * Handle HTTP GET Request
  */
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'ping';
   const response = { status: 'success', timestamp: new Date().toISOString() };
 
   try {
-    if (action === 'getAllData') {
-      // Ambil data Pegawai
-      const ssPeg = getSpreadsheetFor('pegawai');
-      response.pegawai = ssPeg ? (getSheetDataAsObjects(ssPeg.getSheetByName('Data_Pegawai') || ssPeg.getSheets()[0])) : [];
+    const ss = getMasterSS();
 
-      // Ambil data Siswa
-      const ssSiswa = getSpreadsheetFor('siswa');
-      response.siswa = ssSiswa ? (getSheetDataAsObjects(ssSiswa.getSheetByName('Data_Siswa') || ssSiswa.getSheets()[0])) : [];
-
-      // Ambil data Sarpras
-      const ssSar = getSpreadsheetFor('sarpras');
-      response.sarpras = ssSar ? (getSheetDataAsObjects(ssSar.getSheetByName('Sarpras_Aset') || ssSar.getSheetByName('Data_Sarpras') || ssSar.getSheets()[0])) : [];
-
-      // Ambil data Rapor & BTQ
-      const ssRapor = getSpreadsheetFor('rapor');
-      response.rapor = ssRapor ? (getSheetDataAsObjects(ssRapor.getSheetByName('Rekap_Rapor') || ssRapor.getSheetByName('Rekap_Nilai_Rapor') || ssRapor.getSheets()[0])) : [];
-      response.btq = ssRapor ? (getSheetDataAsObjects(ssRapor.getSheetByName('Nilai_BTQ') || ssRapor.getSheetByName('Nilai_Ijazah_BTQ') || ssRapor.getSheets()[0])) : [];
-
-      // Ambil data Persuratan
-      const ssSurat = getSpreadsheetFor('persuratan');
-      response.suratMasuk = ssSurat ? (getSheetDataAsObjects(ssSurat.getSheetByName('Surat_Masuk') || ssSurat.getSheets()[0])) : [];
-      response.suratKeluar = ssSurat ? (getSheetDataAsObjects(ssSurat.getSheetByName('Surat_Keluar') || ssSurat.getSheets()[0])) : [];
+    if (action === 'ping') {
+      response.message = 'Backend 1 Master Spreadsheet SIM SDN Kedungringin 1 AKTIF!';
+      response.spreadsheetName = ss.getName();
+      response.availableSheets = ss.getSheets().map(s => s.getName());
+    } 
+    else if (action === 'getAllData') {
+      // Tarik seluruh 11 sheet dari 1 Master Spreadsheet dalam 1 pemanggilan
+      response.pegawai = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.PEGAWAI));
+      response.siswa = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.SISWA));
+      response.rapor = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.RAPOR));
+      response.btq = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.BTQ));
+      response.sarpras = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.SARPRAS));
+      response.suratMasuk = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.SURAT_MASUK));
+      response.suratKeluar = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.SURAT_KELUAR));
+      response.profil = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.PROFIL));
+      response.perangkatAjar = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.PERANGKAT_AJAR));
+      response.presensi = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.PRESENSI));
+      response.skp = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.SKP));
 
       response.totalPegawai = response.pegawai.length;
       response.totalSiswa = response.siswa.length;
-      response.message = 'Data SIM berhasil ditarik secara terpadu dari spreadsheet Google Drive.';
-
-    } else if (action === 'getPegawai') {
-      const ss = getSpreadsheetFor('pegawai');
-      response.data = ss ? getSheetDataAsObjects(ss.getSheetByName('Data_Pegawai') || ss.getSheets()[0]) : [];
-    } else if (action === 'getSiswa') {
-      const ss = getSpreadsheetFor('siswa');
-      response.data = ss ? getSheetDataAsObjects(ss.getSheetByName('Data_Siswa') || ss.getSheets()[0]) : [];
-    } else if (action === 'ping') {
-      response.message = 'Backend Google Apps Script SIM SDN Kedungringin 1 Beji AKTIF (Ready).';
-      response.folderId = TARGET_GDRIVE_FOLDER_ID;
-    } else {
-      response.message = 'Aksi tidak dikenal: ' + action;
+      response.message = 'Seluruh data master SIM berhasil dimuat dari 1 Spreadsheet terpusat.';
+    }
+    else if (action === 'getPegawai') {
+      response.data = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.PEGAWAI));
+    }
+    else if (action === 'getSiswa') {
+      response.data = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.SISWA));
+    }
+    else if (action === 'getPerangkatAjar') {
+      response.data = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.PERANGKAT_AJAR));
+    }
+    else if (action === 'getPresensi') {
+      response.data = getSheetDataAsObjects(ss.getSheetByName(SHEET_NAMES.PRESENSI));
+    }
+    else {
+      response.message = 'Aksi GET tidak dikenali: ' + action;
     }
   } catch (err) {
     response.status = 'error';
@@ -2341,7 +2345,7 @@ function doGet(e) {
 }
 
 /**
- * Handle HTTP POST Request
+ * Handle HTTP POST Request (Penyimpanan & Update ke 1 Master Spreadsheet)
  */
 function doPost(e) {
   let requestData = {};
@@ -2352,16 +2356,48 @@ function doPost(e) {
   }
 
   const action = requestData.action;
-  const response = { status: 'success' };
+  const response = { status: 'success', timestamp: new Date().toISOString() };
 
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getMasterSS();
 
-    if (action === 'saveNilaiBTQ') {
-      const sheet = ss.getSheetByName('Nilai_Ijazah_BTQ');
+    if (action === 'savePerangkatAjar') {
+      // Simpan Perangkat Ajar AI (ATP, Prota, Promes, Modul Deep Learning, dll)
+      let sheet = ss.getSheetByName(SHEET_NAMES.PERANGKAT_AJAR);
+      if (!sheet) {
+        sheet = ss.insertSheet(SHEET_NAMES.PERANGKAT_AJAR);
+        sheet.appendRow([
+          'ID', 'Jenis Perangkat', 'Kurikulum', 'Mata Pelajaran', 'Fase', 'Kelas',
+          'Semester', 'Elemen CP', 'Nama Guru Pengampu', 'NIP Guru', 'Tanggal Dibuat',
+          'Ringkasan Materi', 'Status Validasi'
+        ]);
+      }
+
+      const p = requestData.payload;
+      const rowData = [
+        p.id || ('pa-' + Date.now()),
+        p.jenisPerangkat || 'Modul Ajar Deep Learning',
+        p.kurikulum || 'CP 020 (PAI)',
+        p.mapel || 'Pendidikan Agama Islam',
+        p.fase || 'Fase C',
+        p.kelas || 6,
+        p.semester || 1,
+        p.elemen || 'Al-Qur\\'an Hadis',
+        p.guruNama || 'Wahyudi, S.Pd.I.',
+        p.guruNip || '19850712 201001 1 018',
+        p.tanggal || Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM-dd'),
+        p.ringkasan || 'Perangkat ajar berbasis AI siap cetak A4',
+        p.status || 'Disahkan Kepala Sekolah'
+      ];
+
+      sheet.appendRow(rowData);
+      response.message = 'Perangkat Pembelajaran (' + (p.jenisPerangkat || 'Modul') + ') berhasil disimpan ke Master Spreadsheet.';
+    }
+    else if (action === 'saveNilaiBTQ') {
+      // Rekam nilai Ijazah BTQ
+      let sheet = ss.getSheetByName(SHEET_NAMES.BTQ);
       const data = requestData.payload;
       
-      // Hitung Rata-rata & Predikat di backend
       const avg = ((Number(data.tahsin) + Number(data.tajwid) + Number(data.tahfidz) + Number(data.menulis) + Number(data.membaca)) / 5).toFixed(1);
       let predikat = 'Kurang';
       if (avg >= 90) predikat = 'Mumtaz';
@@ -2371,10 +2407,8 @@ function doPost(e) {
 
       const rowData = [
         data.id || ('btq-' + Date.now()),
-        data.siswaId,
         "'" + data.nisn,
         data.namaSiswa,
-        data.kelas,
         data.noSertifikat,
         data.tahsin,
         data.tajwid,
@@ -2382,51 +2416,55 @@ function doPost(e) {
         data.menulis,
         data.membaca,
         avg,
-        predikat,
-        avg >= 75 ? 'Lulus' : 'Remedial',
-        data.catatan || '',
-        data.tanggalTerbit || Utilities.formatDate(new Date(), 'GMT+7', 'dd MMMM yyyy'),
-        data.penguji || 'Ahmad Muzakki, S.Pd.I'
+        predikat
       ];
 
-      // Cek apakah data NISN sudah ada, jika ada lakukan update, jika belum append
-      const existingRow = findRowIndexByColumn(sheet, 3, data.nisn);
+      const existingRow = findRowIndexByColumn(sheet, 2, data.nisn);
       if (existingRow > 0) {
         sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
-        response.message = 'Nilai BTQ siswa ' + data.namaSiswa + ' berhasil diperbarui.';
+        response.message = 'Nilai BTQ siswa ' + data.namaSiswa + ' diperbarui.';
       } else {
         sheet.appendRow(rowData);
         response.message = 'Nilai BTQ siswa ' + data.namaSiswa + ' berhasil disimpan.';
       }
 
-      response.data = {
-        rataRata: avg,
-        predikat: predikat,
-        statusKelulusan: avg >= 75 ? 'Lulus' : 'Remedial'
-      };
-
-    } else if (action === 'mergeBTQCertificate') {
-      // Merge nilai ke Google Docs & Convert ke PDF
-      const payload = requestData.payload;
-      const pdfUrl = generateCertificateDocs(payload);
-      response.pdfUrl = pdfUrl;
-      response.message = 'Sertifikat BTQ berhasil digenerate!';
-
-    } else if (action === 'saveSuratKeluar') {
-      const sheet = ss.getSheetByName('Surat_Keluar');
+      response.data = { rataRata: avg, predikat: predikat };
+    }
+    else if (action === 'saveSuratKeluar') {
+      let sheet = ss.getSheetByName(SHEET_NAMES.SURAT_KELUAR);
       const s = requestData.payload;
       sheet.appendRow([
         s.id || ('sk-' + Date.now()),
         s.nomorSurat,
         s.tanggalSurat,
         s.perihal,
-        s.jenisSurat,
         s.tujuan,
-        s.ringkasan,
-        s.pejabatNip,
-        s.status || 'Ditandatangani'
+        s.pejabatNip || '-',
+        s.status || 'Terkirim'
       ]);
-      response.message = 'Surat keluar berhasil direkam.';
+      response.message = 'Surat keluar berhasil dicatat di Master Spreadsheet.';
+    }
+    else if (action === 'savePresensiFaceprint') {
+      let sheet = ss.getSheetByName(SHEET_NAMES.PRESENSI);
+      const f = requestData.payload;
+      sheet.appendRow([
+        f.id || ('fp-' + Date.now()),
+        f.pegawaiId || '-',
+        "'" + (f.nip || '-'),
+        f.nama || '-',
+        f.tanggal || Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM-dd'),
+        f.jamMasuk || '06:50:00',
+        f.jamPulang || '14:15:00',
+        f.mesinId || 'FP-SDNKDR1-BEJI-01',
+        f.statusKehadiran || 'Hadir Tepat Waktu',
+        f.keterlambatanMenit || 0,
+        f.efektifJamKerja || 7.5,
+        f.verifikasi || 'Face Recognition Biometrik 99.8%'
+      ]);
+      response.message = 'Log presensi biometrik berhasil disimpan.';
+    }
+    else {
+      response.message = 'Aksi POST tidak didukung: ' + action;
     }
   } catch (err) {
     response.status = 'error';
@@ -2438,89 +2476,7 @@ function doPost(e) {
 }
 
 /**
- * Logika Pengambilan & Perhitungan Rapor Berdasarkan 5 Semester vs 4 Semester
- */
-function processRaporCalculations(raporList, mode) {
-  return raporList.map(item => {
-    let semValues = [];
-    if (mode === '5_semester') {
-      // Semester 7, 8, 9, 10, 11
-      semValues = [
-        Number(item.Rata_Sem_7 || 0),
-        Number(item.Rata_Sem_8 || 0),
-        Number(item.Rata_Sem_9 || 0),
-        Number(item.Rata_Sem_10 || 0),
-        Number(item.Rata_Sem_11 || 0)
-      ];
-    } else {
-      // Semester 9, 10, 11, 12
-      semValues = [
-        Number(item.Rata_Sem_9 || 0),
-        Number(item.Rata_Sem_10 || 0),
-        Number(item.Rata_Sem_11 || 0),
-        Number(item.Rata_Sem_12 || 0)
-      ];
-    }
-
-    const total = semValues.reduce((a, b) => a + b, 0);
-    const count = semValues.filter(v => v > 0).length || 1;
-    const rerataAkhir = Number((total / count).toFixed(2));
-
-    return {
-      id: item.ID,
-      nisn: item.NISN,
-      namaSiswa: item.Nama_Siswa,
-      kelas: item.Kelas,
-      mode: mode,
-      nilaiPerSemester: semValues,
-      totalNilai: total,
-      rerataAkhir: rerataAkhir
-    };
-  }).sort((a, b) => b.rerataAkhir - a.rerataAkhir); // Auto-ranking
-}
-
-/**
- * Merge Dokumen Google Docs Ijazah BTQ
- */
-function generateCertificateDocs(data) {
-  const templateFile = DriveApp.getFileById(DOCS_TEMPLATE_BTQ_ID);
-  const targetFolder = DriveApp.getFolderById(OUTPUT_PDF_FOLDER_ID);
-  
-  const copyDoc = templateFile.makeCopy('Sertifikat_BTQ_' + data.namaSiswa + '_' + data.nisn, targetFolder);
-  const doc = DocumentApp.openById(copyDoc.getId());
-  const body = doc.getBody();
-
-  // Replace placeholders
-  body.replaceText('{{nomor_sertifikat}}', data.noSertifikat || '');
-  body.replaceText('{{nama_siswa}}', data.namaSiswa || '');
-  body.replaceText('{{nisn}}', data.nisn || '');
-  body.replaceText('{{kelas}}', 'Kelas ' + (data.kelas || 6));
-  body.replaceText('{{status_kelulusan}}', data.statusKelulusan || 'LULUS');
-  body.replaceText('{{predikat}}', data.predikat || 'MUMTAZ');
-  body.replaceText('{{tahsin}}', String(data.tahsin || 0));
-  body.replaceText('{{tajwid}}', String(data.tajwid || 0));
-  body.replaceText('{{tahfidz}}', String(data.tahfidz || 0));
-  body.replaceText('{{menulis}}', String(data.menulis || 0));
-  body.replaceText('{{membaca}}', String(data.membaca || 0));
-  body.replaceText('{{rata_rata}}', String(data.rataRata || 0));
-  body.replaceText('{{catatan_pembimbing}}', data.catatan || '-');
-  body.replaceText('{{tanggal_terbit}}', data.tanggalTerbit || Utilities.formatDate(new Date(), 'GMT+7', 'dd MMMM yyyy'));
-  body.replaceText('{{pejabat_nama}}', 'Hj. Siti Fatimah, S.Pd., M.Pd.');
-  body.replaceText('{{pejabat_nip}}', '19740512 199803 2 004');
-  body.replaceText('{{penguji_nama}}', data.penguji || 'Ahmad Muzakki, S.Pd.I');
-
-  doc.saveAndClose();
-
-  // Export PDF
-  const pdfBlob = copyDoc.getAs('application/pdf');
-  const pdfFile = targetFolder.createFile(pdfBlob).setName('Ijazah_BTQ_' + data.namaSiswa + '.pdf');
-  pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  
-  return pdfFile.getUrl();
-}
-
-/**
- * Helper: Convert Sheet data to Array of Objects
+ * Helper: Ambil data Sheet sebagai Array of Objects
  */
 function getSheetDataAsObjects(sheet) {
   if (!sheet) return [];
@@ -2541,13 +2497,14 @@ function getSheetDataAsObjects(sheet) {
 }
 
 /**
- * Helper: Find row index by matching column value
+ * Helper: Cari nomor baris berdasarkan nilai kolom tertentu
  */
 function findRowIndexByColumn(sheet, colIndex, valueToMatch) {
+  if (!sheet) return -1;
   const values = sheet.getDataRange().getValues();
   for (let i = 1; i < values.length; i++) {
     if (String(values[i][colIndex - 1]).trim() === String(valueToMatch).trim()) {
-      return i + 1; // 1-based index
+      return i + 1;
     }
   }
   return -1;

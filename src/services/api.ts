@@ -60,13 +60,16 @@ export async function generateAIInsight(summaryData: Record<string, any>): Promi
   return json.data;
 }
 
-// Google Apps Script Web App Client (jika pengguna menyambungkan URL Deployment Apps Script)
-export async function syncWithGoogleAppsScript(scriptUrl: string, action: string, payload?: any) {
-  const url = new URL(scriptUrl);
+export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew/exec';
+
+// Google Apps Script Web App Client (terkunci resmi ke endpoint SIM SDN Kedungringin 1)
+export async function syncWithGoogleAppsScript(scriptUrl: string = LOCKED_WEB_APP_URL, action: string = 'ping', payload?: any) {
+  const targetUrl = scriptUrl || LOCKED_WEB_APP_URL;
+  const url = new URL(targetUrl);
   url.searchParams.set('action', action);
 
   if (payload) {
-    const response = await fetch(scriptUrl, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -81,3 +84,4 @@ export async function syncWithGoogleAppsScript(scriptUrl: string, action: string
     return await response.json();
   }
 }
+

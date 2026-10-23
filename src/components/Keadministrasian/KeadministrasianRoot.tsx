@@ -5,11 +5,13 @@ import {
   ProfilSekolah, 
   Pegawai, 
   Siswa, 
-  KeadministrasianSubTab 
+  KeadministrasianSubTab,
+  UserRole
 } from '../../types';
 import { SuratKeluarComponent } from './SuratKeluar';
 import { SuratMasukComponent } from './SuratMasuk';
-import { FileText, Inbox, Sparkles } from 'lucide-react';
+import { PerangkatPembelajaran } from './PerangkatPembelajaran';
+import { FileText, Inbox, Sparkles, Brain } from 'lucide-react';
 import { LetterGenerationResult } from '../../services/api';
 
 interface KeadministrasianRootProps {
@@ -18,6 +20,7 @@ interface KeadministrasianRootProps {
   profil: ProfilSekolah;
   pegawai: Pegawai[];
   siswa: Siswa[];
+  userRole?: UserRole;
   onSaveSuratKeluar: (s: SuratKeluar) => void;
   onDeleteSuratKeluar: (id: string) => void;
   onSaveSuratMasuk: (s: SuratMasuk) => void;
@@ -31,18 +34,34 @@ export const KeadministrasianRoot: React.FC<KeadministrasianRootProps> = ({
   profil,
   pegawai,
   siswa,
+  userRole,
   onSaveSuratKeluar,
   onDeleteSuratKeluar,
   onSaveSuratMasuk,
   onDeleteSuratMasuk,
   onOpenLetterPrintModal,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<KeadministrasianSubTab>('surat_keluar');
+  const [activeSubTab, setActiveSubTab] = useState<KeadministrasianSubTab>('perangkat_pembelajaran');
 
   return (
     <div className="space-y-6">
       {/* Sub Tab Switcher */}
       <div className="bg-white p-2 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-1.5">
+        <button
+          onClick={() => setActiveSubTab('perangkat_pembelajaran')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeSubTab === 'perangkat_pembelajaran'
+              ? 'bg-emerald-800 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Brain className="w-4 h-4 text-emerald-400" />
+          <span>Sub-menu Perangkat Pembelajaran (AI)</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 font-black">
+            CP 020 & CP 046
+          </span>
+        </button>
+
         <button
           onClick={() => setActiveSubTab('surat_keluar')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
@@ -74,7 +93,14 @@ export const KeadministrasianRoot: React.FC<KeadministrasianRootProps> = ({
         </button>
       </div>
 
-      {activeSubTab === 'surat_keluar' ? (
+      {activeSubTab === 'perangkat_pembelajaran' ? (
+        <PerangkatPembelajaran
+          profil={profil}
+          pegawai={pegawai}
+          siswa={siswa}
+          userRole={userRole}
+        />
+      ) : activeSubTab === 'surat_keluar' ? (
         <SuratKeluarComponent
           suratList={suratKeluar}
           profil={profil}

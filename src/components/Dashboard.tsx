@@ -26,10 +26,23 @@ import {
   ShieldCheck,
   CheckCircle2,
   History,
-  Database
+  Database,
+  DownloadCloud,
+  FileSpreadsheet,
+  ExternalLink,
+  Check,
+  Link2,
+  X
 } from 'lucide-react';
 import { generateAIInsight } from '../services/api';
 import { getActivityLogs } from '../services/logger';
+import { 
+  fetchProfilSekolahFromSpreadsheet, 
+  getSavedMasterSheetId, 
+  saveMasterSheetId 
+} from '../services/singleMasterSheetService';
+import { getAccessToken } from '../services/googleAuth';
+import { DashboardCharts3D } from './DashboardCharts3D';
 
 interface DashboardProps {
   profil: ProfilSekolah;
@@ -40,6 +53,8 @@ interface DashboardProps {
   btq: NilaiIjazahBTQ[];
   currentUser?: AuthUser;
   setActiveTab: (tab: TabType) => void;
+  onUpdateProfil?: (updated: ProfilSekolah) => void;
+  onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -51,10 +66,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
   btq,
   currentUser,
   setActiveTab,
+  onUpdateProfil,
+  onNotify,
 }) => {
   const [aiInsight, setAiInsight] = useState<AIInsightData | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // State for fetching Profil Sekolah from Google Spreadsheet
+  const [isFetchingProfil, setIsFetchingProfil] = useState(false);
+  const [profilSyncStatus, setProfilSyncStatus] = useState<string | null>(null);
+  const [showSheetInputModal, setShowSheetInputModal] = useState(false);
+  const [sheetUrlInput, setSheetUrlInput] = useState(() => getSavedMasterSheetId());
 
   // Statistics
   const totalPegawai = pegawai.length;
@@ -132,66 +155,46 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
+  // Function to pull school profile directly from master spreadsheet
+  const handleAmbilProfilDariSpreadsheet = async (overrideUrl?: string) => {
+    setIsFetchingProfil(true);
+    try {
+      const sheetToUse = overrideUrl || sheetUrlInput || getSavedMasterSheetId();
+      if (overrideUrl) {
+        saveMasterSheetId(overrideUrl);
+      }
+      const token = await getAccessToken();
+      const updated = await fetchProfilSekolahFromSpreadsheet(sheetToUse, token, profil);
+      if (onUpdateProfil) {
+        onUpdateProfil(updated);
+      }
+      try {
+        localStorage.setItem('sim_kdr1_profil', JSON.stringify(updated));
+      } catch {}
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setProfilSyncStatus(`Tersinkron ${timeStr}`);
+      onNotify?.(`Data profil sekolah berhasil diambil dari Google Spreadsheet: ${updated.nama}!`, 'success');
+      setShowSheetInputModal(false);
+    } catch (err: any) {
+      console.warn('Gagal ambil profil dari spreadsheet:', err);
+      if (!getSavedMasterSheetId() && !overrideUrl) {
+        setShowSheetInputModal(true);
+      } else {
+        onNotify?.(err.message || 'Gagal mengambil data profil dari spreadsheet. Pastikan sheet Profil_Sekolah tersedia.', 'error');
+      }
+    } finally {
+      setIsFetchingProfil(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Role Indicator Banner */}
-      {currentUser?.role === 'guest' || currentUser?.role === 'siswa' ? (
-        <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-between text-xs text-slate-700">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-slate-100 text-slate-700">
-              <Eye className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="font-bold text-slate-900">Mode Guest (Pengunjung Publik):</span>
-              <span className="ml-1 text-slate-600">Menampilkan informasi umum sekolah, statistik data kesiswaan, sarpras, dan direktori umum SDN Kedungringin 1 Beji.</span>
-            </div>
-          </div>
-          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold text-[11px] shrink-0">
-            Hanya Lihat
-          </span>
-        </div>
-      ) : currentUser?.role === 'guru' ? (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 shadow-xs flex items-center justify-between text-xs text-emerald-950">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-emerald-700 text-white">
-              <GraduationCap className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="font-bold text-emerald-950">Selamat Datang, Bapak/Ibu {currentUser.name}!</span>
-              <span className="ml-1 text-emerald-800">
-                Akses aktif untuk <strong>{currentUser.rombel || `Rombel Kelas ${currentUser.kelas || ''}`}</strong>. Anda dapat memperbarui nilai rapor, asesmen TKA, data siswa rombel, dan keadministrasian ruang kelas binaan.
-              </span>
-            </div>
-          </div>
-          {currentUser.kelas && (
-            <span className="px-3 py-1 rounded-full bg-emerald-700 text-white font-bold text-[11px] shrink-0">
-              Rombel Kelas {currentUser.kelas}
-            </span>
-          )}
-        </div>
-      ) : (
-        <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200 shadow-xs flex items-center justify-between text-xs text-purple-950">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-purple-700 text-white">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="font-bold text-purple-950">Administrator Sistem (Akses Penuh):</span>
-              <span className="ml-1 text-purple-800">Memiliki wewenang pembaruan keseluruhan data: master siswa semua rombel, kepegawaian ASN & SKP, sarpras & perpustakaan, dan sinkronisasi Google Drive & Sheets.</span>
-            </div>
-          </div>
-          <span className="px-3 py-1 rounded-full bg-purple-700 text-white font-bold text-[11px] shrink-0">
-            Super Admin
-          </span>
-        </div>
-      )}
-
       {/* Top Welcome & School Identity Card */}
       <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-emerald-700/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
+        <div className="relative z-10">
+          <div className="space-y-2 max-w-3xl">
             <div className="inline-flex items-center gap-2 bg-emerald-700/60 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-600/40">
               <School className="w-3.5 h-3.5" />
               Sistem Informasi Manajemen Terintegrasi
@@ -199,55 +202,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
               Selamat Datang di SIM {profil.nama}
             </h2>
-            <p className="text-emerald-100/90 text-sm max-w-2xl leading-relaxed">
-              Pusat kendali manajemen data kesiswaan terintegrasi rapor 4 & 5 semester, sertifikasi BTQ,
-              kepegawaian, sarana prasarana, serta generator persuratan resmi berbasis Google Workspace & Gemini AI.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={() => setActiveTab('kesiswaan')}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-emerald-900 font-semibold text-xs hover:bg-emerald-50 transition-all shadow-xs"
-            >
-              <Award className="w-4 h-4 text-emerald-700" />
-              <span>Kelola Rapor & BTQ</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setActiveTab('keadministrasian')}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700/80 hover:bg-emerald-700 text-white font-medium text-xs border border-emerald-600/60 transition-all"
-            >
-              <FileCheck2 className="w-4 h-4 text-emerald-300" />
-              <span>Generator Surat AI</span>
-            </button>
           </div>
         </div>
 
         {/* Quick Identity Bar */}
         <div className="mt-6 pt-4 border-t border-emerald-700/50 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div>
-            <div className="text-emerald-300 font-medium">Kepala Sekolah</div>
-            <div className="font-semibold text-white">{profil.kepalaSekolah}</div>
-            <div className="text-emerald-200/80 text-[11px]">NIP. {profil.nipKepalaSekolah}</div>
-          </div>
-          <div>
-            <div className="text-emerald-300 font-medium">Status & Akreditasi</div>
-            <div className="font-semibold text-white">{profil.status} - Akreditasi {profil.akreditasi}</div>
-            <div className="text-emerald-200/80 text-[11px]">NPSN: {profil.npsn}</div>
-          </div>
-          <div>
-            <div className="text-emerald-300 font-medium">Tahun Pelajaran</div>
-            <div className="font-semibold text-white">{profil.tahunPelajaranAktif}</div>
-            <div className="text-emerald-200/80 text-[11px]">Acuan TMT: {profil.tanggalAcuanUsia}</div>
-          </div>
-          <div>
-            <div className="text-emerald-300 font-medium">Kecamatan & Daerah</div>
-            <div className="font-semibold text-white">Kec. {profil.kecamatan}</div>
-            <div className="text-emerald-200/80 text-[11px]">Kab. {profil.kabupaten}, Jawa Timur</div>
+            <div>
+              <div className="text-emerald-300 font-medium">Kepala Sekolah</div>
+              <div className="font-semibold text-white truncate" title={profil.kepalaSekolah}>{profil.kepalaSekolah}</div>
+              <div className="text-emerald-200/80 text-[11px] truncate">NIP. {profil.nipKepalaSekolah}</div>
+              {profil.pangkatKepalaSekolah && (
+                <div className="text-[10px] text-emerald-300/70 truncate">{profil.pangkatKepalaSekolah}</div>
+              )}
+            </div>
+            <div>
+              <div className="text-emerald-300 font-medium">Status & Akreditasi</div>
+              <div className="font-semibold text-white">{profil.status} - Akreditasi {profil.akreditasi}</div>
+              <div className="text-emerald-200/80 text-[11px]">NPSN: {profil.npsn}</div>
+              <div className="text-[10px] text-emerald-300/70">Bentuk: {profil.bentukPendidikan}</div>
+            </div>
+            <div>
+              <div className="text-emerald-300 font-medium">Tahun Pelajaran</div>
+              <div className="font-semibold text-white">{profil.tahunPelajaranAktif}</div>
+              <div className="text-emerald-200/80 text-[11px]">Acuan TMT: {profil.tanggalAcuanUsia}</div>
+              <div className="text-[10px] text-emerald-300/70">Kurikulum Merdeka</div>
+            </div>
+            <div>
+              <div className="text-emerald-300 font-medium">Kecamatan & Daerah</div>
+              <div className="font-semibold text-white">Kec. {profil.kecamatan}</div>
+              <div className="text-emerald-200/80 text-[11px] truncate">Kab. {profil.kabupaten}, Jawa Timur</div>
+              <div className="text-[10px] text-emerald-300/70 truncate" title={profil.alamat}>{profil.alamat}</div>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -351,6 +338,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 3D Visualizer: Prosentase Rekap Kepegawaian & Kesiswaan */}
+      <DashboardCharts3D
+        pegawai={pegawai}
+        siswa={siswa}
+        btq={btq}
+      />
 
       {/* Grid: AI Insight Widget & Distribusi Siswa */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -619,6 +613,87 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Pengaturan Tautan Google Spreadsheet Profil */}
+      {showSheetInputModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                  <FileSpreadsheet className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Ambil Profil dari Master Spreadsheet
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Sinkronisasi sheet <strong>Profil_Sekolah</strong> ke identitas SIM SDN Kedungringin 1
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSheetInputModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  ID atau Link Google Spreadsheet:
+                </label>
+                <input
+                  type="text"
+                  value={sheetUrlInput}
+                  onChange={(e) => setSheetUrlInput(e.target.value)}
+                  placeholder="Contoh: 1cry49dLyjsyXfkGJIARR_PLwUV67t7ur atau link edit spreadsheet"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-[11px]"
+                />
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  Sistem akan membaca sheet bernama <strong>Profil_Sekolah</strong> atau <strong>Profil</strong>.
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
+                <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Format Kolom Sheet Profil yang Didukung:</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Format Berbaris (Key-Value): <code>Nama Sekolah</code>, <code>NPSN</code>, <code>Bentuk Pendidikan</code>, <code>Status</code>, <code>Akreditasi</code>, <code>Alamat</code>, <code>Kecamatan</code>, <code>Kabupaten</code>, <code>Kepala Sekolah</code>, <code>NIP Kepala Sekolah</code>, <code>Tahun Pelajaran</code>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowSheetInputModal(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAmbilProfilDariSpreadsheet(sheetUrlInput)}
+                disabled={isFetchingProfil || !sheetUrlInput.trim()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                {isFetchingProfil ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <DownloadCloud className="w-3.5 h-3.5" />
+                )}
+                <span>{isFetchingProfil ? 'Mengambil Profil...' : 'Ambil & Sinkronkan Sekarang'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
