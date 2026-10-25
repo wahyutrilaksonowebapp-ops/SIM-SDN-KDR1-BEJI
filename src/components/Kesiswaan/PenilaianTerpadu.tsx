@@ -269,7 +269,7 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
         statusKelulusan: 'Lulus',
         catatan: 'Makhraj fasih, tartil, dan hafal surat-surat juz 30 dengan baik.',
         tanggalTerbit: '15 Juni 2026',
-        penguji: 'Ahmad Muzakki, S.Pd.I',
+        penguji: 'Wahyu Tri Laksono, S.Pd.I',
       });
     }
 

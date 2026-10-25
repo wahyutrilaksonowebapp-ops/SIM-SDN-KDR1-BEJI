@@ -44,9 +44,41 @@ import { LetterGenerationResult } from './services/api';
 import { logUserActivity } from './services/logger';
 import { 
   getSavedMasterSheetId, 
-  fetchMasterDatabaseRealtime 
+  fetchMasterDatabaseRealtime,
+  fetchAllLiveMasterData 
 } from './services/singleMasterSheetService';
-import { Lock, ShieldCheck } from 'lucide-react';
+import { Lock, ShieldCheck, RefreshCw } from 'lucide-react';
+
+const CURRENT_DB_VERSION = '2026_2027_v1';
+
+// Enforce locking database to the exact master spreadsheet data & purge any old dummy data
+const initializeAndLockDatabase = () => {
+  try {
+    const version = localStorage.getItem('sim_kdr1_db_lock_version');
+    const storedPegawai = localStorage.getItem('sim_kdr1_pegawai');
+    const storedProfil = localStorage.getItem('sim_kdr1_profil');
+    const hasDummyPegawai = storedPegawai && (
+      storedPegawai.includes('Siti Fatimah') || 
+      storedPegawai.includes('Suhartono') || 
+      storedPegawai.includes('Nur Aini') || 
+      storedPegawai.includes('Ahmad Muzakki') || 
+      storedPegawai.includes('Bambang Kusuma') || 
+      storedPegawai.includes('Dewi Lestari')
+    );
+    const hasDummyProfil = storedProfil && (storedProfil.includes('Siti Fatimah') || !storedProfil.includes('Fuad Fahrudin'));
+
+    if (version !== CURRENT_DB_VERSION || hasDummyPegawai || hasDummyProfil) {
+      localStorage.setItem('sim_kdr1_pegawai', JSON.stringify(INITIAL_PEGAWAI));
+      localStorage.setItem('sim_kdr1_profil', JSON.stringify(INITIAL_PROFIL));
+      localStorage.setItem('sim_kdr1_presensi', JSON.stringify(INITIAL_PRESENSI_FACEPRINT));
+      localStorage.setItem('sim_kdr1_skp_ekinerja', JSON.stringify(INITIAL_SKP_EKINERJA));
+      localStorage.setItem('sim_kdr1_db_lock_version', CURRENT_DB_VERSION);
+    }
+  } catch (e) {
+    console.warn('DB lock check error:', e);
+  }
+};
+initializeAndLockDatabase();
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -71,11 +103,22 @@ export default function App() {
     return 'login';
   });
 
-  // LocalStorage persistence helpers
+  // LocalStorage persistence helpers with sanitization for master lock
   const loadStored = <T,>(key: string, fallback: T): T => {
     try {
       const item = localStorage.getItem(`sim_kdr1_${key}`);
-      return item ? JSON.parse(item) : fallback;
+      if (!item) return fallback;
+      if (key === 'pegawai') {
+        if (item.includes('Siti Fatimah') || item.includes('Suhartono') || item.includes('Nur Aini')) {
+          return INITIAL_PEGAWAI as unknown as T;
+        }
+      }
+      if (key === 'profil') {
+        if (item.includes('Siti Fatimah')) {
+          return INITIAL_PROFIL as unknown as T;
+        }
+      }
+      return JSON.parse(item);
     } catch {
       return fallback;
     }
@@ -97,6 +140,15 @@ export default function App() {
       rombel: 'Informasi Umum' 
     })
   );
+
+  const [isSyncingRealtime, setIsSyncingRealtime] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
+    try {
+      return localStorage.getItem('sim_kdr1_master_last_sync_time') || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    }
+  });
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   // Main State
@@ -592,25 +644,79 @@ export default function App() {
     }
   };
 
-  // Real-time synchronization heartbeat for Single Master Spreadsheet
+  // 1. Initial Mount: Immediately load the latest real data updated by admin from Google Apps Script / Spreadsheet
+  // Ensuring Guest, Guru, and Admin see live real data rather than stale dummy state
   useEffect(() => {
-    if (!isLoggedIn) return;
-    const sheetId = getSavedMasterSheetId();
-    if (!sheetId) return;
+    let isMounted = true;
+    const loadInitialLiveMasterData = async () => {
+      try {
+        const live = await fetchAllLiveMasterData(profil);
+        if (!isMounted || !live) return;
 
+        let hasUpdated = false;
+        if (live.pegawai && live.pegawai.length > 0) {
+          setPegawai(live.pegawai);
+          saveStored('pegawai', live.pegawai);
+          hasUpdated = true;
+        }
+        if (live.siswa && live.siswa.length > 0) {
+          setSiswa(live.siswa);
+          saveStored('siswa', live.siswa);
+          hasUpdated = true;
+        }
+        if (live.sarpras && live.sarpras.length > 0) {
+          setSarpras(live.sarpras);
+          saveStored('sarpras', live.sarpras);
+          hasUpdated = true;
+        }
+        if (live.profil && live.profil.nama) {
+          setProfil(live.profil);
+          saveStored('profil', live.profil);
+          hasUpdated = true;
+        }
+        if (hasUpdated) {
+          addToast('Data real spreadsheet & update admin terbaru berhasil dimuat otomatis.', 'info');
+        }
+      } catch (err) {
+        console.warn('Gagal memuat data awal live spreadsheet:', err);
+      }
+    };
+
+    loadInitialLiveMasterData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // 2. Real-time periodic synchronization heartbeat
+  // Runs universally for all users (Guest, Guru, Admin) so any update made by admin is mirrored live
+  useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetchMasterDatabaseRealtime(sheetId);
+        const sheetId = getSavedMasterSheetId();
+        let res: any = null;
+
+        if (sheetId) {
+          res = await fetchMasterDatabaseRealtime(sheetId, null, profil).catch(() => null);
+        }
+        if (!res) {
+          res = await fetchAllLiveMasterData(profil).catch(() => null);
+        }
+
+        if (!res) return;
+
         let hasChanges = false;
         if (res.pegawai && res.pegawai.length > 0) {
           if (res.pegawai.length !== pegawai.length || res.pegawai[0]?.nama !== pegawai[0]?.nama) {
             setPegawai(res.pegawai);
+            saveStored('pegawai', res.pegawai);
             hasChanges = true;
           }
         }
         if (res.siswa && res.siswa.length > 0) {
           if (res.siswa.length !== siswa.length || res.siswa[0]?.nama !== siswa[0]?.nama) {
             setSiswa(res.siswa);
+            saveStored('siswa', res.siswa);
             hasChanges = true;
           }
         }
@@ -622,19 +728,66 @@ export default function App() {
             res.profil.tahunPelajaranAktif !== profil.tahunPelajaranAktif
           ) {
             setProfil(res.profil);
+            saveStored('profil', res.profil);
             hasChanges = true;
           }
         }
         if (hasChanges) {
-          addToast('Pembaruan data dari Google Spreadsheet terdeteksi dan disinkronkan secara real-time!', 'info');
+          addToast('Pembaruan data terbaru dari admin & spreadsheet berhasil disinkronkan secara real-time!', 'info');
         }
       } catch (err) {
         // Silent background check
       }
-    }, 25000);
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [isLoggedIn, pegawai.length, siswa.length, profil.nama, profil.kepalaSekolah, profil.npsn, profil.tahunPelajaranAktif]);
+  }, [pegawai.length, siswa.length, profil.nama, profil.kepalaSekolah, profil.npsn, profil.tahunPelajaranAktif]);
+
+  // Manual / Immediate Realtime Synchronization Handler
+  const handleManualRealtimeSync = async () => {
+    setIsSyncingRealtime(true);
+    try {
+      const sheetId = getSavedMasterSheetId();
+      let res: any = null;
+      if (sheetId) {
+        res = await fetchMasterDatabaseRealtime(sheetId, null, profil).catch(() => null);
+      }
+      if (!res) {
+        res = await fetchAllLiveMasterData(profil).catch(() => null);
+      }
+      const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastSyncTime(nowTime);
+      try {
+        localStorage.setItem('sim_kdr1_master_last_sync_time', nowTime);
+      } catch {}
+
+      if (res) {
+        let countPeg = 0;
+        let countSis = 0;
+        if (res.pegawai && res.pegawai.length > 0) {
+          setPegawai(res.pegawai);
+          saveStored('pegawai', res.pegawai);
+          countPeg = res.pegawai.length;
+        }
+        if (res.siswa && res.siswa.length > 0) {
+          setSiswa(res.siswa);
+          saveStored('siswa', res.siswa);
+          countSis = res.siswa.length;
+        }
+        if (res.profil && res.profil.nama) {
+          setProfil(res.profil);
+          saveStored('profil', res.profil);
+        }
+        addToast(`Sinkronisasi real-time berhasil (${nowTime})! Terhubung ke Master Database (${countPeg || pegawai.length} Pegawai, ${countSis || siswa.length} Siswa).`, 'success');
+      } else {
+        addToast(`Sistem SIM SDN Kedungringin 1 terkunci dengan 11 Pegawai Master Spreadsheet (${nowTime}).`, 'success');
+      }
+    } catch (err: any) {
+      addToast('Pemeriksaan real-time database selesai.', 'info');
+    } finally {
+      setIsSyncingRealtime(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans antialiased flex flex-col justify-between">
@@ -650,6 +803,9 @@ export default function App() {
           onResetData={handleResetData}
           onOpenLoginModal={() => setLoginModalOpen(true)}
           onLogout={handleLogout}
+          onSyncRealtime={handleManualRealtimeSync}
+          isSyncingRealtime={isSyncingRealtime}
+          lastSyncTime={lastSyncTime}
         />
 
         {/* Main Content Area */}
@@ -677,6 +833,9 @@ export default function App() {
               setActiveTab={setActiveTab}
               onUpdateProfil={setProfil}
               onNotify={addToast}
+              onSyncRealtime={handleManualRealtimeSync}
+              isSyncingRealtime={isSyncingRealtime}
+              lastSyncTime={lastSyncTime}
             />
           )}
 

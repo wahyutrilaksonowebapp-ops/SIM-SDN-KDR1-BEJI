@@ -17,7 +17,7 @@ import { SheetDefinition } from './googleDriveSheets';
 import { INITIAL_PROFIL } from '../data/initialData';
 
 export const TARGET_GDRIVE_FOLDER_ID = '1cry49dLyjsyXfkGJIARR_PLwUV67t7ur';
-export const MASTER_SPREADSHEET_TITLE = 'SIM_SDN_Kedungringin1_Master_Database';
+export const MASTER_SPREADSHEET_TITLE = 'SIM_SDN_Kedungringin1_Master_Database_2026_2027';
 
 export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew/exec';
 
@@ -469,9 +469,66 @@ export function buildMasterDatabaseSpreadsheet(data: {
 // PARSERS: CONVERT ROWS FROM SPREADSHEET TO TYPED OBJECTS
 // =========================================================================
 
-export function parsePegawaiFromSheetRows(rows: any[][]): Pegawai[] {
-  if (!rows || rows.length < 2) return [];
-  // First row is header
+export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
+  if (!rows || rows.length === 0) return [];
+
+  // Case A: Array of Objects (from Google Apps Script getAllData)
+  if (rows[0] && typeof rows[0] === 'object' && !Array.isArray(rows[0])) {
+    return rows
+      .filter((item) => item && (item['Nama Lengkap'] || item['Nama'] || item['nama']))
+      .map((item, idx) => {
+        const id = String(item['ID'] || item['id'] || `peg-${idx + 1}`).trim();
+        const nip = String(item['NIP'] || item['nip'] || '-').trim();
+        const nama = String(item['Nama Lengkap'] || item['Nama'] || item['nama'] || '').trim();
+        const gelarDepan = String(item['Gelar Depan'] || item['gelarDepan'] || '').trim();
+        const gelarBelakang = String(item['Gelar Belakang'] || item['gelarBelakang'] || '').trim();
+        const rawJk = String(item['Jenis Kelamin'] || item['JK'] || item['jenisKelamin'] || 'L').toUpperCase();
+        let jenisKelamin: 'L' | 'P' = rawJk.startsWith('P') ? 'P' : 'L';
+        if (nama.toLowerCase().includes('fuad')) {
+          jenisKelamin = 'L';
+        }
+        const golongan = String(item['Golongan'] || item['golongan'] || 'III/a');
+        const pangkat = String(item['Pangkat'] || item['pangkat'] || '');
+        const jabatan = String(item['Jabatan'] || item['jabatan'] || 'Guru');
+        const statusKepegawaian = String(item['Status Pegawai'] || item['statusKepegawaian'] || 'PNS') as any;
+        const pendidikanTerakhir = String(item['Pendidikan Terakhir'] || item['pendidikanTerakhir'] || 'S1');
+        const tmt = String(item['TMT CPNS/PPPK'] || item['TMT'] || item['tmt'] || '2010-01-01');
+        const tempatLahir = String(item['Tempat Lahir'] || item['tempatLahir'] || 'Pasuruan');
+        const tanggalLahir = String(item['Tanggal Lahir'] || item['tanggalLahir'] || '1985-01-01');
+        const kontak = String(item['Kontak / WA'] || item['kontak'] || '-');
+        const email = String(item['Email'] || item['email'] || '-');
+        const unitKerja = String(item['Unit Kerja'] || item['unitKerja'] || 'SDN Kedungringin 1 Beji');
+        const karpeg = String(item['No Karpeg'] || item['karpeg'] || '-');
+        const nomorTaspen = String(item['No Taspen'] || item['nomorTaspen'] || '-');
+        const npwp = String(item['NPWP'] || item['npwp'] || '-');
+
+        return {
+          id,
+          nip,
+          nama,
+          gelarDepan,
+          gelarBelakang,
+          jenisKelamin,
+          golongan,
+          pangkat,
+          jabatan,
+          statusKepegawaian,
+          pendidikanTerakhir,
+          tmt,
+          tempatLahir,
+          tanggalLahir,
+          kontak,
+          email,
+          unitKerja,
+          karpeg,
+          nomorTaspen,
+          npwp,
+        };
+      });
+  }
+
+  // Case B: 2D Array of rows (from Google Visualization / Sheets API v4)
+  if (rows.length < 2) return [];
   const dataRows = rows.slice(1);
   return dataRows
     .filter((r) => r && r[2]) // must have nama
@@ -481,7 +538,11 @@ export function parsePegawaiFromSheetRows(rows: any[][]): Pegawai[] {
       const nama = String(r[2] || '').trim();
       const gelarDepan = String(r[3] || '').trim();
       const gelarBelakang = String(r[4] || '').trim();
-      const jenisKelamin = String(r[5] || 'L').toUpperCase().startsWith('P') ? 'P' : 'L';
+      const rawJk = String(r[5] || 'L').toUpperCase();
+      let jenisKelamin: 'L' | 'P' = rawJk.startsWith('P') ? 'P' : 'L';
+      if (nama.toLowerCase().includes('fuad')) {
+        jenisKelamin = 'L';
+      }
       const golongan = String(r[6] || 'III/a');
       const pangkat = String(r[7] || 'Penata Muda');
       const jabatan = String(r[8] || 'Guru');
@@ -522,9 +583,57 @@ export function parsePegawaiFromSheetRows(rows: any[][]): Pegawai[] {
     });
 }
 
-export function parseSiswaFromSheetRows(rows: any[][]): Siswa[] {
-  if (!rows || rows.length < 2) return [];
+export function parseSiswaFromSheetRows(rows: any[]): Siswa[] {
+  if (!rows || rows.length === 0) return [];
   const validAgama: Siswa['agama'][] = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'];
+
+  // Case A: Array of Objects (from Google Apps Script getAllData)
+  if (rows[0] && typeof rows[0] === 'object' && !Array.isArray(rows[0])) {
+    return rows
+      .filter((item) => item && (item['Nama Lengkap Siswa'] || item['Nama Siswa'] || item['Nama'] || item['nama']))
+      .map((item, idx) => {
+        const id = String(item['ID'] || item['id'] || `sis-${idx + 1}`).trim();
+        const nisn = String(item['NISN'] || item['nisn'] || '').trim();
+        const nis = String(item['NIS'] || item['nis'] || '').trim();
+        const nama = String(item['Nama Lengkap Siswa'] || item['Nama Siswa'] || item['Nama'] || item['nama'] || '').trim();
+        const rawJk = String(item['Jenis Kelamin'] || item['JK'] || item['jenisKelamin'] || 'L').toUpperCase();
+        const jenisKelamin = rawJk.startsWith('P') ? 'P' : 'L';
+        const tempatLahir = String(item['Tempat Lahir'] || item['tempatLahir'] || 'Pasuruan').trim();
+        const tanggalLahir = String(item['Tanggal Lahir'] || item['tanggalLahir'] || '2014-01-01').trim();
+        const rawAgama = String(item['Agama'] || item['agama'] || 'Islam').trim();
+        const agama: Siswa['agama'] = validAgama.includes(rawAgama as any) ? (rawAgama as Siswa['agama']) : 'Islam';
+        const kelas = Number(item['Kelas'] || item['kelas']) || 1;
+        const rombel = String(item['Rombel'] || item['rombel'] || 'A').trim();
+        const namaAyah = String(item['Nama Ayah'] || item['namaAyah'] || '-').trim();
+        const namaIbu = String(item['Nama Ibu'] || item['namaIbu'] || '-').trim();
+        const alamat = String(item['Alamat Rumah'] || item['Alamat'] || item['alamat'] || 'Kedungringin, Beji').trim();
+        const noHpOrtu = String(item['No HP Ortu'] || item['noHpOrtu'] || '-').trim();
+        const tmtDiterima = String(item['TMT Diterima'] || item['tmtDiterima'] || '2024-07-15').trim();
+        const statusSiswa = (String(item['Status Siswa'] || item['statusSiswa'] || 'Aktif').trim()) as any;
+
+        return {
+          id,
+          nisn,
+          nis,
+          nama,
+          jenisKelamin,
+          tempatLahir,
+          tanggalLahir,
+          agama,
+          kelas,
+          rombel,
+          namaAyah,
+          namaIbu,
+          alamat,
+          noHpOrtu,
+          tmtDiterima,
+          statusSiswa,
+        };
+      });
+  }
+
+  // Case B: 2D Array of rows (from Google Visualization / Sheets API v4)
+  if (rows.length < 2) return [];
   const dataRows = rows.slice(1);
   return dataRows
     .filter((r) => r && r[3]) // must have nama
@@ -897,4 +1006,97 @@ export async function fetchProfilSekolahFromSpreadsheet(
 
   throw new Error(`Sheet "Profil_Sekolah" tidak ditemukan pada Spreadsheet ID: ${targetId}. Pastikan sheet bernama "Profil_Sekolah" ada dan dapat diakses publik/viewer.`);
 }
+
+/**
+ * Mengambil data terbaru secara langsung dari Google Spreadsheet / Google Apps Script
+ * Dipakai saat aplikasi pertama kali dimuat agar Pengunjung (Guest), Akun Guru, dan Admin
+ * langsung mendapatkan data real spreadsheet & pembaruan terakhir dari admin.
+ */
+export async function fetchAllLiveMasterData(currentProfil?: ProfilSekolah): Promise<{
+  pegawai?: Pegawai[];
+  siswa?: Siswa[];
+  sarpras?: SarprasItem[];
+  profil?: ProfilSekolah;
+  timestamp: string;
+} | null> {
+  // 1. Prioritas 1: Google Apps Script Web App (LOCKED_WEB_APP_URL)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const url = `${LOCKED_WEB_APP_URL}?action=getAllData`;
+    const gasRes = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (gasRes.ok) {
+      const data = await gasRes.json();
+      if (data && typeof data === 'object') {
+        const parsedPeg = (data.pegawai && Array.isArray(data.pegawai) && data.pegawai.length > 0)
+          ? parsePegawaiFromSheetRows(data.pegawai)
+          : undefined;
+
+        const parsedSis = (data.siswa && Array.isArray(data.siswa) && data.siswa.length > 0)
+          ? parseSiswaFromSheetRows(data.siswa)
+          : undefined;
+
+        const parsedSar = (data.sarpras && Array.isArray(data.sarpras) && data.sarpras.length > 0)
+          ? parseSarprasFromSheetRows(data.sarpras)
+          : undefined;
+
+        let parsedProf: ProfilSekolah | undefined = undefined;
+        if (data.profil && Array.isArray(data.profil) && data.profil.length > 0) {
+          const rows: any[][] = [];
+          for (const item of data.profil) {
+            if (Array.isArray(item)) {
+              rows.push(item);
+            } else if (typeof item === 'object' && item !== null) {
+              const vals = Object.values(item);
+              if (vals.length >= 2) rows.push([vals[0], vals[1]]);
+              else if (vals.length === 1) {
+                const keys = Object.keys(item);
+                rows.push([keys[0], vals[0]]);
+              }
+            }
+          }
+          if (rows.length > 0) {
+            parsedProf = parseProfilFromSheetRows(rows, currentProfil);
+          }
+        }
+
+        if (parsedPeg || parsedSis || parsedSar || parsedProf) {
+          const now = new Date().toLocaleTimeString('id-ID');
+          try {
+            localStorage.setItem(STORAGE_KEYS.LAST_SYNC_TIME, now);
+            localStorage.setItem(STORAGE_KEYS.LAST_SYNC_STATUS, 'SUCCESS');
+          } catch {}
+
+          return {
+            pegawai: parsedPeg,
+            siswa: parsedSis,
+            sarpras: parsedSar,
+            profil: parsedProf,
+            timestamp: now,
+          };
+        }
+      }
+    }
+  } catch (gasErr) {
+    console.warn('Apps Script fetchAllLiveMasterData error:', gasErr);
+  }
+
+  // 2. Prioritas 2: Spreadsheet Google Sheets ID (GViz endpoint)
+  const savedId = getSavedMasterSheetId();
+  if (savedId) {
+    try {
+      const res = await fetchMasterDatabaseRealtime(savedId, null, currentProfil);
+      if (res.pegawai || res.siswa || res.sarpras || res.profil) {
+        return res;
+      }
+    } catch (gvizErr) {
+      console.warn('GViz fetchAllLiveMasterData error:', gvizErr);
+    }
+  }
+
+  return null;
+}
+
 

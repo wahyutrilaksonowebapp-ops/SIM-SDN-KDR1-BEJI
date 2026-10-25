@@ -473,3 +473,147 @@ export function getJenisKelaminConfig(jk?: 'L' | 'P' | string): {
     textColor: 'text-rose-700',
   };
 }
+
+/**
+ * Kalkulasi Batas Usia Pensiun (BUP) Pegawai ASN / Guru sesuai Regulasi BKN
+ * Guru / Kepala Sekolah: BUP 60 Tahun (UU Guru & Dosen No. 14/2005)
+ * Pelaksana / Tendik: BUP 58 Tahun (PP No. 11/2017)
+ * TMT Pensiun resmi adalah tanggal 1 bulan berikutnya setelah tanggal lahir
+ */
+export interface BupPensiunInfo {
+  usiaBupTahun: number;          // 60 untuk Guru/Kepsek, 58 untuk Pelaksana/Tendik
+  usiaSaatIniTahun: number;
+  usiaSaatIniBulan: number;
+  tmtPensiun: string;             // YYYY-MM-DD
+  tmtPensiunFormatted: string;    // e.g. "1 Mei 2026"
+  sisaBulan: number;              // Selisih bulan ke TMT pensiun
+  sisaTahun: number;
+  status: 'Sudah Pensiun' | 'Mendesak' | 'Mendekati' | 'Persiapan' | 'Aktif';
+  statusLabel: string;
+  badgeClass: string;
+  alertLevel: 'danger' | 'warning' | 'info' | 'normal';
+}
+
+export function calculateBupPensiun(
+  birthDateStr?: string,
+  jabatan: string = 'Guru',
+  currentDate: Date = new Date()
+): BupPensiunInfo {
+  if (!birthDateStr) {
+    return {
+      usiaBupTahun: 60,
+      usiaSaatIniTahun: 0,
+      usiaSaatIniBulan: 0,
+      tmtPensiun: '-',
+      tmtPensiunFormatted: '-',
+      sisaBulan: 999,
+      sisaTahun: 99,
+      status: 'Aktif',
+      statusLabel: 'Aktif',
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+      alertLevel: 'normal',
+    };
+  }
+
+  const birthDate = new Date(birthDateStr);
+  if (isNaN(birthDate.getTime())) {
+    return {
+      usiaBupTahun: 60,
+      usiaSaatIniTahun: 0,
+      usiaSaatIniBulan: 0,
+      tmtPensiun: '-',
+      tmtPensiunFormatted: '-',
+      sisaBulan: 999,
+      sisaTahun: 99,
+      status: 'Aktif',
+      statusLabel: 'Aktif',
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+      alertLevel: 'normal',
+    };
+  }
+
+  // Tentukan BUP berdasarkan jabatan
+  const j = (jabatan || '').toLowerCase();
+  const isGuruOrKepsek = j.includes('guru') || j.includes('kepala') || j.includes('pengawas') || j.includes('pendidik');
+  const usiaBup = isGuruOrKepsek ? 60 : 58;
+
+  // Tahun dan bulan mencapai BUP
+  const birthYear = birthDate.getFullYear();
+  const birthMonth = birthDate.getMonth(); // 0-indexed
+  const bupYear = birthYear + usiaBup;
+
+  // TMT Pensiun resmi BKN: Tanggal 1 bulan berikutnya setelah tanggal lahir
+  let pMonth = birthMonth + 1;
+  let pYear = bupYear;
+  if (pMonth > 11) {
+    pMonth = 0;
+    pYear += 1;
+  }
+
+  const pMonthStr = String(pMonth + 1).padStart(2, '0');
+  const tmtPensiunStr = `${pYear}-${pMonthStr}-01`;
+  const tmtFormatted = formatIndoDate(tmtPensiunStr);
+
+  // Usia saat ini
+  let curYears = currentDate.getFullYear() - birthDate.getFullYear();
+  let curMonths = currentDate.getMonth() - birthDate.getMonth();
+  if (currentDate.getDate() < birthDate.getDate()) {
+    curMonths--;
+  }
+  if (curMonths < 0) {
+    curYears--;
+    curMonths += 12;
+  }
+
+  // Selisih bulan hingga TMT Pensiun
+  const diffMonths = (pYear - currentDate.getFullYear()) * 12 + (pMonth - currentDate.getMonth());
+  const sisaTahun = Math.floor(Math.max(0, diffMonths) / 12);
+  const sisaBulanRem = Math.max(0, diffMonths) % 12;
+
+  let status: BupPensiunInfo['status'] = 'Aktif';
+  let statusLabel = '';
+  let badgeClass = '';
+  let alertLevel: BupPensiunInfo['alertLevel'] = 'normal';
+
+  if (diffMonths <= 0) {
+    status = 'Sudah Pensiun';
+    statusLabel = `Telah Mencapai BUP (${Math.abs(diffMonths)} bln lalu)`;
+    badgeClass = 'bg-rose-100 text-rose-900 border border-rose-300 font-bold';
+    alertLevel = 'danger';
+  } else if (diffMonths <= 6) {
+    status = 'Mendesak';
+    statusLabel = `Mendesak BUP (${diffMonths} bln lagi)`;
+    badgeClass = 'bg-red-100 text-red-900 border border-red-300 font-black animate-pulse';
+    alertLevel = 'danger';
+  } else if (diffMonths <= 12) {
+    status = 'Mendekati';
+    statusLabel = `Mendekati BUP (${diffMonths} bln lagi)`;
+    badgeClass = 'bg-amber-100 text-amber-900 border border-amber-300 font-bold';
+    alertLevel = 'warning';
+  } else if (diffMonths <= 24) {
+    status = 'Persiapan';
+    const thStr = sisaTahun > 0 ? `${sisaTahun} th ` : '';
+    statusLabel = `Persiapan BUP (${thStr}${sisaBulanRem} bln)`;
+    badgeClass = 'bg-blue-100 text-blue-900 border border-blue-300 font-semibold';
+    alertLevel = 'info';
+  } else {
+    status = 'Aktif';
+    statusLabel = `Aktif (${sisaTahun} th lagi)`;
+    badgeClass = 'bg-slate-100 text-slate-700 border border-slate-200';
+    alertLevel = 'normal';
+  }
+
+  return {
+    usiaBupTahun: usiaBup,
+    usiaSaatIniTahun: curYears,
+    usiaSaatIniBulan: curMonths,
+    tmtPensiun: tmtPensiunStr,
+    tmtPensiunFormatted: tmtFormatted,
+    sisaBulan: diffMonths,
+    sisaTahun,
+    status,
+    statusLabel,
+    badgeClass,
+    alertLevel,
+  };
+}

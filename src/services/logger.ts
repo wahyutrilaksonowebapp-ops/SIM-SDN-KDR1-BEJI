@@ -17,7 +17,7 @@ const INITIAL_LOGS: ActivityLog[] = [
     id: 'log-seed-2',
     timestamp: new Date(Date.now() - 3600000 * 20).toISOString(),
     role: 'guru',
-    userName: 'Dewi Lestari, S.Pd.',
+    userName: 'Isfaul Mukarromah, S.Pd.',
     userNip: '19910418 201903 2 015',
     action: 'UBAH',
     category: 'RAPOR',

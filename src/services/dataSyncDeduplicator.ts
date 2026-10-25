@@ -38,7 +38,7 @@ const SEED_CHANGES: DataChangeRecord[] = [
     module: 'pegawai',
     moduleLabel: 'Direktori Pegawai & GTK',
     entityId: 'peg-9',
-    entityName: 'Tri Handayani, S.Pd.',
+    entityName: 'Dina Fitriyah, S.Pd.',
     changeType: 'UPDATE_TIMPA',
     description: 'Pembaruan NIP dan penugasan Guru Kelas 1 via sinkronisasi spreadsheet.',
     diffs: [

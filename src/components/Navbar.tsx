@@ -13,6 +13,7 @@ import {
   ShieldCheck, 
   LogIn, 
   ChevronDown, 
+  RefreshCw,
   Eye 
 } from 'lucide-react';
 import { TabType, ProfilSekolah, AuthUser } from '../types';
@@ -28,6 +29,9 @@ interface NavbarProps {
   onResetData: () => void;
   onOpenLoginModal?: () => void;
   onLogout?: () => void;
+  onSyncRealtime?: () => Promise<void>;
+  isSyncingRealtime?: boolean;
+  lastSyncTime?: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -40,6 +44,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetData,
   onOpenLoginModal,
   onLogout,
+  onSyncRealtime,
+  isSyncingRealtime = false,
+  lastSyncTime,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
@@ -130,15 +137,39 @@ export const Navbar: React.FC<NavbarProps> = ({
               </select>
             </div>
 
+            {/* Realtime Single Master Database Lock Badge */}
+            <div 
+              onClick={() => {
+                if (onSyncRealtime) {
+                  onSyncRealtime();
+                } else if (currentUser.role === 'admin') {
+                  setActiveTab('google_integration');
+                }
+              }}
+              title="Database Terkunci ke Master Spreadsheet: SIM_SDN_Kedungringin1_Master_Database_2026_2027 (Klik untuk Sinkronisasi Real-time)"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/90 hover:bg-emerald-800 text-[11px] font-semibold text-emerald-300 border border-emerald-600/70 shadow-xs cursor-pointer transition-all"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="hidden sm:inline">DB Real-time:</span>
+              <span className="font-bold text-white tracking-wide">1 Data Master</span>
+              {isSyncingRealtime ? (
+                <RefreshCw className="w-3 h-3 animate-spin text-emerald-300 ml-0.5" />
+              ) : (
+                <span className="text-[10px] text-emerald-300/80 hidden md:inline ml-0.5">({lastSyncTime || 'Aktif'})</span>
+              )}
+            </div>
+
             {currentUser.role === 'admin' && (
               <>
                 <button
                   onClick={() => setActiveTab('google_integration')}
-                  title="Buka Pusat Single Data Utama (Real-time Google Spreadsheet)"
-                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/80 hover:bg-emerald-800 text-[11px] font-bold text-emerald-300 border border-emerald-700/60 transition-colors cursor-pointer"
+                  title="Buka Pusat Single Data Utama (Pengaturan Google Drive & Spreadsheet)"
+                  className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-950/70 hover:bg-emerald-800 text-[11px] font-medium text-emerald-200 border border-emerald-700/50 transition-colors cursor-pointer"
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Single Database Real-time</span>
+                  <span>Setting Sheet</span>
                 </button>
 
                 <button

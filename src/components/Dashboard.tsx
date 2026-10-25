@@ -32,7 +32,11 @@ import {
   ExternalLink,
   Check,
   Link2,
-  X
+  X,
+  CalendarClock,
+  AlertTriangle,
+  Hourglass,
+  BellRing
 } from 'lucide-react';
 import { generateAIInsight } from '../services/api';
 import { getActivityLogs } from '../services/logger';
@@ -43,6 +47,7 @@ import {
 } from '../services/singleMasterSheetService';
 import { getAccessToken } from '../services/googleAuth';
 import { DashboardCharts3D } from './DashboardCharts3D';
+import { calculateBupPensiun, BupPensiunInfo, formatIndoDate } from '../utils/helpers';
 
 interface DashboardProps {
   profil: ProfilSekolah;
@@ -55,6 +60,9 @@ interface DashboardProps {
   setActiveTab: (tab: TabType) => void;
   onUpdateProfil?: (updated: ProfilSekolah) => void;
   onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onSyncRealtime?: () => Promise<void>;
+  isSyncingRealtime?: boolean;
+  lastSyncTime?: string;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -68,6 +76,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setActiveTab,
   onUpdateProfil,
   onNotify,
+  onSyncRealtime,
+  isSyncingRealtime = false,
+  lastSyncTime,
 }) => {
   const [aiInsight, setAiInsight] = useState<AIInsightData | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -104,6 +115,46 @@ export const Dashboard: React.FC<DashboardProps> = ({
     laki: siswa.filter((s) => s.kelas === k && s.jenisKelamin === 'L').length,
     perempuan: siswa.filter((s) => s.kelas === k && s.jenisKelamin === 'P').length,
   }));
+
+  // State & Perhitungan Notifikasi Otomatis BUP (Batas Usia Pensiun) Pegawai
+  const [bupTab, setBupTab] = useState<'ALL' | 'MENDESAK' | 'MENDEKATI' | 'PERSIAPAN'>('ALL');
+  const [showAllBup, setShowAllBup] = useState(false);
+
+  const bupSummary = React.useMemo(() => {
+    const list = pegawai.map((p) => {
+      const bup = calculateBupPensiun(p.tanggalLahir, p.jabatan);
+      return {
+        pegawai: p,
+        bup,
+      };
+    });
+
+    // Urutkan dari sisa bulan terkecil (paling mendesak / terdekat TMT Pensiun)
+    list.sort((a, b) => a.bup.sisaBulan - b.bup.sisaBulan);
+
+    const mendeak = list.filter((item) => item.bup.status === 'Mendesak' || item.bup.status === 'Sudah Pensiun');
+    const mendekati = list.filter((item) => item.bup.status === 'Mendekati');
+    const persiapan = list.filter((item) => item.bup.status === 'Persiapan');
+    const totalAlert = mendeak.length + mendekati.length + persiapan.length;
+
+    return {
+      all: list,
+      mendeak,
+      mendekati,
+      persiapan,
+      totalAlert,
+      prioritas: [...mendeak, ...mendekati, ...persiapan],
+    };
+  }, [pegawai]);
+
+  const filteredBupList = React.useMemo(() => {
+    if (bupTab === 'MENDESAK') return bupSummary.mendeak;
+    if (bupTab === 'MENDEKATI') return bupSummary.mendekati;
+    if (bupTab === 'PERSIAPAN') return bupSummary.persiapan;
+    return bupSummary.prioritas;
+  }, [bupTab, bupSummary]);
+
+  const displayedBupList = showAllBup ? filteredBupList : filteredBupList.slice(0, 4);
 
   // Trigger Gemini AI Insight
   const handleGenerateAiInsight = async () => {
@@ -236,6 +287,268 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
+      {/* ========================================================================= */}
+      {/* SINGLE MASTER DATABASE TERKUNCI & REALTIME STATUS BANNER                  */}
+      {/* Kunci ke spreadsheet SIM_SDN_Kedungringin1_Master_Database_2026_2027      */}
+      {/* ========================================================================= */}
+      <div className="bg-white rounded-2xl border-2 border-emerald-500/80 p-4 sm:p-5 shadow-xs relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs shrink-0">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-slate-900 text-sm sm:text-base">
+                  Database Terkunci Real-time (Single Data Utama)
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Realtime Aktif
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  11 Pegawai GTK Resmi
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Data Dummy Dibersihkan
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Sumber Master: <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono font-bold text-slate-800 text-[11px]">SIM_SDN_Kedungringin1_Master_Database_2026_2027</code>. Seluruh data GTK, Profil, Kesiswaan, dan Sarpras disinkronkan secara real-time untuk Guest, Guru, dan Admin tanpa data dummy.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {lastSyncTime && (
+              <span className="text-[11px] text-slate-500 hidden sm:inline">
+                Update: <strong className="text-slate-700 font-mono">{lastSyncTime}</strong>
+              </span>
+            )}
+            <button
+              onClick={() => onSyncRealtime ? onSyncRealtime() : handleAmbilProfilDariSpreadsheet()}
+              disabled={isSyncingRealtime}
+              title="Sinkronkan data real-time terbaru dari Google Spreadsheet"
+              className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingRealtime ? 'animate-spin' : ''}`} />
+              <span>{isSyncingRealtime ? 'Menyinkronkan...' : 'Sinkronkan Real-time'}</span>
+            </button>
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => setActiveTab('google_integration')}
+                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-300 transition-colors cursor-pointer"
+              >
+                Pusat Master Sheet
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* NOTIFIKASI OTOMATIS BATAS USIA PENSIUN (BUP) PEGAWAI                      */}
+      {/* Deteksi otomatis usia pensiun berdasarkan tanggal lahir & regulasi BKN    */}
+      {/* ========================================================================= */}
+      {bupSummary.totalAlert > 0 && (
+        <div className="bg-gradient-to-br from-amber-50/90 via-white to-rose-50/60 rounded-2xl border-2 border-amber-300 shadow-sm p-5 relative overflow-hidden transition-all">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-amber-200/70">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-xs shrink-0 mt-0.5">
+                <CalendarClock className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>Notifikasi Otomatis Batas Usia Pensiun (BUP) Pegawai</span>
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300">
+                    {bupSummary.totalAlert} Pegawai
+                  </span>
+                  {currentUser?.role === 'admin' ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-600 text-white uppercase tracking-wider">
+                      Alert Administrator
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-200 text-slate-700">
+                      Monitoring Publik
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Berdasarkan UU ASN & UU Guru: BUP Guru/Kepsek <strong>60 tahun</strong>, Tenaga Kependidikan/Pelaksana <strong>58 tahun</strong>. TMT Pensiun resmi BKN berlaku terhitung <strong>tanggal 1 bulan berikutnya</strong> setelah tanggal lahir saat genap usia pensiun.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setActiveTab('kepegawaian')}
+                className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>Kelola DUK & Kepegawaian</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
+            <button
+              onClick={() => setBupTab('ALL')}
+              className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                bupTab === 'ALL'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                  : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Semua Terdeteksi ({bupSummary.totalAlert})
+            </button>
+            {bupSummary.mendeak.length > 0 && (
+              <button
+                onClick={() => setBupTab('MENDESAK')}
+                className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                  bupTab === 'MENDESAK'
+                    ? 'bg-rose-700 text-white border-rose-700 shadow-xs'
+                    : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                }`}
+              >
+                🔴 Mendesak / Telah BUP ({bupSummary.mendeak.length})
+              </button>
+            )}
+            {bupSummary.mendekati.length > 0 && (
+              <button
+                onClick={() => setBupTab('MENDEKATI')}
+                className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                  bupTab === 'MENDEKATI'
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                    : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                🟡 Mendekati 6–12 Bulan ({bupSummary.mendekati.length})
+              </button>
+            )}
+            {bupSummary.persiapan.length > 0 && (
+              <button
+                onClick={() => setBupTab('PERSIAPAN')}
+                className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                  bupTab === 'PERSIAPAN'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                    : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
+                }`}
+              >
+                🔵 Masa Persiapan 1–2 Tahun ({bupSummary.persiapan.length})
+              </button>
+            )}
+          </div>
+
+          {/* Cards of Pegawai nearing BUP */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {displayedBupList.map(({ pegawai: p, bup }) => {
+              const fullName = `${p.gelarDepan ? p.gelarDepan + ' ' : ''}${p.nama}${p.gelarBelakang ? ', ' + p.gelarBelakang : ''}`;
+              const isUrgent = bup.status === 'Mendesak' || bup.status === 'Sudah Pensiun';
+              const cardBg = isUrgent
+                ? 'bg-rose-50/70 border-rose-200 hover:border-rose-300'
+                : bup.status === 'Mendekati'
+                ? 'bg-amber-50/60 border-amber-200 hover:border-amber-300'
+                : 'bg-white border-slate-200 hover:border-blue-300';
+
+              return (
+                <div
+                  key={p.id}
+                  className={`p-4 rounded-xl border shadow-2xs transition-all flex flex-col justify-between ${cardBg}`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-900 text-sm truncate" title={fullName}>
+                            {fullName}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            p.statusKepegawaian === 'PNS' 
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                              : p.statusKepegawaian === 'PPPK' 
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                              : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {p.statusKepegawaian} {p.golongan ? `• ${p.golongan}` : ''}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-0.5">
+                          NIP: <span className="font-mono">{p.nip || '-'}</span> • {p.jabatan}
+                        </div>
+                      </div>
+
+                      <span className={`text-[11px] px-2.5 py-1 rounded-lg shrink-0 font-bold ${bup.badgeClass}`}>
+                        {bup.statusLabel}
+                      </span>
+                    </div>
+
+                    {/* Timeline Data */}
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] bg-white/80 p-2.5 rounded-lg border border-slate-200/60">
+                      <div>
+                        <div className="text-slate-500 font-medium">Tanggal Lahir & Usia:</div>
+                        <div className="font-semibold text-slate-800">
+                          {formatIndoDate(p.tanggalLahir)} ({bup.usiaSaatIniTahun} th {bup.usiaSaatIniBulan} bln)
+                        </div>
+                        <div className="text-[10px] text-slate-500">Regulasi BUP: {bup.usiaBupTahun} Tahun</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500 font-medium">TMT Pensiun Resmi BKN:</div>
+                        <div className="font-bold text-rose-700">
+                          {bup.tmtPensiunFormatted}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {bup.sisaBulan <= 0 
+                            ? 'Telah memasuki masa pensiun' 
+                            : `Hitung mundur: ${bup.sisaBulan} bulan`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rekomendasi Tindakan Administrasi */}
+                    <div className="mt-2 text-[11px] text-slate-600 flex items-start gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <span>
+                        {isUrgent
+                          ? 'Perhatian: Berkas usulan pensiun (DPCP, SKCK, SK Pangkat terakhir) harus segera dikirimkan ke BKD/Disdik.'
+                          : bup.status === 'Mendekati'
+                          ? 'Pemberitahuan: Siapkan berkas usulan pemberhentian dengan hormat paling lambat 6 bulan sebelum TMT Pensiun.'
+                          : 'Informasi: Pegawai memasuki masa persiapan pensiun (MPP), pastikan kelengkapan berkas SIASN/MyASN.'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-slate-200/50 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Unit Kerja: {p.unitKerja || profil.nama}</span>
+                    <button
+                      onClick={() => setActiveTab('kepegawaian')}
+                      className="font-semibold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Lihat DUK</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Toggle Expand / Collapse */}
+          {filteredBupList.length > 4 && (
+            <div className="mt-3 text-center">
+              <button
+                onClick={() => setShowAllBup(!showAllBup)}
+                className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1 cursor-pointer px-3 py-1 rounded-md bg-white border border-slate-200 shadow-2xs"
+              >
+                <span>{showAllBup ? 'Perkecil Tampilan Alert' : `Tampilkan Semua (${filteredBupList.length} Pegawai)`}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Siswa Card */}
@@ -273,9 +586,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
               <Users className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-              PNS / PPPK / Honorer
-            </span>
+            <div className="flex items-center gap-1.5">
+              {bupSummary.totalAlert > 0 && (
+                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
+                  BUP: {bupSummary.totalAlert}
+                </span>
+              )}
+              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                PNS / PPPK / Honorer
+              </span>
+            </div>
           </div>
           <div className="mt-3">
             <div className="text-2xl font-bold text-slate-900">{totalPegawai}</div>

@@ -51,7 +51,7 @@ export const IjazahBTQ: React.FC<IjazahBTQProps> = ({
   const [menulis, setMenulis] = useState<number>(85);
   const [membaca, setMembaca] = useState<number>(85);
   const [catatan, setCatatan] = useState('Mampu membaca dengan tartil dan tajwid baik.');
-  const [penguji, setPenguji] = useState('Ahmad Muzakki, S.Pd.I');
+  const [penguji, setPenguji] = useState('Wahyu Tri Laksono, S.Pd.I');
   const [tanggalTerbit, setTanggalTerbit] = useState('15 Juni 2026');
 
   // Computed average & predicate for form preview
@@ -70,7 +70,7 @@ export const IjazahBTQ: React.FC<IjazahBTQProps> = ({
     setMenulis(84);
     setMembaca(90);
     setCatatan('Makhraj fasih, tartil, dan hafal surat-surat juz 30 dengan baik.');
-    setPenguji('Ahmad Muzakki, S.Pd.I');
+    setPenguji('Wahyu Tri Laksono, S.Pd.I');
     setTanggalTerbit('15 Juni 2026');
     setModalOpen(true);
   };
@@ -513,7 +513,7 @@ export const IjazahBTQ: React.FC<IjazahBTQProps> = ({
                     value={penguji}
                     onChange={(e) => setPenguji(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                    placeholder="Ahmad Muzakki, S.Pd.I"
+                    placeholder="Wahyu Tri Laksono, S.Pd.I"
                   />
                 </div>
               </div>

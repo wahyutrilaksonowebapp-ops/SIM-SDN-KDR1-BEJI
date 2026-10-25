@@ -147,8 +147,8 @@ export const CetakKartuPerpusModal: React.FC<CetakKartuPerpusModalProps> = ({
               <div className="h-9 flex items-center justify-center">
                 <span className="text-[10px] font-serif italic text-emerald-400/80">[Tanda Tangan & Cap]</span>
               </div>
-              <p className="font-bold text-white text-[10px] underline underline-offset-2">Ahmad Muzakki, S.Pd.I</p>
-              <p className="text-slate-400 text-[9px]">NIP. 19820315 200902 1 003</p>
+              <p className="font-bold text-white text-[10px] underline underline-offset-2">Wahyu Tri Laksono, S.Pd.I</p>
+              <p className="text-slate-400 text-[9px]">NIP. 19860628 202321 1 010</p>
             </div>
           </div>
         </div>

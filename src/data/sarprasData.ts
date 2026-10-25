@@ -248,26 +248,26 @@ export const INITIAL_ANGGOTA_PERPUSTAKAAN: AnggotaPerpustakaan[] = [
   {
     id: 'agt-07',
     nomorAnggota: 'LIB-GUR-001',
-    nama: 'Ahmad Muzakki, S.Pd.I',
+    nama: 'Wahyu Tri Laksono, S.Pd.I',
     tipe: 'Guru',
-    nisnOrNip: '19820315 200902 1 003',
-    kelasOrUnit: 'Guru PAI & Pembina Perpus',
+    nisnOrNip: '19860628 202321 1 010',
+    kelasOrUnit: 'Guru PAI & BTQ',
     jenisKelamin: 'L',
-    tanggalDaftar: '2019-01-10',
+    tanggalDaftar: '2023-06-01',
     status: 'Aktif',
     jumlahPinjamanAktif: 0
   },
   {
     id: 'agt-08',
     nomorAnggota: 'LIB-GUR-002',
-    nama: 'Fajar Eko Prasetyo, S.Pd.',
+    nama: 'Mochammad Syafi\'i, S.Pd.',
     tipe: 'Guru',
     nisnOrNip: '19951205 202321 1 004',
     kelasOrUnit: 'Guru PJOK',
     jenisKelamin: 'L',
-    tanggalDaftar: '2023-05-02',
+    tanggalDaftar: '2023-04-01',
     status: 'Aktif',
-    jumlahPinjamanAktif: 1
+    jumlahPinjamanAktif: 0
   }
 ];
 
@@ -382,7 +382,7 @@ export const INITIAL_PENGUNJUNG_PERPUSTAKAAN: PengunjungPerpustakaan[] = [
     id: 'vis-04',
     tanggal: '2024-10-14',
     jam: '11:15',
-    nama: 'Nurul Hidayati, S.Pd.',
+    nama: 'Arif Diantoro, S.Pd.',
     tipe: 'Guru',
     kelasOrUnit: 'Guru Kelas 3',
     keperluan: 'Peminjaman / Pengembalian'
@@ -407,8 +407,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
     kapasitasSiswa: 28,
     kondisi: 'Sangat Baik',
     fotoUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
-    waliKelas: 'Rina Rahmawati, S.Pd.SD',
-    nipWaliKelas: '19880914 201903 2 007',
+    waliKelas: 'Dina Fitriyah, S.Pd.',
+    nipWaliKelas: '19970914 202107 2 001',
     mottoKelas: 'Ceria, Santun, Rajin, dan Selalu Semangat Belajar!',
     inventaris: {
       mejaSiswa: 14,
@@ -422,8 +422,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       lemariKelas: 1
     },
     strukturOrganisasi: {
-      waliKelas: 'Rina Rahmawati, S.Pd.SD',
-      nipWaliKelas: '19880914 201903 2 007',
+      waliKelas: 'Dina Fitriyah, S.Pd.',
+      nipWaliKelas: '19970914 202107 2 001',
       ketuaKelas: 'Aditya Pratama',
       wakilKetua: 'Kinara Salsabila',
       sekretaris1: 'Zahra Anindya',
@@ -444,10 +444,10 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       { hari: 'Sabtu', petugas: ['Ilham Bintang', 'Keysha Aurelia', 'Rafi Ahmad'], tugasUtama: 'Sterilisasi ruangan akhir pekan & penataan perlengkapan permainan edukatif.' }
     ],
     jadwalPelajaran: [
-      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Pendidikan Agama Islam (PAI)', guru: 'Ahmad Muzakki, S.Pd.I' }, rabu: { mapel: 'Pendidikan Pancasila (PKn)', guru: 'Rina Rahmawati, S.Pd.SD' }, kamis: { mapel: 'PJOK (Senam Ceria)', guru: 'Fajar Eko Prasetyo, S.Pd.' }, jumat: { mapel: 'Senam Pagi & Karakter', guru: 'Rina Rahmawati, S.Pd.SD' }, sabtu: { mapel: 'Seni Budaya & Prakarya', guru: 'Rina Rahmawati, S.Pd.SD' } },
-      { jamKe: 2, waktu: '07.35 - 08.10', senin: { mapel: 'Bahasa Indonesia', guru: 'Rina Rahmawati, S.Pd.SD' }, selasa: { mapel: 'Pendidikan Agama Islam (PAI)', guru: 'Ahmad Muzakki, S.Pd.I' }, rabu: { mapel: 'Pendidikan Pancasila (PKn)', guru: 'Rina Rahmawati, S.Pd.SD' }, kamis: { mapel: 'PJOK', guru: 'Fajar Eko Prasetyo, S.Pd.' }, jumat: { mapel: 'Pendidikan Agama Islam', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Seni Budaya & Prakarya', guru: 'Rina Rahmawati, S.Pd.SD' } },
-      { jamKe: 3, waktu: '08.10 - 08.45', senin: { mapel: 'Bahasa Indonesia', guru: 'Rina Rahmawati, S.Pd.SD' }, selasa: { mapel: 'Bahasa Indonesia (Membaca)', guru: 'Rina Rahmawati, S.Pd.SD' }, rabu: { mapel: 'Matematika (Berhitung)', guru: 'Rina Rahmawati, S.Pd.SD' }, kamis: { mapel: 'Bahasa Indonesia', guru: 'Rina Rahmawati, S.Pd.SD' }, jumat: { mapel: 'Bahasa Jawa (Mulok)', guru: 'Rina Rahmawati, S.Pd.SD' }, sabtu: { mapel: 'Penguatan Profil Pancasila', guru: 'Rina Rahmawati, S.Pd.SD' } },
-      { jamKe: 4, waktu: '09.05 - 09.40', senin: { mapel: 'Matematika', guru: 'Rina Rahmawati, S.Pd.SD' }, selasa: { mapel: 'Matematika', guru: 'Rina Rahmawati, S.Pd.SD' }, rabu: { mapel: 'Bahasa Inggris Ceria', guru: 'Tri Handayani, S.Pd.' }, kamis: { mapel: 'Matematika', guru: 'Rina Rahmawati, S.Pd.SD' }, jumat: { mapel: 'Pojok Baca Literasi', guru: 'Rina Rahmawati, S.Pd.SD' }, sabtu: { mapel: 'Pengembangan Bakat', guru: 'Rina Rahmawati, S.Pd.SD' } }
+      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Pendidikan Agama Islam (PAI)', guru: 'Wahyu Tri Laksono, S.Pd.I' }, rabu: { mapel: 'Pendidikan Pancasila (PKn)', guru: 'Dina Fitriyah, S.Pd.' }, kamis: { mapel: 'PJOK (Senam Ceria)', guru: 'Mochammad Syafi\'i, S.Pd.' }, jumat: { mapel: 'Senam Pagi & Karakter', guru: 'Dina Fitriyah, S.Pd.' }, sabtu: { mapel: 'Seni Budaya & Prakarya', guru: 'Dina Fitriyah, S.Pd.' } },
+      { jamKe: 2, waktu: '07.35 - 08.10', senin: { mapel: 'Bahasa Indonesia', guru: 'Dina Fitriyah, S.Pd.' }, selasa: { mapel: 'Pendidikan Agama Islam (PAI)', guru: 'Wahyu Tri Laksono, S.Pd.I' }, rabu: { mapel: 'Pendidikan Pancasila (PKn)', guru: 'Dina Fitriyah, S.Pd.' }, kamis: { mapel: 'PJOK', guru: 'Mochammad Syafi\'i, S.Pd.' }, jumat: { mapel: 'Pendidikan Agama Islam', guru: 'Wahyu Tri Laksono, S.Pd.I' }, sabtu: { mapel: 'Seni Budaya & Prakarya', guru: 'Dina Fitriyah, S.Pd.' } },
+      { jamKe: 3, waktu: '08.10 - 08.45', senin: { mapel: 'Bahasa Indonesia', guru: 'Dina Fitriyah, S.Pd.' }, selasa: { mapel: 'Bahasa Indonesia (Membaca)', guru: 'Dina Fitriyah, S.Pd.' }, rabu: { mapel: 'Matematika (Berhitung)', guru: 'Dina Fitriyah, S.Pd.' }, kamis: { mapel: 'Bahasa Indonesia', guru: 'Dina Fitriyah, S.Pd.' }, jumat: { mapel: 'Bahasa Jawa (Mulok)', guru: 'Dina Fitriyah, S.Pd.' }, sabtu: { mapel: 'Penguatan Profil Pancasila', guru: 'Dina Fitriyah, S.Pd.' } },
+      { jamKe: 4, waktu: '09.05 - 09.40', senin: { mapel: 'Matematika', guru: 'Dina Fitriyah, S.Pd.' }, selasa: { mapel: 'Matematika', guru: 'Dina Fitriyah, S.Pd.' }, rabu: { mapel: 'Bahasa Inggris Ceria', guru: 'Dina Fitriyah, S.Pd.' }, kamis: { mapel: 'Matematika', guru: 'Dina Fitriyah, S.Pd.' }, jumat: { mapel: 'Pojok Baca Literasi', guru: 'Dina Fitriyah, S.Pd.' }, sabtu: { mapel: 'Pengembangan Bakat', guru: 'Dina Fitriyah, S.Pd.' } }
     ],
     lms: [
       {
@@ -492,8 +492,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
     kapasitasSiswa: 28,
     kondisi: 'Sangat Baik',
     fotoUrl: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80',
-    waliKelas: 'Tri Handayani, S.Pd.',
-    nipWaliKelas: '19900315 202012 2 011',
+    waliKelas: 'Putri Azzahrahidayat, S.Pd.',
+    nipWaliKelas: '19960310 202421 2 011',
     mottoKelas: 'Hebat, Berani Berbicara, Santun, dan Pantang Menyerah!',
     inventaris: {
       mejaSiswa: 14,
@@ -507,8 +507,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       lemariKelas: 1
     },
     strukturOrganisasi: {
-      waliKelas: 'Tri Handayani, S.Pd.',
-      nipWaliKelas: '19900315 202012 2 011',
+      waliKelas: 'Putri Azzahrahidayat, S.Pd.',
+      nipWaliKelas: '19960310 202421 2 011',
       ketuaKelas: 'Danish Alvaro',
       wakilKetua: 'Nadhira Qaireen',
       sekretaris1: 'Siti Hanifah',
@@ -529,8 +529,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       { hari: 'Sabtu', petugas: ['Fajar Sidik', 'Annisa Zahra', 'Kenzo Putra'], tugasUtama: 'Pembersihan akhir pekan dan cek perlengkapan kelas.' }
     ],
     jadwalPelajaran: [
-      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Matematika (Pengurangan)', guru: 'Tri Handayani, S.Pd.' }, rabu: { mapel: 'Bahasa Indonesia', guru: 'Tri Handayani, S.Pd.' }, kamis: { mapel: 'PJOK', guru: 'Fajar Eko Prasetyo, S.Pd.' }, jumat: { mapel: 'Senam Sehat & PAI', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Seni Rupa & Keterampilan', guru: 'Tri Handayani, S.Pd.' } },
-      { jamKe: 2, waktu: '07.35 - 08.10', senin: { mapel: 'Pendidikan Pancasila', guru: 'Tri Handayani, S.Pd.' }, selasa: { mapel: 'Matematika', guru: 'Tri Handayani, S.Pd.' }, rabu: { mapel: 'Bahasa Indonesia', guru: 'Tri Handayani, S.Pd.' }, kamis: { mapel: 'PJOK', guru: 'Fajar Eko Prasetyo, S.Pd.' }, jumat: { mapel: 'PAI & Budi Pekerti', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Bahasa Jawa (Mulok)', guru: 'Tri Handayani, S.Pd.' } }
+      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Matematika (Pengurangan)', guru: 'Putri Azzahrahidayat, S.Pd.' }, rabu: { mapel: 'Bahasa Indonesia', guru: 'Putri Azzahrahidayat, S.Pd.' }, kamis: { mapel: 'PJOK', guru: 'Mochammad Syafi\'i, S.Pd.' }, jumat: { mapel: 'Senam Sehat & PAI', guru: 'Wahyu Tri Laksono, S.Pd.I' }, sabtu: { mapel: 'Seni Rupa & Keterampilan', guru: 'Putri Azzahrahidayat, S.Pd.' } },
+      { jamKe: 2, waktu: '07.35 - 08.10', senin: { mapel: 'Pendidikan Pancasila', guru: 'Putri Azzahrahidayat, S.Pd.' }, selasa: { mapel: 'Matematika', guru: 'Putri Azzahrahidayat, S.Pd.' }, rabu: { mapel: 'Bahasa Indonesia', guru: 'Putri Azzahrahidayat, S.Pd.' }, kamis: { mapel: 'PJOK', guru: 'Mochammad Syafi\'i, S.Pd.' }, jumat: { mapel: 'PAI & Budi Pekerti', guru: 'Wahyu Tri Laksono, S.Pd.I' }, sabtu: { mapel: 'Bahasa Jawa (Mulok)', guru: 'Putri Azzahrahidayat, S.Pd.' } }
     ],
     lms: [
       {
@@ -565,7 +565,7 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
     kapasitasSiswa: 30,
     kondisi: 'Baik',
     fotoUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80',
-    waliKelas: 'Nurul Hidayati, S.Pd.',
+    waliKelas: 'Arif Diantoro, S.Pd.',
     nipWaliKelas: '19940722 202221 2 009',
     mottoKelas: 'Disiplin, Berani Mencoba, Gotong Royong Meraih Prestasi!',
     inventaris: {
@@ -580,7 +580,7 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       lemariKelas: 1
     },
     strukturOrganisasi: {
-      waliKelas: 'Nurul Hidayati, S.Pd.',
+      waliKelas: 'Arif Diantoro, S.Pd.',
       nipWaliKelas: '19940722 202221 2 009',
       ketuaKelas: 'Rafiandra Putra',
       wakilKetua: 'Anindita Keisha',
@@ -602,7 +602,7 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       { hari: 'Sabtu', petugas: ['Fajar Shodiq', 'Salsabila Putri', 'Arkan Danu'], tugasUtama: 'Menutup tirai kelas & mematikan saklar listrik akhir pekan.' }
     ],
     jadwalPelajaran: [
-      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Matematika (Perkalian)', guru: 'Nurul Hidayati, S.Pd.' }, rabu: { mapel: 'IPAS (Wujud Zat)', guru: 'Nurul Hidayati, S.Pd.' }, kamis: { mapel: 'Pendidikan Pancasila', guru: 'Nurul Hidayati, S.Pd.' }, jumat: { mapel: 'PAI & Budi Pekerti', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Bahasa Jawa (Mulok)', guru: 'Nurul Hidayati, S.Pd.' } }
+      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Matematika (Perkalian)', guru: 'Arif Diantoro, S.Pd.' }, rabu: { mapel: 'IPAS (Wujud Zat)', guru: 'Arif Diantoro, S.Pd.' }, kamis: { mapel: 'Pendidikan Pancasila', guru: 'Arif Diantoro, S.Pd.' }, jumat: { mapel: 'PAI & Budi Pekerti', guru: 'Wahyu Tri Laksono, S.Pd.I' }, sabtu: { mapel: 'Bahasa Jawa (Mulok)', guru: 'Arif Diantoro, S.Pd.' } }
     ],
     lms: [
       {
@@ -638,8 +638,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
     kapasitasSiswa: 32,
     kondisi: 'Sangat Baik',
     fotoUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
-    waliKelas: 'Muhammad Rizky, S.Pd.',
-    nipWaliKelas: '19920110 202104 1 005',
+    waliKelas: 'Isfaul Mukarromah, S.Pd.',
+    nipWaliKelas: '19910418 201903 2 015',
     mottoKelas: 'Berpikir Kritis, Berkarya Nyata, Berkarakter Juara!',
     inventaris: {
       mejaSiswa: 16,
@@ -653,8 +653,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       lemariKelas: 1
     },
     strukturOrganisasi: {
-      waliKelas: 'Muhammad Rizky, S.Pd.',
-      nipWaliKelas: '19920110 202104 1 005',
+      waliKelas: 'Isfaul Mukarromah, S.Pd.',
+      nipWaliKelas: '19910418 201903 2 015',
       ketuaKelas: 'Bagus Setiawan',
       wakilKetua: 'Dinda Permata',
       sekretaris1: 'Reva Amelia',
@@ -675,7 +675,7 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       { hari: 'Sabtu', petugas: ['Wildan Fauzi', 'Viona Sandra', 'Gilang Pratama'], tugasUtama: 'Pemberesan display karya dan rekap absensi piket mingguan.' }
     ],
     jadwalPelajaran: [
-      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Matematika (Pecahan)', guru: 'Muhammad Rizky, S.Pd.' }, rabu: { mapel: 'Bahasa Indonesia (Paragraf Ide Pokok)', guru: 'Muhammad Rizky, S.Pd.' }, kamis: { mapel: 'IPAS (Bagian Tumbuhan)', guru: 'Muhammad Rizky, S.Pd.' }, jumat: { mapel: 'Pendidikan Agama Islam', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Seni Rupa & Kriya', guru: 'Muhammad Rizky, S.Pd.' } }
+      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Matematika (Pecahan)', guru: 'Isfaul Mukarromah, S.Pd.' }, rabu: { mapel: 'Bahasa Indonesia (Paragraf Ide Pokok)', guru: 'Isfaul Mukarromah, S.Pd.' }, kamis: { mapel: 'IPAS (Bagian Tumbuhan)', guru: 'Isfaul Mukarromah, S.Pd.' }, jumat: { mapel: 'Pendidikan Agama Islam', guru: 'Wahyu Tri Laksono, S.Pd.I' }, sabtu: { mapel: 'Seni Rupa & Kriya', guru: 'Isfaul Mukarromah, S.Pd.' } }
     ],
     lms: [
       {
@@ -711,8 +711,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
     kapasitasSiswa: 32,
     kondisi: 'Sangat Baik',
     fotoUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80',
-    waliKelas: 'Hj. Siti Fatimah, S.Pd., M.Pd.',
-    nipWaliKelas: '19740512 199803 2 004',
+    waliKelas: 'Gadis Yunita Berliana, S.Pd.',
+    nipWaliKelas: '19861103 201403 1 003',
     mottoKelas: 'Mandiri, Unggul Dalam Prestasi, Menjunjung Tinggi Budi Pekerti!',
     inventaris: {
       mejaSiswa: 16,
@@ -726,8 +726,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       lemariKelas: 1
     },
     strukturOrganisasi: {
-      waliKelas: 'Hj. Siti Fatimah, S.Pd., M.Pd.',
-      nipWaliKelas: '19740512 199803 2 004',
+      waliKelas: 'Gadis Yunita Berliana, S.Pd.',
+      nipWaliKelas: '19861103 201403 1 003',
       ketuaKelas: 'Fachri Alamsyah',
       wakilKetua: 'Salma Khairunnisa',
       sekretaris1: 'Devina Nur Aulia',
@@ -748,7 +748,7 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       { hari: 'Sabtu', petugas: ['Kevin Sanjaya', 'Aura Kasih', 'Rizky Billar'], tugasUtama: 'Penataan bangku format U-shape untuk kegiatan diskusi kelas.' }
     ],
     jadwalPelajaran: [
-      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'IPAS (Sistem Pencernaan)', guru: 'Hj. Siti Fatimah, S.Pd., M.Pd.' }, rabu: { mapel: 'Matematika (Kecepatan & Debit)', guru: 'Hj. Siti Fatimah, S.Pd., M.Pd.' }, kamis: { mapel: 'Bahasa Indonesia (Teks Eksplanasi)', guru: 'Hj. Siti Fatimah, S.Pd., M.Pd.' }, jumat: { mapel: 'Pendidikan Agama Islam', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Bahasa Inggris', guru: 'Tri Handayani, S.Pd.' } }
+      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'IPAS (Sistem Pencernaan)', guru: 'Gadis Yunita Berliana, S.Pd.' }, rabu: { mapel: 'Matematika (Kecepatan & Debit)', guru: 'Gadis Yunita Berliana, S.Pd.' }, kamis: { mapel: 'Bahasa Indonesia (Teks Eksplanasi)', guru: 'Gadis Yunita Berliana, S.Pd.' }, jumat: { mapel: 'Pendidikan Agama Islam', guru: 'Wahyu Tri Laksono, S.Pd.I' }, sabtu: { mapel: 'Bahasa Inggris', guru: 'Gadis Yunita Berliana, S.Pd.' } }
     ],
     lms: [
       {
@@ -784,8 +784,8 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
     kapasitasSiswa: 32,
     kondisi: 'Sangat Baik',
     fotoUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
-    waliKelas: 'Ahmad Muzakki, S.Pd.I',
-    nipWaliKelas: '19820315 200902 1 003',
+    waliKelas: 'Pudjiati, S.Pd.',
+    nipWaliKelas: '19690107 200701 2 015',
     mottoKelas: 'Sukses TKA, Unggul Akademik, Berbudi Pekerti Luhur Menuju Jenjang SMP!',
     inventaris: {
       mejaSiswa: 16,
@@ -799,31 +799,31 @@ export const INITIAL_RUANG_KELAS: RuangKelasDetail[] = [
       lemariKelas: 1
     },
     strukturOrganisasi: {
-      waliKelas: 'Ahmad Muzakki, S.Pd.I',
-      nipWaliKelas: '19820315 200902 1 003',
+      waliKelas: 'Pudjiati, S.Pd.',
+      nipWaliKelas: '19690107 200701 2 015',
       ketuaKelas: 'Muhammad Fadhil Al-Ghifari',
       wakilKetua: 'Aisyah Putri Azzahra',
       sekretaris1: 'Nabila Nur Azizah',
       sekretaris2: 'Bintang Raditya Pratama',
       bendahara1: 'Rifqi Hafizhan Ramadhan',
-      bendahara2: 'Dewi Lestari',
+      bendahara2: 'Dewi Rahmawati',
       seksiKebersihan: ['Muhammad Fadhil', 'Aisyah Putri', 'Bintang Raditya'],
       seksiKeamanan: ['Rifqi Hafizhan', 'Rian Hidayat', 'Fajar Ramadhan'],
-      seksiKeagamaan: ['Nabila Nur Azizah', 'Dewi Lestari', 'Ahmad Dani'],
+      seksiKeagamaan: ['Nabila Nur Azizah', 'Dewi Rahmawati', 'Ahmad Dani'],
       seksiUpacaraDanKerapian: ['Ilham Habibie', 'Salwa Nadia', 'Gibran Rakabuming']
     },
     jadwalPiket: [
       { hari: 'Senin', petugas: ['Muhammad Fadhil Al-Ghifari', 'Aisyah Putri Azzahra', 'Nabila Nur Azizah'], tugasUtama: 'Petugas persiapan upacara, kebersihan mimbar & papan tulis.' },
-      { hari: 'Selasa', petugas: ['Bintang Raditya Pratama', 'Rifqi Hafizhan Ramadhan', 'Dewi Lestari'], tugasUtama: 'Menyapu lantai, membersihkan loker buku soal & membuang sampah.' },
+      { hari: 'Selasa', petugas: ['Bintang Raditya Pratama', 'Rifqi Hafizhan Ramadhan', 'Dewi Rahmawati'], tugasUtama: 'Menyapu lantai, membersihkan loker buku soal & membuang sampah.' },
       { hari: 'Rabu', petugas: ['Rian Hidayat', 'Fajar Ramadhan', 'Ahmad Dani'], tugasUtama: 'Mengepel ruang kelas, mengelap proyektor & menyiram tanaman koridor.' },
       { hari: 'Kamis', petugas: ['Ilham Habibie', 'Salwa Nadia', 'Gibran Rakabuming'], tugasUtama: 'Pemeriksaan kerapian meja kursi belajar dan kebersihan laci.' },
       { hari: 'Jumat', petugas: ['Zaskia Gotik', 'Alief Ramadhan', 'Putri Indah'], tugasUtama: 'Jumat Berkah & pembersihan sarana salat dan musala sekolah.' },
       { hari: 'Sabtu', petugas: ['Danang Sutrisno', 'Bella Safira', 'Fauzan Adhim'], tugasUtama: 'Sterilisasi ruangan & penataan arsip lembar jawaban latihan TKA.' }
     ],
     jadwalPelajaran: [
-      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Matematika (Numerasi TKA)', guru: 'Ahmad Muzakki, S.Pd.I' }, rabu: { mapel: 'Bahasa Indonesia (Literasi TKA)', guru: 'Ahmad Muzakki, S.Pd.I' }, kamis: { mapel: 'IPAS (Mapel Pilihan TKA)', guru: 'Ahmad Muzakki, S.Pd.I' }, jumat: { mapel: 'Pendidikan Agama Islam (PAI)', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Simulasi Try Out TKA & Karakter', guru: 'Ahmad Muzakki, S.Pd.I' } },
-      { jamKe: 2, waktu: '07.35 - 08.10', senin: { mapel: 'Pendidikan Pancasila (PKn)', guru: 'Ahmad Muzakki, S.Pd.I' }, selasa: { mapel: 'Matematika (Numerasi TKA)', guru: 'Ahmad Muzakki, S.Pd.I' }, rabu: { mapel: 'Bahasa Indonesia (Literasi TKA)', guru: 'Ahmad Muzakki, S.Pd.I' }, kamis: { mapel: 'IPAS', guru: 'Ahmad Muzakki, S.Pd.I' }, jumat: { mapel: 'BTQ & Tahsin Al-Qur\'an', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Bahasa Jawa (Mulok)', guru: 'Ahmad Muzakki, S.Pd.I' } },
-      { jamKe: 3, waktu: '08.10 - 08.45', senin: { mapel: 'Bahasa Indonesia', guru: 'Ahmad Muzakki, S.Pd.I' }, selasa: { mapel: 'PJOK', guru: 'Fajar Eko Prasetyo, S.Pd.' }, rabu: { mapel: 'Seni Budaya', guru: 'Ahmad Muzakki, S.Pd.I' }, kamis: { mapel: 'Bahasa Inggris', guru: 'Tri Handayani, S.Pd.' }, jumat: { mapel: 'Pembinaan Karakter & Refleksi', guru: 'Ahmad Muzakki, S.Pd.I' }, sabtu: { mapel: 'Bimbingan Konseling & Prestasi', guru: 'Ahmad Muzakki, S.Pd.I' } }
+      { jamKe: 1, waktu: '07.00 - 07.35', senin: { mapel: 'Upacara Bendera', guru: 'Seluruh Dewan Guru' }, selasa: { mapel: 'Matematika (Numerasi TKA)', guru: 'Pudjiati, S.Pd.' }, rabu: { mapel: 'Bahasa Indonesia (Literasi TKA)', guru: 'Pudjiati, S.Pd.' }, kamis: { mapel: 'IPAS (Mapel Pilihan TKA)', guru: 'Pudjiati, S.Pd.' }, jumat: { mapel: 'Pendidikan Agama Islam (PAI)', guru: 'Wahyu Tri Laksono, S.Pd.I' }, sabtu: { mapel: 'Simulasi Try Out TKA & Karakter', guru: 'Pudjiati, S.Pd.' } },
+      { jamKe: 2, waktu: '07.35 - 08.10', senin: { mapel: 'Pendidikan Pancasila (PKn)', guru: 'Pudjiati, S.Pd.' }, selasa: { mapel: 'Matematika (Numerasi TKA)', guru: 'Pudjiati, S.Pd.' }, rabu: { mapel: 'Bahasa Indonesia (Literasi TKA)', guru: 'Pudjiati, S.Pd.' }, kamis: { mapel: 'IPAS', guru: 'Pudjiati, S.Pd.' }, jumat: { mapel: 'BTQ & Tahsin Al-Qur\'an', guru: 'Wahyu Tri Laksono, S.Pd.I' }, sabtu: { mapel: 'Bahasa Jawa (Mulok)', guru: 'Pudjiati, S.Pd.' } },
+      { jamKe: 3, waktu: '08.10 - 08.45', senin: { mapel: 'Bahasa Indonesia', guru: 'Pudjiati, S.Pd.' }, selasa: { mapel: 'PJOK', guru: 'Mochammad Syafi\'i, S.Pd.' }, rabu: { mapel: 'Seni Budaya', guru: 'Pudjiati, S.Pd.' }, kamis: { mapel: 'Bahasa Inggris', guru: 'Pudjiati, S.Pd.' }, jumat: { mapel: 'Pembinaan Karakter & Refleksi', guru: 'Pudjiati, S.Pd.' }, sabtu: { mapel: 'Bimbingan Konseling & Prestasi', guru: 'Pudjiati, S.Pd.' } }
     ],
     lms: [
       {

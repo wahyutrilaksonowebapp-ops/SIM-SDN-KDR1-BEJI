@@ -41,7 +41,9 @@ import {
   ShieldAlert,
   Eye,
   RefreshCw,
-  FileText
+  FileText,
+  Hourglass,
+  CalendarClock
 } from 'lucide-react';
 import { 
   formatIndoDate, 
@@ -50,7 +52,8 @@ import {
   calculateNextKgbDate, 
   getKgbStatus, 
   getStatusColorConfig, 
-  getJenisKelaminConfig 
+  getJenisKelaminConfig,
+  calculateBupPensiun 
 } from '../utils/helpers';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -88,6 +91,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [genderFilter, setGenderFilter] = useState<string>('ALL');
   const [kgbStatusFilter, setKgbStatusFilter] = useState<'ALL' | 'JATUH_TEMPO' | 'MENDEKATI' | 'AKTIF'>('ALL');
+  const [bupFilter, setBupFilter] = useState<'ALL' | 'WARNING' | 'MENDESAK' | 'MENDEKATI' | 'PERSIAPAN'>('ALL');
 
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -225,9 +229,18 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
         else if (kgbStatusFilter === 'AKTIF') matchKgb = kgbInfo.status === 'Aktif';
       }
 
-      return matchSearch && matchStatus && matchGender && matchKgb;
+      let matchBup = true;
+      if (bupFilter !== 'ALL') {
+        const bup = calculateBupPensiun(p.tanggalLahir, p.jabatan);
+        if (bupFilter === 'WARNING') matchBup = bup.status !== 'Aktif';
+        else if (bupFilter === 'MENDESAK') matchBup = bup.status === 'Mendesak' || bup.status === 'Sudah Pensiun';
+        else if (bupFilter === 'MENDEKATI') matchBup = bup.status === 'Mendekati';
+        else if (bupFilter === 'PERSIAPAN') matchBup = bup.status === 'Persiapan';
+      }
+
+      return matchSearch && matchStatus && matchGender && matchKgb && matchBup;
     });
-  }, [allPegawaiDUK, userRole, currentUser, searchTerm, statusFilter, genderFilter, kgbStatusFilter]);
+  }, [allPegawaiDUK, userRole, currentUser, searchTerm, statusFilter, genderFilter, kgbStatusFilter, bupFilter]);
 
   // Form Handlers
   const handleOpenAdd = () => {
@@ -577,6 +590,9 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
       'SK Berkala (Gaji Pokok)',
       'TMT KGB Berikutnya (2 Thn)',
       'Status Jatuh Tempo KGB',
+      'Status Batas Usia Pensiun (BUP)',
+      'TMT Pensiun Resmi BKN',
+      'Sisa Bulan Pensiun',
       'Kontak / HP',
       'Unit Kerja'
     ];
@@ -585,6 +601,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
       const dukIndex = allPegawaiDUK.findIndex((x) => x.id === p.id) + 1;
       const age = calculateAge(p.tanggalLahir, profil.tanggalAcuanUsia);
       const kgbInfo = getKgbStatus(p.skBerkalaTerakhir?.tmtBerikutnya);
+      const bupInfo = calculateBupPensiun(p.tanggalLahir, p.jabatan);
       const skPangkat = p.skPangkatTerakhir;
       const skBerkala = p.skBerkalaTerakhir;
 
@@ -613,6 +630,9 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
         skBerkala?.gajiPokok || 0,
         `"${skBerkala?.tmtBerikutnya || '-'}"`,
         `"${kgbInfo.label}"`,
+        `"${bupInfo.statusLabel}"`,
+        `"${bupInfo.tmtPensiunFormatted}"`,
+        `"${bupInfo.sisaBulan <= 0 ? 'Telah Pensiun' : bupInfo.sisaBulan + ' Bulan'}"`,
         `"${p.kontak}"`,
         `"${p.unitKerja || profil.nama}"`
       ];
@@ -824,8 +844,8 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
             </div>
           </div>
 
-          {/* Indikator Ringkas Jumlah Personil & Pewarnaan Status & Jenis Kelamin */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {/* Indikator Ringkas Jumlah Personil & Pewarnaan Status & Jenis Kelamin & BUP */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5">
             {/* PNS */}
             <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 flex flex-col justify-between">
               <div className="flex items-center justify-between">
@@ -918,6 +938,34 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
               </div>
               <span className="text-[9px] text-purple-700 font-semibold mt-0.5">Jatuh Tempo / Segera</span>
             </div>
+
+            {/* BUP Pensiun Alert */}
+            <div 
+              onClick={() => setBupFilter(bupFilter === 'ALL' ? 'WARNING' : 'ALL')}
+              className={`p-3 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
+                bupFilter !== 'ALL' 
+                  ? 'ring-2 ring-rose-500 bg-rose-100/90 border-rose-300' 
+                  : 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/60'
+              }`}
+              title="Klik untuk memfilter pegawai yang memasuki masa pensiun BUP"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-rose-900 uppercase">Alert BUP</span>
+                <Hourglass className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
+              </div>
+              <div className="mt-1 flex items-baseline gap-1">
+                <span className="text-lg font-black text-rose-950 font-mono">
+                  {pegawai.filter((p) => {
+                    const b = calculateBupPensiun(p.tanggalLahir, p.jabatan);
+                    return b.status !== 'Aktif';
+                  }).length}
+                </span>
+                <span className="text-[10px] text-rose-800 font-medium">Pegawai</span>
+              </div>
+              <span className="text-[9px] text-rose-700 font-semibold mt-0.5">
+                {bupFilter !== 'ALL' ? 'Filter Aktif (Reset)' : 'BUP < 24 Bln'}
+              </span>
+            </div>
           </div>
 
           {/* Filter Bar */}
@@ -961,6 +1009,22 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                   <option value="ALL">Semua (L/P)</option>
                   <option value="L">♂ Laki-laki ({pegawai.filter((p) => p.jenisKelamin === 'L').length})</option>
                   <option value="P">♀ Perempuan ({pegawai.filter((p) => p.jenisKelamin === 'P').length})</option>
+                </select>
+              </div>
+
+              {/* Filter BUP Pensiun */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500 font-medium">Status BUP:</span>
+                <select
+                  value={bupFilter}
+                  onChange={(e) => setBupFilter(e.target.value as any)}
+                  className="px-2.5 py-1.5 bg-rose-50 border border-rose-200 rounded-lg font-bold text-rose-900 focus:outline-none focus:ring-1 focus:ring-rose-500 cursor-pointer"
+                >
+                  <option value="ALL">Semua BUP</option>
+                  <option value="WARNING">Semua Warning BUP</option>
+                  <option value="MENDESAK">🔴 Mendesak (&le; 6 Bln)</option>
+                  <option value="MENDEKATI">🟡 Mendekati (6-12 Bln)</option>
+                  <option value="PERSIAPAN">🔵 Persiapan (1-2 Thn)</option>
                 </select>
               </div>
 
@@ -1015,6 +1079,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                       <th className="py-2.5 px-3 bg-blue-50/60 text-blue-950">SK Tingkat (Pangkat)</th>
                       <th className="py-2.5 px-3 bg-emerald-50/60 text-emerald-950">SK Berkala (KGB 2-Thn)</th>
                       <th className="py-2.5 px-3">Tempat, Tgl Lahir (Usia)</th>
+                      <th className="py-2.5 px-3 bg-rose-50/70 text-rose-950">Status BUP & TMT</th>
                       {userRole === 'admin' && (
                         <th className="py-2.5 px-3 text-center">Aksi</th>
                       )}
@@ -1028,6 +1093,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                       const statusConfig = getStatusColorConfig(item.statusKepegawaian);
                       const genderConfig = getJenisKelaminConfig(item.jenisKelamin);
                       const kgbInfo = getKgbStatus(item.skBerkalaTerakhir?.tmtBerikutnya);
+                      const bupInfo = calculateBupPensiun(item.tanggalLahir, item.jabatan);
 
                       return (
                         <tr 
@@ -1169,6 +1235,21 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                             <span className="text-[10px] text-emerald-800 font-semibold font-mono">
                               {ageInfo.formatted}
                             </span>
+                          </td>
+
+                          {/* Status BUP & TMT Pensiun Resmi BKN */}
+                          <td className="py-3 px-3 bg-rose-50/15">
+                            <div className="space-y-0.5">
+                              <span className={`inline-block text-[9px] px-2 py-0.5 rounded-full font-bold ${bupInfo.badgeClass}`}>
+                                {bupInfo.statusLabel}
+                              </span>
+                              <div className="text-[10px] text-slate-700">
+                                <span className="text-slate-500">TMT BKN:</span> <strong className="text-rose-950 font-mono">{bupInfo.tmtPensiunFormatted}</strong>
+                              </div>
+                              <div className="text-[9px] text-slate-500">
+                                Regulasi: BUP {bupInfo.usiaBupTahun} Th
+                              </div>
+                            </div>
                           </td>
 
                           {/* Aksi */}
@@ -1397,6 +1478,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                 const statusConfig = getStatusColorConfig(item.statusKepegawaian);
                 const genderConfig = getJenisKelaminConfig(item.jenisKelamin);
                 const kgbInfo = getKgbStatus(item.skBerkalaTerakhir?.tmtBerikutnya);
+                const bupInfo = calculateBupPensiun(item.tanggalLahir, item.jabatan);
 
                 return (
                   <div
@@ -1525,6 +1607,29 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                             </div>
                           </div>
                         )}
+
+                        {/* Status BUP Pensiun */}
+                        <div className={`p-2 rounded-lg border text-[10px] space-y-0.5 ${
+                          bupInfo.status === 'Mendesak' || bupInfo.status === 'Sudah Pensiun'
+                            ? 'bg-rose-50/80 border-rose-200 text-rose-950'
+                            : bupInfo.status === 'Mendekati'
+                            ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                            : 'bg-slate-50 border-slate-200 text-slate-700'
+                        }`}>
+                          <div className="flex items-center justify-between font-bold">
+                            <span className="flex items-center gap-1">
+                              <Hourglass className="w-3 h-3 text-slate-500" />
+                              <span>BUP ({bupInfo.usiaBupTahun} Th)</span>
+                            </span>
+                            <span className={`px-1.5 py-0.2 rounded font-bold text-[9px] ${bupInfo.badgeClass}`}>
+                              {bupInfo.statusLabel}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] pt-0.5">
+                            <span className="text-slate-500">TMT Pensiun BKN:</span>
+                            <strong className="font-mono text-rose-950">{bupInfo.tmtPensiunFormatted}</strong>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -2372,7 +2477,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                       value={formData.nama || ''}
                       onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
                       className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:ring-1 focus:ring-emerald-500"
-                      placeholder="Contoh: Siti Fatimah"
+                      placeholder="Contoh: Fuad Fahrudin"
                     />
                   </div>
 
