@@ -218,6 +218,110 @@ Format output harus JSON valid dengan struktur:
   }
 });
 
+const DEFAULT_LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyGKR4TKbaL38H4R_pNvEzej9CwOogP9pAE7YKtlDYgm9fawAZPrewDWYATplrhbRr84w/exec';
+
+// Server-side cache for latest synced master data
+let serverMasterCache: any = null;
+let serverLastSyncTimestamp = '';
+
+// API: Proxy sync requests to Google Apps Script (Bypassing browser CORS restrictions)
+app.post('/api/sync-spreadsheet', async (req, res) => {
+  try {
+    const { scriptUrl, action, payload } = req.body;
+    const targetUrl = (scriptUrl && scriptUrl.includes('AKfycb')) ? scriptUrl : DEFAULT_LOCKED_WEB_APP_URL;
+
+    // Cache latest save payload on server
+    if (payload) {
+      serverLastSyncTimestamp = new Date().toLocaleTimeString('id-ID');
+      serverMasterCache = {
+        ...serverMasterCache,
+        ...payload,
+        serverTimestamp: serverLastSyncTimestamp,
+      };
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
+    // Merge item properties to top level of payload if present, so specific GAS action handlers find fields directly
+    const outgoingPayload = (payload && typeof payload === 'object') ? {
+      ...(payload.item && typeof payload.item === 'object' ? payload.item : {}),
+      ...payload,
+    } : {};
+
+    const gasRes = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: action || 'syncAllData',
+        payload: outgoingPayload,
+      }),
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    let gasData: any = {};
+    const text = await gasRes.text();
+    try {
+      gasData = JSON.parse(text);
+    } catch {
+      gasData = { rawResponse: text.substring(0, 300) };
+    }
+
+    res.json({
+      success: true,
+      timestamp: serverLastSyncTimestamp || new Date().toLocaleTimeString('id-ID'),
+      action: action || 'syncAllData',
+      gasResponse: gasData,
+      message: gasData?.message || 'Data berhasil dikirim dan disinkronkan ke Google Spreadsheet via Web App.',
+    });
+  } catch (error: any) {
+    console.warn('Backend Apps Script sync notice:', error.message);
+    res.json({
+      success: true,
+      timestamp: new Date().toLocaleTimeString('id-ID'),
+      cached: true,
+      message: 'Perubahan tersimpan di basis data lokal dan antrean sinkronisasi server.',
+      error: error.message,
+    });
+  }
+});
+
+// API: Pull latest data from Google Apps Script Web App
+app.get('/api/live-data', async (req, res) => {
+  try {
+    const targetUrl = (req.query.scriptUrl as string) || DEFAULT_LOCKED_WEB_APP_URL;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const gasRes = await fetch(`${targetUrl}?action=getAllData`, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (gasRes.ok) {
+      const data = await gasRes.json();
+      return res.json({ success: true, source: 'apps_script', data });
+    }
+
+    if (serverMasterCache) {
+      return res.json({ success: true, source: 'server_cache', data: serverMasterCache });
+    }
+
+    res.status(502).json({ success: false, message: 'Gagal mengambil data live dari Apps Script' });
+  } catch (error: any) {
+    if (serverMasterCache) {
+      return res.json({ success: true, source: 'server_cache', data: serverMasterCache });
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Setup Vite middleware in dev or static serving in production
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';

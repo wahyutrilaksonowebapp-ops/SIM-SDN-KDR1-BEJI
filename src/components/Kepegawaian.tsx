@@ -142,6 +142,13 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
       tmtBerikutnya: '',
       pejabatPenetap: '',
     },
+    skAngkatan: {
+      nomor: '',
+      tanggal: '',
+      tmt: '',
+      pejabatPenetap: '',
+      golonganAwal: '',
+    },
   });
 
   // State for Laporan Bulanan ASN
@@ -287,6 +294,13 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
         tmtBerikutnya: calculateNextKgbDate(today),
         pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
       },
+      skAngkatan: {
+        nomor: '',
+        tanggal: today,
+        tmt: today,
+        pejabatPenetap: 'Bupati Pasuruan',
+        golonganAwal: '',
+      },
     });
     setModalOpen(true);
   };
@@ -337,6 +351,21 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
             gajiPokok: 0,
             tmtBerikutnya: autoNextKgb,
             pejabatPenetap: '',
+          },
+      skAngkatan: p.skAngkatan
+        ? {
+            nomor: p.skAngkatan.nomor || '',
+            tanggal: p.skAngkatan.tanggal || '',
+            tmt: p.skAngkatan.tmt || '',
+            pejabatPenetap: p.skAngkatan.pejabatPenetap || 'Bupati Pasuruan',
+            golonganAwal: p.skAngkatan.golonganAwal || '',
+          }
+        : {
+            nomor: '',
+            tanggal: '',
+            tmt: p.tmt || '',
+            pejabatPenetap: 'Bupati Pasuruan',
+            golonganAwal: '',
           },
     });
     setModalOpen(true);
@@ -806,14 +835,16 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                   <span>Tambah Pegawai</span>
                 </button>
               )}
-              <button
-                onClick={handleExportDUKCSV}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors cursor-pointer border border-white/20 shadow-xs"
-                title="Unduh DUK Resmi dalam format CSV / Excel"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Unduh DUK (CSV)</span>
-              </button>
+              {userRole !== 'guest' && (
+                <button
+                  onClick={handleExportDUKCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors cursor-pointer border border-white/20 shadow-xs"
+                  title="Unduh DUK Resmi dalam format CSV / Excel"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh DUK (CSV)</span>
+                </button>
+              )}
               <div className="flex items-center bg-slate-950/70 p-1 rounded-xl border border-emerald-800">
                 <button
                   onClick={() => setDukViewMode('table')}
@@ -1086,7 +1117,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-[11px]">
-                    {filtered.map((item) => {
+                    {filtered.map((item, idx) => {
                       const dukIndex = allPegawaiDUK.findIndex((x) => x.id === item.id) + 1;
                       const isKepsek = item.jabatan.toLowerCase().includes('kepala sekolah');
                       const ageInfo = calculateAge(item.tanggalLahir, profil.tanggalAcuanUsia);
@@ -1097,7 +1128,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
 
                       return (
                         <tr 
-                          key={item.id} 
+                          key={`${item.nip || item.id || 'peg'}-${idx}`} 
                           className={`transition-colors ${statusConfig.rowClass} ${
                             isKepsek ? 'bg-amber-50/50 font-medium' : ''
                           }`}
@@ -1313,6 +1344,9 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                       <th className="py-2.5 px-3">Pegawai / GTK</th>
                       <th className="py-2.5 px-2.5 text-center">JK</th>
                       <th className="py-2.5 px-2.5 text-center">Status</th>
+                      <th className="py-2.5 px-3 bg-amber-50/70 text-amber-950">
+                        SK Angkatan (Pengangkatan)
+                      </th>
                       <th className="py-2.5 px-3 bg-blue-50/70 text-blue-950">
                         SK Tingkat (Pangkat) Terakhir
                       </th>
@@ -1329,14 +1363,14 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-[11px]">
-                    {filtered.map((item) => {
+                    {filtered.map((item, idx) => {
                       const dukIndex = allPegawaiDUK.findIndex((x) => x.id === item.id) + 1;
                       const statusConfig = getStatusColorConfig(item.statusKepegawaian);
                       const genderConfig = getJenisKelaminConfig(item.jenisKelamin);
                       const kgbInfo = getKgbStatus(item.skBerkalaTerakhir?.tmtBerikutnya);
 
                       return (
-                        <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors ${statusConfig.rowClass}`}>
+                        <tr key={`${item.nip || item.id || 'peg'}-${idx}`} className={`hover:bg-slate-50/80 transition-colors ${statusConfig.rowClass}`}>
                           {/* No DUK */}
                           <td className="py-3 px-3 text-center font-bold font-mono text-slate-800">
                             {dukIndex}
@@ -1370,6 +1404,29 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                             <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] uppercase font-bold ${statusConfig.badgeClass}`}>
                               {item.statusKepegawaian}
                             </span>
+                          </td>
+
+                          {/* SK Angkatan */}
+                          <td className="py-3 px-3 bg-amber-50/20">
+                            {item.skAngkatan?.nomor ? (
+                              <div className="space-y-1">
+                                <div className="font-mono font-bold text-amber-950 truncate max-w-[180px]" title={item.skAngkatan.nomor}>
+                                  No: {item.skAngkatan.nomor}
+                                </div>
+                                <div className="text-slate-600 text-[10px]">
+                                  Tgl SK: {formatIndoDate(item.skAngkatan.tanggal)}
+                                </div>
+                                <div className="text-amber-900 font-semibold text-[10px]">
+                                  TMT: {formatIndoDate(item.skAngkatan.tmt)}
+                                </div>
+                                <div className="text-[10px] text-slate-600 border-t border-amber-100 pt-0.5 truncate max-w-[180px]" title={item.skAngkatan.pejabatPenetap}>
+                                  {item.skAngkatan.golonganAwal ? `${item.skAngkatan.golonganAwal} • ` : ''}
+                                  {item.skAngkatan.pejabatPenetap || 'Bupati Pasuruan'}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic text-[10px]">Belum ada SK Angkatan</span>
+                            )}
                           </td>
 
                           {/* SK Tingkat Terakhir */}
@@ -1471,7 +1528,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
           {/* TAMPILAN 3: KARTU GRID GTK DENGAN LENCANA DUK & PEWARNAAN STATUS & JK */}
           {dukViewMode === 'card' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((item) => {
+              {filtered.map((item, idx) => {
                 const dukIndex = allPegawaiDUK.findIndex((x) => x.id === item.id) + 1;
                 const isKepsek = item.jabatan.toLowerCase().includes('kepala sekolah');
                 const ageInfo = calculateAge(item.tanggalLahir, profil.tanggalAcuanUsia);
@@ -1482,7 +1539,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
 
                 return (
                   <div
-                    key={item.id}
+                    key={`${item.nip || item.id || 'peg'}-${idx}`}
                     className={`bg-white rounded-2xl border shadow-xs transition-all flex flex-col justify-between overflow-hidden ${
                       isKepsek 
                         ? 'border-amber-300 ring-2 ring-amber-100 hover:border-amber-400 shadow-md' 
@@ -1700,13 +1757,15 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={handleExportAsnCSV}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Unduh CSV</span>
-              </button>
+              {userRole !== 'guest' && (
+                <button
+                  onClick={handleExportAsnCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh CSV</span>
+                </button>
+              )}
 
               <button
                 onClick={handlePrintDocument}
@@ -1791,7 +1850,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                     const kgbInfo = getKgbStatus(item.skBerkalaTerakhir?.tmtBerikutnya);
 
                     return (
-                      <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors ${statusConfig.rowClass}`}>
+                      <tr key={`${item.nip || item.id || 'asn'}-${idx}`} className={`hover:bg-slate-50/80 transition-colors ${statusConfig.rowClass}`}>
                         <td className="py-3 px-2 text-center font-bold text-slate-500">{idx + 1}</td>
                         
                         {/* Nama & NIP */}
@@ -1957,13 +2016,15 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                 </button>
               )}
 
-              <button
-                onClick={handleExportPresensiCSV}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Ekspor CSV</span>
-              </button>
+              {userRole !== 'guest' && (
+                <button
+                  onClick={handleExportPresensiCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Ekspor CSV</span>
+                </button>
+              )}
 
               <button
                 onClick={handlePrintDocument}
@@ -2054,7 +2115,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                   {presensiData
                     .filter(p => filterPegawaiPresensi === 'ALL' || p.pegawaiId === filterPegawaiPresensi)
                     .map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr key={`${item.id || 'pres'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-2 text-center font-bold text-slate-500">{idx + 1}</td>
                         
                         <td className="py-3 px-3">
@@ -2160,9 +2221,9 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
 
           {/* Cards of Teachers with SKP for this Tribulan */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {skpData.map((skp) => (
+            {skpData.map((skp, idx) => (
               <div
-                key={skp.id}
+                key={`${skp.id || 'skp'}-${idx}`}
                 className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between hover:border-blue-300 transition-all"
               >
                 <div>
@@ -2260,8 +2321,8 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-[11px]">
-                          {selectedSkpDetail.targetKinerja.map((tk) => (
-                            <tr key={tk.id}>
+                          {selectedSkpDetail.targetKinerja.map((tk, idx) => (
+                            <tr key={`${tk.id || 'tk'}-${idx}`}>
                               <td className="py-3 px-3 font-semibold text-slate-900 max-w-[200px]">
                                 {tk.rencanaKinerja}
                               </td>
@@ -3127,10 +3188,145 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                 </div>
               </div>
 
-              {/* BAGIAN 4: DATA ADMINISTRASI ASN LANJUTAN */}
+              {/* BAGIAN 4: DATA SK ANGKATAN (PENGANGKATAN PERTAMA / CPNS / PPPK / PTT) */}
+              <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-300 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-xs">
+                      <FileCheck className="w-3.5 h-3.5" />
+                    </span>
+                    <span className="font-bold text-amber-950 text-xs uppercase tracking-wide">
+                      4. Data SK Angkatan (Pengangkatan Pertama / CPNS / PPPK / PTT)
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-amber-800 font-semibold">SK Pengangkatan Awal</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-amber-950 font-semibold mb-1">
+                      Nomor Surat SK Angkatan
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.skAngkatan?.nomor || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          skAngkatan: {
+                            nomor: e.target.value,
+                            tanggal: formData.skAngkatan?.tanggal || '',
+                            tmt: formData.skAngkatan?.tmt || '',
+                            pejabatPenetap: formData.skAngkatan?.pejabatPenetap || '',
+                            golonganAwal: formData.skAngkatan?.golonganAwal || '',
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-slate-900 font-mono text-xs focus:ring-1 focus:ring-amber-500"
+                      placeholder="Contoh: 813.2/045/424.072/1998"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-amber-950 font-semibold mb-1">
+                      Tanggal Surat SK Angkatan
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.skAngkatan?.tanggal || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          skAngkatan: {
+                            nomor: formData.skAngkatan?.nomor || '',
+                            tanggal: e.target.value,
+                            tmt: formData.skAngkatan?.tmt || '',
+                            pejabatPenetap: formData.skAngkatan?.pejabatPenetap || '',
+                            golonganAwal: formData.skAngkatan?.golonganAwal || '',
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-slate-900 text-xs font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-amber-950 font-semibold mb-1">
+                      TMT SK Angkatan
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.skAngkatan?.tmt || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          skAngkatan: {
+                            nomor: formData.skAngkatan?.nomor || '',
+                            tanggal: formData.skAngkatan?.tanggal || '',
+                            tmt: e.target.value,
+                            pejabatPenetap: formData.skAngkatan?.pejabatPenetap || '',
+                            golonganAwal: formData.skAngkatan?.golonganAwal || '',
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-slate-900 text-xs font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-amber-950 font-semibold mb-1">
+                      Golongan Awal / Jenjang Pengangkatan
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.skAngkatan?.golonganAwal || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          skAngkatan: {
+                            nomor: formData.skAngkatan?.nomor || '',
+                            tanggal: formData.skAngkatan?.tanggal || '',
+                            tmt: formData.skAngkatan?.tmt || '',
+                            pejabatPenetap: formData.skAngkatan?.pejabatPenetap || '',
+                            golonganAwal: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-slate-900 text-xs"
+                      placeholder="Contoh: II/a, III/a, Gol. IX, PTT"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-amber-950 font-semibold mb-1">
+                      Pejabat Penetap SK Angkatan
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.skAngkatan?.pejabatPenetap || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          skAngkatan: {
+                            nomor: formData.skAngkatan?.nomor || '',
+                            tanggal: formData.skAngkatan?.tanggal || '',
+                            tmt: formData.skAngkatan?.tmt || '',
+                            pejabatPenetap: e.target.value,
+                            golonganAwal: formData.skAngkatan?.golonganAwal || '',
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-slate-900 text-xs"
+                      placeholder="Contoh: Bupati Pasuruan"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* BAGIAN 5: DATA ADMINISTRASI ASN LANJUTAN */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
                 <span className="font-bold text-slate-800 text-xs uppercase tracking-wide block">
-                  4. Administrasi Tambahan ASN (Karpeg, Taspen, NPWP, & Unit Kerja)
+                  5. Administrasi Tambahan ASN (Karpeg, Taspen, NPWP, & Unit Kerja)
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                   <div>

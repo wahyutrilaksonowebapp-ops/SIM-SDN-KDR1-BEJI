@@ -7,7 +7,7 @@ export type TabType =
   | 'keadministrasian' 
   | 'google_integration';
 
-export type KesiswaanSubTab = 'siswa' | 'penilaian' | 'rapor' | 'btq';
+export type KesiswaanSubTab = 'siswa' | 'penilaian' | 'tabungan' | 'presensi';
 export type KeadministrasianSubTab = 'surat_keluar' | 'surat_masuk' | 'perangkat_pembelajaran';
 export type SarprasSubTab = 'inventaris' | 'perpustakaan' | 'ruang_kelas';
 
@@ -55,6 +55,14 @@ export interface SKBerkala {
   pejabatPenetap?: string;
 }
 
+export interface SKAngkatan {
+  nomor: string;
+  tanggal: string; // YYYY-MM-DD (Tanggal Surat)
+  tmt: string;     // YYYY-MM-DD (TMT Pengangkatan Pertama/CPNS/PPPK/PTT)
+  pejabatPenetap?: string;
+  golonganAwal?: string;
+}
+
 export interface Pegawai {
   id: string;
   nip: string;
@@ -73,8 +81,9 @@ export interface Pegawai {
   tempatLahir: string;
   tanggalLahir: string;
   // Data Kepegawaian Lanjutan ASN
-  skPangkatTerakhir?: SKPangkat;
-  skBerkalaTerakhir?: SKBerkala;
+  skPangkatTerakhir?: SKPangkat; // SK Tingkat
+  skBerkalaTerakhir?: SKBerkala; // SK Berkala (KGB)
+  skAngkatan?: SKAngkatan;       // SK Angkatan
   mkgTahun?: number;  // Masa Kerja Golongan (Tahun)
   mkgBulan?: number;  // Masa Kerja Golongan (Bulan)
   karpeg?: string;    // Kartu Pegawai
@@ -434,5 +443,74 @@ export interface ActivityLog {
   category: 'AUTENTIKASI' | 'SISWA' | 'RAPOR' | 'SURAT' | 'SARPRAS' | 'PEGAWAI' | 'SISTEM';
   description: string;
   details?: string;
+}
+
+// ==================== TABUNGAN SISWA ====================
+export interface TabunganTransaksi {
+  id: string;
+  siswaId: string;
+  nisn: string;
+  namaSiswa: string;
+  kelas: number;
+  rombel: string;
+  tanggal: string; // YYYY-MM-DD
+  jenis: 'setor' | 'tarik';
+  jumlah: number; // Rupiah
+  saldoSebelumnya: number;
+  saldoSetelahnya: number;
+  keterangan: string;
+  dicatatOleh: string;
+  createdAt?: string;
+}
+
+export interface SaldoAwalTabungan {
+  id: string;
+  siswaId: string;
+  nisn: string;
+  namaSiswa: string;
+  kelas: number;
+  saldoAwal: number;
+  tanggalTetap: string;
+}
+
+// ==================== PRESENSI SISWA ====================
+export interface PresensiHarianRecord {
+  siswaId: string;
+  nisn: string;
+  namaSiswa: string;
+  status: 'H' | 'S' | 'I' | 'TK'; // Hadir, Sakit, Izin, Tanpa Keterangan
+  catatan?: string;
+}
+
+export interface PresensiHarianSiswa {
+  id: string;
+  tanggal: string; // YYYY-MM-DD
+  kelas: number;
+  rombel: string;
+  guruPencatat: string;
+  records: PresensiHarianRecord[];
+  createdAt?: string;
+}
+
+export interface PresensiRekapBulananRecord {
+  siswaId: string;
+  nisn: string;
+  namaSiswa: string;
+  s: number;  // Sakit
+  i: number;  // Izin
+  tk: number; // Tanpa Keterangan / Alpa
+  j: number;  // Jumlah Total Hadir / Kehadiran
+  persentaseKehadiran?: number;
+}
+
+export interface PresensiRekapBulan {
+  id: string;
+  bulan: string; // "2026-07" atau "Juli 2026"
+  kelas: number;
+  rombel: string;
+  hariEfektif: number;
+  records: PresensiRekapBulananRecord[];
+  guruPencatat: string;
+  updatedAt?: string;
 }
 

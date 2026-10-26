@@ -226,8 +226,8 @@ export const SuratMasukComponent: React.FC<SuratMasukProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+              {filtered.map((item, idx) => (
+                <tr key={`${item.id || 'sm'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-3.5 px-4">
                     <span className="inline-block px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
                       {item.nomorAgenda}

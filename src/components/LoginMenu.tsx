@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pegawai, ProfilSekolah, AuthUser, UserRole, TabType } from '../types';
+import { Pegawai, Siswa, ProfilSekolah, AuthUser, TabType } from '../types';
 import { 
   ShieldCheck, 
   GraduationCap, 
@@ -11,17 +11,14 @@ import {
   CheckCircle2,
   BookOpen,
   ArrowRight,
-  Sparkles,
-  Layers,
   KeyRound,
-  LogOut,
-  Building2,
-  Users
+  UserCheck
 } from 'lucide-react';
 
 interface LoginMenuProps {
   profil: ProfilSekolah;
   pegawaiList: Pegawai[];
+  siswaList?: Siswa[];
   currentUser: AuthUser;
   onLogin: (user: AuthUser) => void;
   onLogout: () => void;
@@ -31,12 +28,14 @@ interface LoginMenuProps {
 export const LoginMenu: React.FC<LoginMenuProps> = ({
   profil,
   pegawaiList,
+  siswaList = [],
   currentUser,
   onLogin,
   onLogout,
   onNavigate,
 }) => {
-  const [selectedRole, setSelectedRole] = useState<'guest' | 'admin' | 'guru'>(() => {
+  const [selectedRole, setSelectedRole] = useState<'guest' | 'siswa' | 'guru' | 'admin'>(() => {
+    if (currentUser.role === 'siswa') return 'siswa';
     if (currentUser.role === 'guru') return 'guru';
     if (currentUser.role === 'guest') return 'guest';
     return 'admin';
@@ -49,6 +48,11 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
   // Guru credentials state
   const [guruNip, setGuruNip] = useState('');
   const [guruPassword, setGuruPassword] = useState('');
+
+  // Siswa credentials state
+  const [siswaKelas, setSiswaKelas] = useState<number>(6);
+  const [selectedSiswaId, setSelectedSiswaId] = useState<string>('');
+  const [siswaPassword, setSiswaPassword] = useState('');
 
   // Error & Feedback state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -156,6 +160,41 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
     onNavigate('kepegawaian');
   };
 
+  // 4. Siswa Login
+  const handleSiswaSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSiswaId) {
+      setErrorMessage('Silakan pilih nama siswa atau NISN.');
+      return;
+    }
+
+    const foundSiswa = siswaList.find((s) => s.id === selectedSiswaId);
+    if (!foundSiswa) {
+      setErrorMessage('Data siswa tidak ditemukan.');
+      return;
+    }
+
+    const cleanPass = siswaPassword.trim();
+    if (cleanPass && cleanPass !== '20519482' && cleanPass !== foundSiswa.nisn) {
+      setErrorMessage('Kata sandi tidak valid. Gunakan kata sandi default 20519482 atau NISN.');
+      return;
+    }
+
+    onLogin({
+      role: 'siswa',
+      name: foundSiswa.nama,
+      nisn: foundSiswa.nisn,
+      kelas: foundSiswa.kelas,
+      rombel: `Kelas ${foundSiswa.kelas} (${foundSiswa.rombel || 'A'})`,
+    });
+
+    setErrorMessage(null);
+    setSiswaPassword('');
+    onNavigate('dashboard');
+  };
+
+  const filteredSiswaByKelas = siswaList.filter((s) => s.kelas === siswaKelas);
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
       {/* Header Banner */}
@@ -177,7 +216,7 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
 
             <p className="text-emerald-100/90 text-xs sm:text-sm max-w-2xl leading-relaxed">
               Sistem Informasi Manajemen Sekolah Terpadu dengan hak akses berbasis peran (RBAC) untuk 
-              <strong> Guest</strong>, <strong>Administrator</strong>, dan <strong>Guru Rombongan Belajar</strong>.
+              <strong> Guest</strong>, <strong>Siswa</strong>, <strong>Guru Rombel</strong>, dan <strong>Administrator</strong>.
             </p>
           </div>
 
@@ -192,69 +231,6 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
         </div>
       </div>
 
-      {/* Active Session Card (If Logged In) */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white shadow-sm shrink-0 ${
-            currentUser.role === 'admin' 
-              ? 'bg-purple-700' 
-              : currentUser.role === 'guru' 
-              ? 'bg-emerald-700' 
-              : 'bg-slate-700'
-          }`}>
-            {currentUser.role === 'admin' && <ShieldCheck className="w-6 h-6" />}
-            {currentUser.role === 'guru' && <GraduationCap className="w-6 h-6" />}
-            {(currentUser.role === 'guest' || currentUser.role === 'siswa') && <Eye className="w-6 h-6" />}
-          </div>
-
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-medium">Status Akun Aktif:</span>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                currentUser.role === 'admin'
-                  ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                  : currentUser.role === 'guru'
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  : 'bg-slate-100 text-slate-800 border border-slate-300'
-              }`}>
-                {currentUser.role === 'admin' && 'Administrator (Akses Penuh)'}
-                {currentUser.role === 'guru' && `Guru (${currentUser.rombel || currentUser.jabatan || 'Rombel'})`}
-                {(currentUser.role === 'guest' || currentUser.role === 'siswa') && 'Guest (Informasi Umum)'}
-              </span>
-            </div>
-
-            <h3 className="text-sm font-bold text-slate-900 mt-0.5">
-              {currentUser.name}
-            </h3>
-
-            {currentUser.nip && (
-              <p className="text-[11px] text-slate-500">
-                NIP. {currentUser.nip}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
-          <button
-            onClick={() => onNavigate(currentUser.role === 'guru' ? 'kepegawaian' : 'dashboard')}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
-          >
-            <span>{currentUser.role === 'guru' ? 'Buka Menu Guru' : 'Buka Dashboard SIM'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={onLogout}
-            title="Keluar dari akun saat ini dan kembali ke menu login"
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer shadow-xs"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Keluar Akun</span>
-          </button>
-        </div>
-      </div>
-
       {/* Main Multi-Role Login Box */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
         {/* Section Header */}
@@ -266,127 +242,100 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                 Pilih Peran Akun untuk Masuk
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Pilih salah satu peran di bawah ini sesuai tugas dan wewenang Anda di SDN Kedungringin 1 Beji.
+                Pilih peran Anda untuk mendapatkan tampilan menu dan hak akses sesuai wewenang.
               </p>
             </div>
             <span className="text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-2xs">
-              3 Kategori Peran
+              4 Kategori Peran Akun
             </span>
           </div>
         </div>
 
-        {/* 3 Role Selection Cards */}
+        {/* 4 Role Selection Cards */}
         <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Card 1: Guest */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            {/* Button 1: Guest */}
             <button
               type="button"
               onClick={() => {
                 setSelectedRole('guest');
                 setErrorMessage(null);
               }}
-              className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+              className={`group relative flex items-center justify-center gap-2 py-3.5 px-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-150 cursor-pointer select-none active:translate-y-1 active:border-b-0 ${
                 selectedRole === 'guest'
-                  ? 'border-slate-800 bg-slate-50/80 shadow-md ring-2 ring-slate-800/10'
-                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                  ? 'bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 text-white border-b-[5px] border-slate-950 shadow-lg shadow-slate-900/30 ring-2 ring-slate-600/40 translate-y-0.5'
+                  : 'bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-800 border border-slate-200 border-b-[5px] border-b-slate-300 hover:border-b-slate-400 shadow-sm'
               }`}
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-700">
-                    <Eye className="w-5 h-5" />
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-800">
-                    Tanpa Sandi
-                  </span>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900">Guest (Tamu Publik)</h4>
-                  <p className="text-[11.5px] text-slate-600 mt-1 leading-relaxed">
-                    Melihat informasi publik (Dashboard, Direktori Kepegawaian, Kesiswaan Umum, dan Fasilitas Sarpras). Menu Keadministrasian/persuratan ditutup.
-                  </p>
-                </div>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shadow-inner transition-transform group-hover:scale-105 shrink-0 ${
+                selectedRole === 'guest' ? 'bg-slate-700/80 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                <Eye className="w-4 h-4" />
               </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] font-bold flex items-center gap-1.5 text-slate-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-slate-700" />
-                <span>1-Klik Langsung Masuk</span>
-              </div>
+              <span className="tracking-wide font-extrabold">Guest</span>
             </button>
 
-            {/* Card 2: Admin */}
+            {/* Button 2: Siswa */}
             <button
               type="button"
               onClick={() => {
-                setSelectedRole('admin');
+                setSelectedRole('siswa');
                 setErrorMessage(null);
               }}
-              className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                selectedRole === 'admin'
-                  ? 'border-purple-600 bg-purple-50/60 shadow-md ring-2 ring-purple-600/15'
-                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+              className={`group relative flex items-center justify-center gap-2 py-3.5 px-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-150 cursor-pointer select-none active:translate-y-1 active:border-b-0 ${
+                selectedRole === 'siswa'
+                  ? 'bg-gradient-to-b from-blue-600 via-blue-700 to-blue-900 text-white border-b-[5px] border-blue-950 shadow-lg shadow-blue-900/30 ring-2 ring-blue-600/40 translate-y-0.5'
+                  : 'bg-gradient-to-b from-white via-blue-50/50 to-blue-100 text-blue-950 border border-blue-200 border-b-[5px] border-b-blue-300 hover:border-b-blue-400 shadow-sm'
               }`}
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                    Akses Penuh
-                  </span>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900">Administrator</h4>
-                  <p className="text-[11.5px] text-slate-600 mt-1 leading-relaxed">
-                    Memiliki akses merubah dan memperbarui secara keseluruhan data SIM sekolah (semua rombel, master data, dan Google Sheets).
-                  </p>
-                </div>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shadow-inner transition-transform group-hover:scale-105 shrink-0 ${
+                selectedRole === 'siswa' ? 'bg-blue-800/80 text-white' : 'bg-blue-100 text-blue-700'
+              }`}>
+                <UserCheck className="w-4 h-4" />
               </div>
-
-              <div className="mt-4 pt-3 border-t border-purple-100 text-[11px] font-bold flex items-center gap-1.5 text-purple-800">
-                <Lock className="w-3.5 h-3.5 text-purple-700" />
-                <span>Otentikasi Sandi Admin</span>
-              </div>
+              <span className="tracking-wide font-extrabold">Siswa</span>
             </button>
 
-            {/* Card 3: Guru */}
+            {/* Button 3: Guru */}
             <button
               type="button"
               onClick={() => {
                 setSelectedRole('guru');
                 setErrorMessage(null);
               }}
-              className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+              className={`group relative flex items-center justify-center gap-2 py-3.5 px-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-150 cursor-pointer select-none active:translate-y-1 active:border-b-0 ${
                 selectedRole === 'guru'
-                  ? 'border-emerald-600 bg-emerald-50/60 shadow-md ring-2 ring-emerald-600/15'
-                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                  ? 'bg-gradient-to-b from-emerald-600 via-emerald-700 to-emerald-900 text-white border-b-[5px] border-emerald-950 shadow-lg shadow-emerald-900/30 ring-2 ring-emerald-600/40 translate-y-0.5'
+                  : 'bg-gradient-to-b from-white via-emerald-50/50 to-emerald-100 text-emerald-950 border border-emerald-200 border-b-[5px] border-b-emerald-300 hover:border-b-emerald-400 shadow-sm'
               }`}
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    Akses Rombel
-                  </span>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900">Guru / Wali Kelas</h4>
-                  <p className="text-[11.5px] text-slate-600 mt-1 leading-relaxed">
-                    Memiliki akses update sesuai dengan rombongan belajar / tingkat kelasnya (nilai rapor, TKA, data siswa, dan LMS kelas).
-                  </p>
-                </div>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shadow-inner transition-transform group-hover:scale-105 shrink-0 ${
+                selectedRole === 'guru' ? 'bg-emerald-800/80 text-white' : 'bg-emerald-100 text-emerald-700'
+              }`}>
+                <GraduationCap className="w-4 h-4" />
               </div>
+              <span className="tracking-wide font-extrabold">Guru</span>
+            </button>
 
-              <div className="mt-4 pt-3 border-t border-emerald-100 text-[11px] font-bold flex items-center gap-1.5 text-emerald-800">
-                <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Login dengan NIP Guru</span>
+            {/* Button 4: Admin */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedRole('admin');
+                setErrorMessage(null);
+              }}
+              className={`group relative flex items-center justify-center gap-2 py-3.5 px-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-150 cursor-pointer select-none active:translate-y-1 active:border-b-0 ${
+                selectedRole === 'admin'
+                  ? 'bg-gradient-to-b from-purple-600 via-purple-700 to-purple-900 text-white border-b-[5px] border-purple-950 shadow-lg shadow-purple-900/30 ring-2 ring-purple-600/40 translate-y-0.5'
+                  : 'bg-gradient-to-b from-white via-purple-50/50 to-purple-100 text-purple-950 border border-purple-200 border-b-[5px] border-b-purple-300 hover:border-b-purple-400 shadow-sm'
+              }`}
+            >
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shadow-inner transition-transform group-hover:scale-105 shrink-0 ${
+                selectedRole === 'admin' ? 'bg-purple-800/80 text-white' : 'bg-purple-100 text-purple-700'
+              }`}>
+                <ShieldCheck className="w-4 h-4" />
               </div>
+              <span className="tracking-wide font-extrabold">Admin</span>
             </button>
           </div>
 
@@ -413,13 +362,13 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                 <div className="p-4 rounded-xl bg-white border border-slate-200 text-slate-700 space-y-2">
                   <div className="font-semibold text-slate-900 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Fitur yang dapat diakses oleh Guest:</span>
+                    <span>Hak Akses Guest:</span>
                   </div>
                   <ul className="list-disc list-inside space-y-1 text-slate-600 pl-1">
-                    <li>Melihat profil lengkap & fasilitas SDN Kedungringin 1 Beji</li>
-                    <li>Melihat statistik demografi kesiswaan & direktori kepegawaian</li>
-                    <li>Melihat katalog buku perpustakaan & daftar inventaris sarpras</li>
-                    <li>Melihat denah dan fasilitas Gedung Ruang Kelas 1 s.d. 6</li>
+                    <li>Melihat profil lengkap SDN Kedungringin 1 Beji</li>
+                    <li>Melihat rekapitulasi presensi kelas (agregat tingkat kelas tanpa data nama siswa)</li>
+                    <li>Melihat sarpras dan fasilitas ruang kelas</li>
+                    <li><em>Catatan: Sub menu Tabungan disembunyikan/dilarang untuk Akun Guest demi privasi.</em></li>
                   </ul>
                 </div>
 
@@ -434,7 +383,139 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
               </form>
             )}
 
-            {/* 2. Form Admin */}
+            {/* 2. Form Siswa */}
+            {selectedRole === 'siswa' && (
+              <form onSubmit={handleSiswaSubmit} className="space-y-4 max-w-md mx-auto text-xs">
+                <div className="text-center space-y-1 pb-2">
+                  <h3 className="text-base font-bold text-slate-900">Masuk Sebagai Siswa</h3>
+                  <p className="text-slate-500 text-xs">
+                    Peran akun siswa: melihat dashboard, kesiswaan (buku tabungan & rekap presensi), dan sarpras sesuai rombel Anda.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1.5">Pilih Tingkat Kelas / Rombel</label>
+                  <select
+                    value={siswaKelas}
+                    onChange={(e) => {
+                      setSiswaKelas(Number(e.target.value));
+                      setSelectedSiswaId('');
+                    }}
+                    className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value={1}>Kelas 1</option>
+                    <option value={2}>Kelas 2</option>
+                    <option value={3}>Kelas 3</option>
+                    <option value={4}>Kelas 4</option>
+                    <option value={5}>Kelas 5</option>
+                    <option value={6}>Kelas 6</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1.5">Pilih Nama Siswa</label>
+                  <select
+                    value={selectedSiswaId}
+                    onChange={(e) => setSelectedSiswaId(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
+                    required
+                  >
+                    <option value="">-- Pilih Siswa Kelas {siswaKelas} --</option>
+                    {filteredSiswaByKelas.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nama} (NISN: {s.nisn})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1.5">Kata Sandi / PIN Siswa</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="password"
+                      value={siswaPassword}
+                      onChange={(e) => setSiswaPassword(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      placeholder="Masukkan kata sandi (20519482 atau NISN)"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Gunakan PIN default: <strong>20519482</strong> atau <strong>NISN</strong> siswa Anda.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full py-3 px-4 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>Masuk Portal Akun Siswa</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* 3. Form Guru */}
+            {selectedRole === 'guru' && (
+              <form onSubmit={handleGuruSubmit} className="space-y-4 max-w-md mx-auto text-xs">
+                <div className="text-center space-y-1 pb-2">
+                  <h3 className="text-base font-bold text-slate-900">Masuk Sebagai Guru Kelas / Mapel</h3>
+                  <p className="text-slate-500 text-xs">
+                    Mencatat saldo awal tabungan, mutasi keluar/masuk tabungan, serta input presensi harian & bulanan siswa.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1.5">Nomor Induk Pegawai (NIP)</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={guruNip}
+                      onChange={(e) => setGuruNip(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      placeholder="Contoh: 19860628 202321 1 010"
+                      autoComplete="username"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1.5">Kata Sandi</label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="password"
+                      value={guruPassword}
+                      onChange={(e) => setGuruPassword(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      placeholder="Masukkan kata sandi guru"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Gunakan kata sandi terdaftar (default: <strong>20519482</strong>)
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Masuk Portal Guru</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* 4. Form Admin */}
             {selectedRole === 'admin' && (
               <form onSubmit={handleAdminSubmit} className="space-y-4 max-w-md mx-auto text-xs">
                 <div className="text-center space-y-1 pb-2">
@@ -480,99 +561,13 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                     className="w-full py-3 px-4 bg-purple-800 hover:bg-purple-900 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Masuk Administrator</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* 3. Form Guru */}
-            {selectedRole === 'guru' && (
-              <form onSubmit={handleGuruSubmit} className="space-y-4 max-w-md mx-auto text-xs">
-                <div className="text-center space-y-1 pb-2">
-                  <h3 className="text-base font-bold text-slate-900">Masuk Sebagai Guru / Tenaga Pendidik</h3>
-                  <p className="text-slate-500 text-xs">
-                    Hak akses pembaruan data khusus untuk rombongan belajar / kelas yang Anda ampu.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1.5">NIP Guru</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="text"
-                      value={guruNip}
-                      onChange={(e) => setGuruNip(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      placeholder="Masukkan NIP Guru Anda"
-                      autoComplete="username"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1.5">Kata Sandi</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="password"
-                      value={guruPassword}
-                      onChange={(e) => setGuruPassword(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      placeholder="Masukkan kata sandi"
-                      autoComplete="current-password"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    className="w-full py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    <span>Masuk Sebagai Guru</span>
+                    <span>Masuk Portal Administrator</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </form>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Security & Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
-          <div className="flex items-center gap-2 text-emerald-800 font-bold">
-            <ShieldCheck className="w-4 h-4 text-emerald-700" />
-            <span>Pemisahan Hak Akses (RBAC)</span>
-          </div>
-          <p className="text-slate-600 text-[11px] leading-relaxed">
-            Menjamin keamanan data sekolah di mana setiap peran hanya memiliki wewenang sesuai fungsi kedinasan.
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
-          <div className="flex items-center gap-2 text-indigo-800 font-bold">
-            <Building2 className="w-4 h-4 text-indigo-700" />
-            <span>6 Rombongan Belajar</span>
-          </div>
-          <p className="text-slate-600 text-[11px] leading-relaxed">
-            Terintegrasi dengan Gedung Ruang Kelas 1 s.d. 6, jadwal piket kebersihan, struktur kelas, dan LMS materi.
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1.5">
-          <div className="flex items-center gap-2 text-purple-800 font-bold">
-            <Sparkles className="w-4 h-4 text-purple-700" />
-            <span>Google Workspace & Gemini AI</span>
-          </div>
-          <p className="text-slate-600 text-[11px] leading-relaxed">
-            Sinkronisasi otomatis spreadsheet Drive folder serta pembuatan surat dinas cerdas berbasis AI.
-          </p>
         </div>
       </div>
     </div>

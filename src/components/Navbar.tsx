@@ -67,6 +67,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         { id: 'kesiswaan', label: 'Kesiswaan', icon: <GraduationCap className="w-4 h-4" /> },
         { id: 'sarpras', label: 'Sarpras', icon: <Building2 className="w-4 h-4" /> },
       ];
+    } else if (currentUser.role === 'siswa') {
+      // sebagai Siswa: melihat dashboard, kesiswaan, sarpras sesuai dengan rombel siswa
+      navItems = [
+        { id: 'dashboard', label: 'Dashboard Siswa', icon: <LayoutDashboard className="w-4 h-4" /> },
+        { 
+          id: 'kesiswaan', 
+          label: currentUser.rombel ? `Kesiswaan (${currentUser.rombel})` : 'Kesiswaan Siswa', 
+          icon: <GraduationCap className="w-4 h-4" /> 
+        },
+        { 
+          id: 'sarpras', 
+          label: currentUser.rombel ? `Sarpras (${currentUser.rombel})` : 'Sarpras Kelas', 
+          icon: <Building2 className="w-4 h-4" /> 
+        },
+      ];
     } else if (currentUser.role === 'guru') {
       // sebagai Guru : kepegawaian, kesiswaan, sarpras
       navItems = [
@@ -262,9 +277,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                         ? 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100 shadow-xs'
                         : currentUser.role === 'guru'
                         ? 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100 shadow-xs'
+                        : currentUser.role === 'siswa'
+                        ? 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100 shadow-xs'
                         : 'bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200 shadow-xs'
                     }`}
-                    title="Ganti Mode Pengguna (Guest / Admin / Guru)"
+                    title="Ganti Mode Pengguna (Guest / Siswa / Guru / Admin)"
                   >
                     {currentUser.role === 'admin' && (
                       <ShieldCheck className="w-4 h-4 text-purple-700" />
@@ -272,16 +289,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {currentUser.role === 'guru' && (
                       <GraduationCap className="w-4 h-4 text-emerald-700" />
                     )}
-                    {(currentUser.role === 'guest' || currentUser.role === 'siswa') && (
+                    {currentUser.role === 'siswa' && (
+                      <GraduationCap className="w-4 h-4 text-blue-600" />
+                    )}
+                    {currentUser.role === 'guest' && (
                       <Eye className="w-4 h-4 text-slate-600" />
                     )}
-                    <span className="truncate max-w-[130px]">
+                    <span className="truncate max-w-[140px]">
                       {currentUser.role === 'admin'
                         ? 'Admin (Akses Penuh)'
                         : currentUser.role === 'guru'
                         ? currentUser.kelas
                           ? `Guru Kelas ${currentUser.kelas}`
                           : currentUser.name.split(',')[0].split(' ')[0]
+                        : currentUser.role === 'siswa'
+                        ? `Siswa (${currentUser.rombel || 'Kelas ' + currentUser.kelas})`
                         : 'Guest (Info Umum)'}
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />

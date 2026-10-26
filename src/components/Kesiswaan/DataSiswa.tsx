@@ -343,13 +343,15 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
             <span>Acuan Usia: <strong>{formatIndoDate(refDate)}</strong></span>
           </div>
 
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Ekspor CSV</span>
-          </button>
+          {userRole !== 'guest' && (
+            <button
+              onClick={handleExportCSV}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Ekspor CSV</span>
+            </button>
+          )}
 
           {(userRole === 'admin' || userRole === 'guru') && (
             <button
@@ -423,10 +425,10 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
               </button>
             </div>
 
-            {rekapTab === 'usia_jk_kelas' && (
+            {userRole !== 'guest' && rekapTab === 'usia_jk_kelas' && (
               <button
                 onClick={handleExportRekapUsiaCSV}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold border border-emerald-200 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold border border-emerald-200 transition-colors cursor-pointer"
                 title="Unduh Tabel Matriks Usia x JK x Kelas ke CSV"
               >
                 <Download className="w-3 h-3" />
@@ -759,7 +761,7 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
               {filtered.map((item, idx) => {
                 const age = calculateAge(item.tanggalLahir, refDate);
                 return (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={`${item.nisn || item.id || 'sis'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-4 font-medium text-slate-400">{idx + 1}</td>
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-slate-900 text-sm">{item.nama}</div>

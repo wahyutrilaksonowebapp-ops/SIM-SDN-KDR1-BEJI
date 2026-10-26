@@ -11,7 +11,8 @@ import {
   Eye,
   CheckCircle2,
   BookOpen,
-  LogOut
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -27,12 +28,14 @@ interface LoginModalProps {
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   currentUser,
+  siswaList = [],
   pegawaiList,
   onClose,
   onLogin,
   onLogout,
 }) => {
-  const [selectedRole, setSelectedRole] = useState<'guest' | 'admin' | 'guru'>(() => {
+  const [selectedRole, setSelectedRole] = useState<'guest' | 'siswa' | 'guru' | 'admin'>(() => {
+    if (currentUser.role === 'siswa') return 'siswa';
     if (currentUser.role === 'guru') return 'guru';
     if (currentUser.role === 'guest') return 'guest';
     return 'admin';
@@ -45,6 +48,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   // Guru credentials state
   const [guruNip, setGuruNip] = useState('');
   const [guruPassword, setGuruPassword] = useState('');
+
+  // Siswa credentials state
+  const [siswaKelas, setSiswaKelas] = useState<number>(6);
+  const [selectedSiswaId, setSelectedSiswaId] = useState<string>('');
+  const [siswaPassword, setSiswaPassword] = useState('');
 
   // Error & Feedback state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -154,6 +162,42 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     onClose();
   };
 
+  // 4. Siswa Login
+  const handleSiswaSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSiswaId) {
+      setErrorMessage('Silakan pilih nama siswa atau NISN.');
+      return;
+    }
+
+    const foundSiswa = siswaList.find((s) => s.id === selectedSiswaId);
+    if (!foundSiswa) {
+      setErrorMessage('Data siswa tidak ditemukan.');
+      return;
+    }
+
+    const cleanPass = siswaPassword.trim();
+    // Default password can be 20519482 or student's NISN
+    if (cleanPass && cleanPass !== '20519482' && cleanPass !== foundSiswa.nisn) {
+      setErrorMessage('Kata sandi tidak valid. Gunakan kata sandi default 20519482 atau NISN.');
+      return;
+    }
+
+    onLogin({
+      role: 'siswa',
+      name: foundSiswa.nama,
+      nisn: foundSiswa.nisn,
+      kelas: foundSiswa.kelas,
+      rombel: `Kelas ${foundSiswa.kelas} (${foundSiswa.rombel || 'A'})`,
+    });
+
+    setErrorMessage(null);
+    setSiswaPassword('');
+    onClose();
+  };
+
+  const filteredSiswaByKelas = siswaList.filter((s) => s.kelas === siswaKelas);
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
@@ -177,8 +221,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         </div>
 
         {/* Current User Status Banner */}
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">Status Saat Ini:</span>
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
@@ -186,6 +230,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   ? 'bg-purple-100 text-purple-800 border border-purple-200'
                   : currentUser.role === 'guru'
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : currentUser.role === 'siswa'
+                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
                   : 'bg-slate-200 text-slate-800 border border-slate-300'
               }`}
             >
@@ -201,16 +247,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <span>Guru {currentUser.kelas ? `(Kelas ${currentUser.kelas})` : ''}</span>
                 </>
               )}
+              {currentUser.role === 'siswa' && (
+                <>
+                  <UserCheck className="w-3.5 h-3.5 text-blue-700" />
+                  <span>Siswa {currentUser.kelas ? `(Kelas ${currentUser.kelas})` : ''}</span>
+                </>
+              )}
               {currentUser.role === 'guest' && (
                 <>
                   <Eye className="w-3.5 h-3.5 text-slate-700" />
                   <span>Guest (Informasi Umum)</span>
-                </>
-              )}
-              {currentUser.role === 'siswa' && (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-blue-700" />
-                  <span>Guest Siswa</span>
                 </>
               )}
             </span>
@@ -228,9 +274,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </button>
         </div>
 
-        {/* Multi-Role Selector Tabs */}
+        {/* Multi-Role Selector Tabs: Guest | Siswa | Guru | Admin */}
         <div className="p-5">
-          <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1.5 rounded-xl mb-4">
+          <div className="grid grid-cols-4 gap-1.5 bg-slate-100 p-1.5 rounded-xl mb-4">
             <button
               type="button"
               onClick={() => {
@@ -250,17 +296,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                setSelectedRole('admin');
+                setSelectedRole('siswa');
                 setErrorMessage(null);
               }}
               className={`flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                selectedRole === 'admin'
-                  ? 'bg-white text-purple-900 shadow-xs ring-1 ring-purple-200'
+                selectedRole === 'siswa'
+                  ? 'bg-white text-blue-900 shadow-xs ring-1 ring-blue-200'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-purple-700" />
-              <span>Admin</span>
+              <UserCheck className="w-4 h-4 text-blue-600" />
+              <span>Siswa</span>
             </button>
 
             <button
@@ -277,6 +323,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             >
               <GraduationCap className="w-4 h-4 text-emerald-700" />
               <span>Guru</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedRole('admin');
+                setErrorMessage(null);
+              }}
+              className={`flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedRole === 'admin'
+                  ? 'bg-white text-purple-900 shadow-xs ring-1 ring-purple-200'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-purple-700" />
+              <span>Admin</span>
             </button>
           </div>
 
@@ -296,7 +358,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <span>Karakteristik & Hak Akses Guest</span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-600">
-                  Melihat informasi yang bersifat umum pada SDN Kedungringin 1 Beji (profil sekolah, statistik kesiswaan, katalog perpustakaan, fasilitas ruang kelas, dan direktori umum) tanpa memerlukan kata sandi.
+                  Melihat informasi yang bersifat umum pada SDN Kedungringin 1 Beji (profil sekolah, rekap presensi kelas agregat, fasilitas sarpras, dan direktori umum) tanpa memerlukan kata sandi.
                 </p>
                 <div className="pt-1 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -314,50 +376,73 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </form>
           )}
 
-          {/* 2. ADMIN MODE */}
-          {selectedRole === 'admin' && (
-            <form onSubmit={handleAdminSubmit} className="space-y-3.5 text-xs">
-              <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-100 text-purple-950 text-[11px] leading-relaxed">
-                <strong>Tugas & Hak Akses Admin:</strong> Memiliki akses merubah dan memperbarui secara keseluruhan data SIM sekolah (semua rombel/kelas, kepegawaian, kesiswaan, sarpras, persuratan, serta Google Drive & Sheets).
+          {/* 2. SISWA MODE */}
+          {selectedRole === 'siswa' && (
+            <form onSubmit={handleSiswaSubmit} className="space-y-3.5 text-xs">
+              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-blue-950 text-[11px] leading-relaxed">
+                <strong>Peran Akun Siswa:</strong> Melihat dashboard siswa, kesiswaan (buku tabungan personal & rekap presensi S/I/TK/J), dan sarpras sesuai dengan rombel kelas Anda.
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Username Admin</label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                    placeholder="Masukkan username"
-                    autoComplete="username"
-                  />
-                </div>
+                <label className="block text-slate-700 font-semibold mb-1">Tingkat Kelas / Rombel</label>
+                <select
+                  value={siswaKelas}
+                  onChange={(e) => {
+                    setSiswaKelas(Number(e.target.value));
+                    setSelectedSiswaId('');
+                  }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
+                >
+                  <option value={1}>Kelas 1</option>
+                  <option value={2}>Kelas 2</option>
+                  <option value={3}>Kelas 3</option>
+                  <option value={4}>Kelas 4</option>
+                  <option value={5}>Kelas 5</option>
+                  <option value={6}>Kelas 6</option>
+                </select>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Kata Sandi</label>
+                <label className="block text-slate-700 font-semibold mb-1">Nama Siswa</label>
+                <select
+                  value={selectedSiswaId}
+                  onChange={(e) => setSelectedSiswaId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
+                  required
+                >
+                  <option value="">-- Pilih Nama Siswa / NISN --</option>
+                  {filteredSiswaByKelas.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nama} (NISN: {s.nisn})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Kata Sandi / PIN Siswa</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
                     type="password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                    placeholder="Masukkan kata sandi"
-                    autoComplete="current-password"
+                    value={siswaPassword}
+                    onChange={(e) => setSiswaPassword(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Masukkan NISN atau kata sandi (20519482)"
                   />
                 </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Default: <strong>20519482</strong> atau masukkan <strong>NISN</strong> siswa yang bersangkutan.
+                </p>
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-2.5 px-4 bg-purple-800 hover:bg-purple-900 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Masuk Sebagai Administrator</span>
+                  <UserCheck className="w-4 h-4" />
+                  <span>Masuk Sebagai Siswa</span>
                 </button>
               </div>
             </form>
@@ -367,7 +452,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {selectedRole === 'guru' && (
             <form onSubmit={handleGuruSubmit} className="space-y-3.5 text-xs">
               <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100 text-emerald-950 text-[11px] leading-relaxed">
-                <strong>Tugas & Hak Akses Guru:</strong> Memiliki akses update sesuai dengan rombongan belajar / tingkat kelas yang diampu (nilai rapor, asesmen TKA, data siswa kelas binaan, LMS materi kelas, piket & struktur ruang kelas).
+                <strong>Tugas & Hak Akses Guru:</strong> Memiliki akses sesuai dengan rombongan belajar / tingkat kelas yang diampu (mencatat presensi harian/bulanan, mencatat kas tabungan keluar-masuk, nilai rapor, dan sarpras kelas).
               </div>
 
               <div>
@@ -394,7 +479,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     value={guruPassword}
                     onChange={(e) => setGuruPassword(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                    placeholder="Masukkan kata sandi"
+                    placeholder="Masukkan kata sandi (20519482)"
                     autoComplete="current-password"
                   />
                 </div>
@@ -407,6 +492,55 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 >
                   <BookOpen className="w-4 h-4" />
                   <span>Masuk Sebagai Guru</span>
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* 4. ADMIN MODE */}
+          {selectedRole === 'admin' && (
+            <form onSubmit={handleAdminSubmit} className="space-y-3.5 text-xs">
+              <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-100 text-purple-950 text-[11px] leading-relaxed">
+                <strong>Tugas & Hak Akses Admin:</strong> Memiliki akses penuh merubah dan memperbarui seluruh modul SIM sekolah (semua rombel/kelas, kepegawaian, kesiswaan, tabungan, presensi, sarpras, persuratan, serta Google Drive & Sheets).
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Username Admin</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    placeholder="Masukkan username (Admin)"
+                    autoComplete="username"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Kata Sandi</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    placeholder="Masukkan kata sandi (20519482)"
+                    autoComplete="current-password"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-2.5 px-4 bg-purple-800 hover:bg-purple-900 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Masuk Sebagai Administrator</span>
                 </button>
               </div>
             </form>

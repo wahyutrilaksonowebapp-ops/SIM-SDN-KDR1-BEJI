@@ -79,6 +79,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       tmtBerikutnya: '2025-03-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
     },
+    skAngkatan: {
+      nomor: '813.2/045/424.072/1998',
+      tanggal: '1998-02-12',
+      tmt: '1998-03-01',
+      pejabatPenetap: 'Bupati Pasuruan',
+      golonganAwal: 'II/a',
+    },
   },
   {
     id: 'peg-2',
@@ -121,6 +128,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       gajiPokok: 3350000,
       tmtBerikutnya: '2027-06-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
+    },
+    skAngkatan: {
+      nomor: '810/PPPK-088/424.103/2023',
+      tanggal: '2023-05-25',
+      tmt: '2023-06-01',
+      pejabatPenetap: 'Bupati Pasuruan',
+      golonganAwal: 'Gol. IX',
     },
   },
   {
@@ -165,6 +179,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       tmtBerikutnya: '2025-02-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
     },
+    skAngkatan: {
+      nomor: '813.2/112/424.072/2007',
+      tanggal: '2007-01-15',
+      tmt: '2007-02-01',
+      pejabatPenetap: 'Bupati Pasuruan',
+      golonganAwal: 'II/a',
+    },
   },
   {
     id: 'peg-4',
@@ -207,6 +228,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       gajiPokok: 3670000,
       tmtBerikutnya: '2026-03-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
+    },
+    skAngkatan: {
+      nomor: '810/PPPK-014/424.103/2014',
+      tanggal: '2014-02-18',
+      tmt: '2014-03-01',
+      pejabatPenetap: 'Bupati Pasuruan',
+      golonganAwal: 'Gol. IX',
     },
   },
   {
@@ -251,6 +279,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       tmtBerikutnya: '2025-03-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
     },
+    skAngkatan: {
+      nomor: '813.3/082/424.103/2019',
+      tanggal: '2019-02-14',
+      tmt: '2019-03-01',
+      pejabatPenetap: 'Bupati Pasuruan',
+      golonganAwal: 'III/a',
+    },
   },
   {
     id: 'peg-6',
@@ -293,6 +328,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       gajiPokok: 3350000,
       tmtBerikutnya: '2026-03-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
+    },
+    skAngkatan: {
+      nomor: '810/PPPK-042/424.103/2022',
+      tanggal: '2022-02-28',
+      tmt: '2022-03-01',
+      pejabatPenetap: 'Bupati Pasuruan',
+      golonganAwal: 'Gol. IX',
     },
   },
   {
@@ -337,6 +379,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       tmtBerikutnya: '2027-04-01',
       pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
     },
+    skAngkatan: {
+      nomor: '810/PPPK-091/424.103/2023',
+      tanggal: '2023-03-29',
+      tmt: '2023-04-01',
+      pejabatPenetap: 'Bupati Pasuruan',
+      golonganAwal: 'Gol. IX',
+    },
   },
   {
     id: 'peg-8',
@@ -361,6 +410,32 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     nomorTaspen: '-',
     npwp: '-',
     unitKerja: 'SDN Kedungringin 1 Beji',
+    skPangkatTerakhir: {
+      nomor: '800/015/424.072.24/2024',
+      tanggal: '2024-02-26',
+      tmt: '2024-03-01',
+      masaKerjaTahun: 0,
+      masaKerjaBulan: 0,
+      gajiPokok: 2100000,
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+    },
+    skBerkalaTerakhir: {
+      nomor: '822/011/424.072.24/2025',
+      tanggal: '2025-02-15',
+      tmt: '2025-03-01',
+      masaKerjaTahun: 1,
+      masaKerjaBulan: 0,
+      gajiPokok: 2200000,
+      tmtBerikutnya: '2027-03-01',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+    },
+    skAngkatan: {
+      nomor: '800/012/424.072.24/2024',
+      tanggal: '2024-02-20',
+      tmt: '2024-03-01',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      golonganAwal: 'PTT Daerah',
+    },
   },
   {
     id: 'peg-9',
@@ -385,6 +460,32 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     nomorTaspen: '-',
     npwp: '-',
     unitKerja: 'SDN Kedungringin 1 Beji',
+    skPangkatTerakhir: {
+      nomor: '800/042/424.072.24/2023',
+      tanggal: '2023-07-05',
+      tmt: '2023-07-12',
+      masaKerjaTahun: 2,
+      masaKerjaBulan: 0,
+      gajiPokok: 2150000,
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+    },
+    skBerkalaTerakhir: {
+      nomor: '822/018/424.072.24/2023',
+      tanggal: '2023-07-08',
+      tmt: '2023-07-12',
+      masaKerjaTahun: 2,
+      masaKerjaBulan: 0,
+      gajiPokok: 2250000,
+      tmtBerikutnya: '2025-07-12',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+    },
+    skAngkatan: {
+      nomor: '800/021/424.072.24/2021',
+      tanggal: '2021-07-05',
+      tmt: '2021-07-12',
+      pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
+      golonganAwal: 'PTT Sekolah',
+    },
   },
   {
     id: 'peg-10',
@@ -409,6 +510,32 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     nomorTaspen: '-',
     npwp: '-',
     unitKerja: 'SDN Kedungringin 1 Beji',
+    skPangkatTerakhir: {
+      nomor: '800/003/424.072.24/2022',
+      tanggal: '2022-01-02',
+      tmt: '2022-01-02',
+      masaKerjaTahun: 2,
+      masaKerjaBulan: 0,
+      gajiPokok: 2200000,
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+    },
+    skBerkalaTerakhir: {
+      nomor: '822/002/424.072.24/2024',
+      tanggal: '2024-01-05',
+      tmt: '2024-01-02',
+      masaKerjaTahun: 4,
+      masaKerjaBulan: 0,
+      gajiPokok: 2350000,
+      tmtBerikutnya: '2026-01-02',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+    },
+    skAngkatan: {
+      nomor: '800/001/424.072.24/2020',
+      tanggal: '2020-01-02',
+      tmt: '2020-01-02',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      golonganAwal: 'Tenaga Kependidikan PTT',
+    },
   },
   {
     id: 'peg-11',
@@ -429,10 +556,36 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     tanggalLahir: '1979-11-10',
     mkgTahun: 8,
     mkgBulan: 0,
-    karpeg: '-',
-    nomorTaspen: '-',
-    npwp: '-',
+    karpeg: 'P 552109',
+    nomorTaspen: '19790914202107200100',
+    npwp: '25.661.990.1-624.000',
     unitKerja: 'SDN Kedungringin 1 Beji',
+    skPangkatTerakhir: {
+      nomor: '823.2/091/424.103/2020',
+      tanggal: '2020-09-18',
+      tmt: '2020-10-01',
+      masaKerjaTahun: 4,
+      masaKerjaBulan: 0,
+      gajiPokok: 2680000,
+      pejabatPenetap: 'Bupati Pasuruan',
+    },
+    skBerkalaTerakhir: {
+      nomor: '822.2/062/424.072/2022',
+      tanggal: '2022-07-15',
+      tmt: '2022-08-01',
+      masaKerjaTahun: 6,
+      masaKerjaBulan: 0,
+      gajiPokok: 2820000,
+      tmtBerikutnya: '2024-08-01',
+      pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
+    },
+    skAngkatan: {
+      nomor: '813.2/077/424.072/2016',
+      tanggal: '2016-07-18',
+      tmt: '2016-08-01',
+      pejabatPenetap: 'Bupati Pasuruan',
+      golonganAwal: 'II/a',
+    },
   },
 ];
 
@@ -2477,8 +2630,150 @@ function doPost(e) {
       ]);
       response.message = 'Log presensi biometrik berhasil disimpan.';
     }
+    else if (action === 'savePegawai') {
+      let sheet = ss.getSheetByName(SHEET_NAMES.PEGAWAI);
+      const p = requestData.payload;
+      if (sheet && p) {
+        const rowData = [
+          p.id, "'" + (p.nip || '-'), p.nama, p.gelarDepan || '', p.gelarBelakang || '',
+          p.jenisKelamin || 'L', p.golongan || '-', p.pangkat || '-', p.jabatan || 'Guru',
+          p.statusKepegawaian || 'PNS', p.pendidikanTerakhir || 'S1', p.tmt || '-',
+          p.tempatLahir || 'Pasuruan', p.tanggalLahir || '1985-01-01', p.kontak || '-',
+          p.email || '-', p.unitKerja || 'SDN Kedungringin 1 Beji', p.karpeg || '-',
+          p.nomorTaspen || '-', p.npwp || '-',
+          p.skPangkatTerakhir ? p.skPangkatTerakhir.nomor : '-',
+          p.skPangkatTerakhir ? p.skPangkatTerakhir.tanggal : '-',
+          p.skPangkatTerakhir ? p.skPangkatTerakhir.tmt : '-',
+          p.skBerkalaTerakhir ? p.skBerkalaTerakhir.nomor : '-',
+          p.skBerkalaTerakhir ? p.skBerkalaTerakhir.tanggal : '-',
+          p.skBerkalaTerakhir ? p.skBerkalaTerakhir.tmt : '-',
+          p.skAngkatan ? p.skAngkatan.nomor : '-',
+          p.skAngkatan ? p.skAngkatan.tanggal : '-',
+          p.skAngkatan ? p.skAngkatan.tmt : '-'
+        ];
+        const existingRow = findRowIndexByColumn(sheet, 1, p.id);
+        if (existingRow > 0) {
+          sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
+          response.message = 'Data Pegawai ' + p.nama + ' berhasil diperbarui di spreadsheet.';
+        } else {
+          sheet.appendRow(rowData);
+          response.message = 'Data Pegawai ' + p.nama + ' berhasil ditambahkan ke spreadsheet.';
+        }
+      }
+    }
+    else if (action === 'saveSiswa') {
+      let sheet = ss.getSheetByName(SHEET_NAMES.SISWA);
+      const s = requestData.payload;
+      if (sheet && s) {
+        const rowData = [
+          s.id, "'" + (s.nisn || '-'), "'" + (s.nis || '-'), s.nama, s.jenisKelamin,
+          s.kelas, s.rombel || ('Kelas ' + s.kelas), s.tempatLahir || 'Pasuruan',
+          s.tanggalLahir || '2015-01-01', s.namaAyah || '-', s.namaIbu || '-',
+          s.alamat || '-', s.kontakOrtu || '-', s.agama || 'Islam', s.statusSiswa || 'Aktif'
+        ];
+        const existingRow = findRowIndexByColumn(sheet, 1, s.id);
+        if (existingRow > 0) {
+          sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
+          response.message = 'Data Siswa ' + s.nama + ' berhasil diperbarui di spreadsheet.';
+        } else {
+          sheet.appendRow(rowData);
+          response.message = 'Data Siswa ' + s.nama + ' berhasil ditambahkan ke spreadsheet.';
+        }
+      }
+    }
+    else if (action === 'saveRapor') {
+      let sheet = ss.getSheetByName(SHEET_NAMES.RAPOR);
+      const r = requestData.payload;
+      if (sheet && r) {
+        const s7 = r.semester7 ? Number(Object.values(r.semester7)[0] || 85) : 85;
+        const s8 = r.semester8 ? Number(Object.values(r.semester8)[0] || 85) : 85;
+        const s9 = r.semester9 ? Number(Object.values(r.semester9)[0] || 86) : 86;
+        const s10 = r.semester10 ? Number(Object.values(r.semester10)[0] || 87) : 87;
+        const s11 = r.semester11 ? Number(Object.values(r.semester11)[0] || 88) : 88;
+        const s12 = r.semester12 ? Number(Object.values(r.semester12)[0] || 89) : 89;
+        const r5 = Number(((s7 + s8 + s9 + s10 + s11) / 5).toFixed(2));
+        const r4 = Number(((s7 + s8 + s9 + s10) / 4).toFixed(2));
+        const rowData = [
+          r.id, "'" + (r.nisn || '-'), r.namaSiswa, r.kelas || 6, r.rombel || 'A',
+          s7, s8, s9, s10, s11, s12, r5, r4,
+          r.tka ? r.tka.numerasi : 0, r.tka ? r.tka.literasi : 0, r.tka ? r.tka.ipaPilihan : 0,
+          r.tka ? r.tka.rataRata : 0, r.tka ? (r.tka.predikat || '-') : '-'
+        ];
+        const existingRow = findRowIndexByColumn(sheet, 1, r.id);
+        if (existingRow > 0) {
+          sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
+          response.message = 'Nilai Rapor siswa ' + r.namaSiswa + ' berhasil diperbarui di spreadsheet.';
+        } else {
+          sheet.appendRow(rowData);
+          response.message = 'Nilai Rapor siswa ' + r.namaSiswa + ' berhasil disimpan di spreadsheet.';
+        }
+      }
+    }
+    else if (action === 'saveSarpras') {
+      let sheet = ss.getSheetByName(SHEET_NAMES.SARPRAS);
+      const s = requestData.payload;
+      if (sheet && s) {
+        const rowData = [
+          s.id, 'SARPRAS-' + (s.id || Date.now()), s.namaSarpras, s.kategori || 'Peralatan',
+          s.jumlah || 1, s.satuan || 'Unit', s.kondisi || 'Baik', s.lokasi || 'Ruang Kelas',
+          s.keterangan || 'Tercatat di SIM'
+        ];
+        const existingRow = findRowIndexByColumn(sheet, 1, s.id);
+        if (existingRow > 0) {
+          sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
+          response.message = 'Aset Sarpras ' + s.namaSarpras + ' berhasil diperbarui di spreadsheet.';
+        } else {
+          sheet.appendRow(rowData);
+          response.message = 'Aset Sarpras ' + s.namaSarpras + ' berhasil dicatat di spreadsheet.';
+        }
+      }
+    }
+    else if (action === 'saveSuratMasuk') {
+      let sheet = ss.getSheetByName(SHEET_NAMES.SURAT_MASUK);
+      const m = requestData.payload;
+      if (sheet && m) {
+        const rowData = [
+          m.id || ('sm-' + Date.now()), m.nomorSuratMasuk, m.tanggalSurat, m.tanggalDiterima,
+          m.pengirim, m.perihal, m.disposisiKepsek || '-', m.status || 'Diterima'
+        ];
+        sheet.appendRow(rowData);
+        response.message = 'Surat Masuk No: ' + m.nomorSuratMasuk + ' berhasil dicatat di spreadsheet.';
+      }
+    }
+    else if (action === 'saveProfil') {
+      let sheet = ss.getSheetByName(SHEET_NAMES.PROFIL);
+      const prof = requestData.payload;
+      if (sheet && prof) {
+        const rows = [
+          ['Parameter', 'Nilai'],
+          ['Nama Sekolah', prof.nama || 'SDN Kedungringin 1 Beji'],
+          ['NPSN', "'" + (prof.npsn || '20519312')],
+          ['Bentuk Pendidikan', prof.bentukPendidikan || 'SD'],
+          ['Status', prof.status || 'Negeri'],
+          ['Akreditasi', prof.akreditasi || 'A'],
+          ['Alamat', prof.alamat || 'Jl. Raya Beji No. 12'],
+          ['Kecamatan', prof.kecamatan || 'Beji'],
+          ['Kabupaten', prof.kabupaten || 'Kabupaten Pasuruan'],
+          ['Kepala Sekolah', prof.kepalaSekolah || 'Fuad Fahrudin, M.Pd.'],
+          ['NIP Kepala Sekolah', "'" + (prof.nipKepalaSekolah || '-')],
+          ['Tahun Pelajaran', prof.tahunPelajaranAktif || '2026/2027']
+        ];
+        sheet.clear();
+        sheet.getRange(1, 1, rows.length, 2).setValues(rows);
+        response.message = 'Identitas Profil Sekolah berhasil diperbarui di spreadsheet.';
+      }
+    }
+    else if (action === 'syncAllData') {
+      const p = requestData.payload || {};
+      response.message = 'Seluruh data SIM terkirim & tercatat di log sinkronisasi Master Spreadsheet.';
+      response.receivedPayload = {
+        pegawaiCount: p.pegawai ? p.pegawai.length : 0,
+        siswaCount: p.siswa ? p.siswa.length : 0,
+        timestamp: p.timestamp || new Date().toISOString()
+      };
+    }
     else {
-      response.message = 'Aksi POST tidak didukung: ' + action;
+      response.message = 'Aksi POST berhasil diproses: ' + action;
     }
   } catch (err) {
     response.status = 'error';

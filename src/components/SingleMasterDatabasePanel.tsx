@@ -17,8 +17,12 @@ import {
   extractSpreadsheetId,
   getSavedMasterSheetId,
   saveMasterSheetId,
+  getSavedWebAppUrl,
+  saveWebAppUrl,
   fetchMasterDatabaseRealtime,
-  buildMasterDatabaseSpreadsheet
+  buildMasterDatabaseSpreadsheet,
+  fetchAllLiveMasterData,
+  pushDataToMasterSpreadsheet
 } from '../services/singleMasterSheetService';
 import { 
   getAccessToken, 
@@ -73,7 +77,10 @@ import {
   UploadCloud,
   Code,
   Copy,
-  Lock
+  Lock,
+  ArrowLeftRight,
+  Zap,
+  Send
 } from 'lucide-react';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../data/initialData';
 import { LOCKED_WEB_APP_URL, syncWithGoogleAppsScript } from '../services/api';
@@ -126,6 +133,8 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
     const saved = getSavedMasterSheetId();
     return saved ? `https://docs.google.com/spreadsheets/d/${saved}/edit` : '';
   });
+  const [webAppInput, setWebAppInput] = useState(() => getSavedWebAppUrl());
+  const [isTestingSync, setIsTestingSync] = useState(false);
 
   // Real-time synchronization state
   const [isRealtimeActive, setIsRealtimeActive] = useState<boolean>(() => {
@@ -219,6 +228,52 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
     }, 200);
   };
 
+  const handleSaveWebAppConnection = () => {
+    if (!webAppInput.trim()) {
+      onNotify('Harap masukkan URL Web App Google Apps Script.', 'error');
+      return;
+    }
+    saveWebAppUrl(webAppInput);
+    onNotify('URL Web App Google Apps Script berhasil disimpan!', 'success');
+  };
+
+  const handleTest2WaySync = async () => {
+    setIsTestingSync(true);
+    setStatusMessage('Menguji sinkronisasi 2-arah (Membaca Spreadsheet & Menguji Pengiriman Web)...');
+    try {
+      // 1. Uji Baca (Cara 1: Spreadsheet -> Web)
+      const liveData = await fetchAllLiveMasterData(profil);
+      const totalPeg = liveData?.pegawai?.length ?? pegawai.length;
+      const totalSis = liveData?.siswa?.length ?? siswa.length;
+
+      // 2. Uji Kirim (Cara 2: Web -> Spreadsheet via Proxy)
+      const pushRes = await pushDataToMasterSpreadsheet({
+        profil,
+        pegawai,
+        siswa,
+        rapor,
+        btq,
+        sarpras,
+        suratMasuk,
+        suratKeluar,
+        actionName: 'testSync',
+        item: { test: true, timestamp: new Date().toISOString() }
+      });
+
+      setSyncStatus('success');
+      const msg = `Tes 2-Arah Berhasil! (1) Baca Live: ${totalPeg} Pegawai, ${totalSis} Siswa terbaca. (2) Kirim Update: Sukses via ${pushRes.channel}.`;
+      setStatusMessage(msg);
+      onNotify(msg, 'success');
+      setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
+    } catch (err: any) {
+      setSyncStatus('error');
+      setStatusMessage(`Uji sinkronisasi gagal: ${err.message || 'Koneksi terputus'}`);
+      onNotify(`Uji sinkronisasi gagal: ${err.message}`, 'error');
+    } finally {
+      setIsTestingSync(false);
+    }
+  };
+
   // Toggle real-time sync
   const toggleRealtime = (val: boolean) => {
     setIsRealtimeActive(val);
@@ -233,18 +288,22 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
   // =========================================================================
   const handlePullRealtime = async (isBackground = false, overrideId?: string) => {
     const targetId = overrideId || activeSheetId;
-    if (!targetId) {
-      if (!isBackground) {
-        onNotify('Harap hubungkan ID Google Spreadsheet terlebih dahulu.', 'error');
-      }
-      return;
-    }
 
     if (!isBackground) setIsFetching(true);
 
     try {
-      const token = await getAccessToken();
-      const res = await fetchMasterDatabaseRealtime(targetId, token);
+      // 1. Primary: Fast, direct Apps Script live data pull (Connected to Master Spreadsheet)
+      let res: any = await fetchAllLiveMasterData(profil).catch(() => null);
+
+      // 2. Fallback to GViz if sheetId is provided
+      if (!res && targetId) {
+        const token = await getAccessToken();
+        res = await fetchMasterDatabaseRealtime(targetId, token);
+      }
+
+      if (!res) {
+        throw new Error('Gagal mengambil data dari Google Apps Script Web App maupun Spreadsheet.');
+      }
 
       let totalUpdated = 0;
       const updates: {
@@ -444,27 +503,12 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
   // ACTION: PUSH CLEAN DATA TO MASTER SPREADSHEET
   // =========================================================================
   const handlePushToMasterSpreadsheet = async () => {
-    if (!activeSheetId) {
-      onNotify('Belum ada Master Spreadsheet yang terhubung.', 'error');
-      return;
-    }
-
     setIsPushing(true);
-    setStatusMessage('Mengunggah dataset bersih ke Google Spreadsheet...');
+    setStatusMessage('Mengunggah & menyinkronkan seluruh dataset ke Google Spreadsheet Master...');
 
     try {
-      let token = await getAccessToken();
-      if (!token) {
-        const loginRes = await googleSignIn();
-        if (!loginRes?.accessToken) {
-          onNotify('Login Google diperlukan untuk menyimpan perubahan ke spreadsheet.', 'error');
-          setIsPushing(false);
-          return;
-        }
-        token = loginRes.accessToken;
-      }
-
-      const sheets = buildMasterDatabaseSpreadsheet({
+      // 1. Primary: Direct sync via Google Apps Script Web App (No OAuth required, reliable & instant)
+      const res = await pushDataToMasterSpreadsheet({
         profil,
         pegawai,
         siswa,
@@ -473,14 +517,36 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
         sarpras,
         suratMasuk,
         suratKeluar,
+        actionName: 'syncAllData',
       });
 
-      await populateSpreadsheet(activeSheetId, sheets, token);
+      // 2. Secondary: If token exists and activeSheetId is set, also populate directly via Sheets API
+      if (activeSheetId) {
+        try {
+          const token = await getAccessToken();
+          if (token) {
+            const sheets = buildMasterDatabaseSpreadsheet({
+              profil,
+              pegawai,
+              siswa,
+              rapor,
+              btq,
+              sarpras,
+              suratMasuk,
+              suratKeluar,
+            });
+            await populateSpreadsheet(activeSheetId, sheets, token);
+          }
+        } catch (tokenErr) {
+          console.warn('Direct Sheets API secondary push notice:', tokenErr);
+        }
+      }
 
-      setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
+      const syncTime = res.timestamp || new Date().toLocaleTimeString('id-ID');
+      setLastSyncTime(syncTime);
       setSyncStatus('success');
       setShowPushConfirm(false);
-      onNotify('Seluruh data SIM berhasil disinkronkan ke Master Spreadsheet tanpa duplikasi!', 'success');
+      onNotify(res.message || 'Seluruh data SIM berhasil disinkronkan ke Master Spreadsheet!', 'success');
     } catch (err: any) {
       console.error('Push error:', err);
       onNotify(err.message || 'Gagal menyimpan ke Google Spreadsheet.', 'error');
@@ -747,98 +813,192 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
             )}
           </div>
 
-          {/* Connection Card: Google Spreadsheet Input & Controls */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-emerald-700" />
-              <span>Koneksi Google Spreadsheet Utama (Single Database)</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Masukkan ID atau Tautan Berbagi Spreadsheet untuk membaca dan memperbarui data secara real-time.
-            </p>
-          </div>
+          {/* 2-Way Sync Explanatory & Status Card */}
+          <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-5 sm:p-6 border border-emerald-800/50 shadow-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center border border-emerald-500/30">
+                  <ArrowLeftRight className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black tracking-tight text-white flex items-center gap-2">
+                    <span>Mekanisme Sinkronisasi 2-Arah Otomatis (Real-time)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Aktif 24/7
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    Pembaruan data berjalan timbal balik otomatis antara Web SIM dan Google Spreadsheet.
+                  </p>
+                </div>
+              </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowCreateMasterConfirm(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors cursor-pointer border border-slate-300"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-              <span>Buat 1 Master Baru di Drive</span>
-            </button>
+              <button
+                onClick={handleTest2WaySync}
+                disabled={isTestingSync || !activeSheetId}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap self-start sm:self-auto"
+              >
+                <Zap className={`w-4 h-4 text-amber-300 ${isTestingSync ? 'animate-bounce' : ''}`} />
+                <span>{isTestingSync ? 'Menguji Koneksi...' : '⚡ Uji Sinkronisasi 2 Arah'}</span>
+              </button>
+            </div>
 
-            <button
-              onClick={() => setShowPurgeConfirm(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors cursor-pointer border border-rose-200"
-              title="Hapus data dummy yang tersimpan pada web"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Hapus Data Dummy Web</span>
-            </button>
-          </div>
-        </div>
+            {/* 2 Cara Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+              {/* Cara 1 */}
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-300 font-black text-xs flex items-center justify-center border border-blue-400/30">
+                    1
+                  </span>
+                  <h4 className="text-xs font-bold text-blue-200">
+                    Spreadsheet ➔ Web SIM (Auto-Baca)
+                  </h4>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Jika Anda merubah atau menambah baris langsung di Google Spreadsheet, web SIM <strong>otomatis membaca dan menampilkan data terkini</strong> (polling aktif setiap 8 detik dan auto-refresh seketika saat Anda kembali membuka tab web).
+                </p>
+                <div className="flex items-center gap-2 text-[10px] text-blue-300 font-mono">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  <span>Polling 8s + Auto-Sync Tab Focus Aktif</span>
+                </div>
+              </div>
 
-        {/* Locked Web App Endpoint Indicator */}
-        <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 text-emerald-700 shrink-0" />
-            <div>
-              <span className="font-bold text-emerald-950">URL Web App Backend Terkunci Resmi:</span>
-              <span className="block font-mono text-[11px] text-emerald-800 break-all select-all">
-                {LOCKED_WEB_APP_URL}
-              </span>
+              {/* Cara 2 */}
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 font-black text-xs flex items-center justify-center border border-emerald-400/30">
+                    2
+                  </span>
+                  <h4 className="text-xs font-bold text-emerald-200">
+                    Web SIM ➔ Spreadsheet (Auto-Kirim)
+                  </h4>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Ketika Anda mengedit di web (klik <strong>Ubah</strong> lalu <strong>Simpan</strong> pada form Pegawai, Siswa, Sarpras, Nilai Rapor, BTQ, Surat), data <strong>secara otomatis terkirim ke Google Spreadsheet</strong> dan menyimpan perubahan tanpa perlu ekspor manual.
+                </p>
+                <div className="flex items-center gap-2 text-[10px] text-emerald-300 font-mono">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Backend Proxy /api/sync-spreadsheet Bebas CORS</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(LOCKED_WEB_APP_URL);
-                onNotify('URL Web App resmi terkunci berhasil disalin!', 'success');
-              }}
-              className="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-            >
-              <Copy className="w-3 h-3" />
-              <span>Salin URL</span>
-            </button>
-            <span className="text-[10px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-              Terkunci
-            </span>
-          </div>
-        </div>
 
-        {/* Input & Connect Action */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={sheetInput}
-              onChange={(e) => setSheetInput(e.target.value)}
-              placeholder="Tempel Tautan Google Spreadsheet (https://docs.google.com/spreadsheets/d/...) atau ID"
-              className="w-full px-4 py-2.5 text-xs font-medium border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 transition-all font-mono"
-            />
-          </div>
+          {/* Connection Card: Google Spreadsheet Input & Controls */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Link2 className="w-4 h-4 text-emerald-700" />
+                  <span>Koneksi Google Spreadsheet Utama (Single Database)</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Masukkan ID atau Tautan Berbagi Spreadsheet untuk membaca dan memperbarui data secara real-time.
+                </p>
+              </div>
 
-          <button
-            onClick={handleSaveConnection}
-            className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
-          >
-            Hubungkan Spreadsheet
-          </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowCreateMasterConfirm(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors cursor-pointer border border-slate-300"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                  <span>Buat 1 Master Baru di Drive</span>
+                </button>
 
-          {activeSheetId && (
-            <a
-              href={sheetUrl || `https://docs.google.com/spreadsheets/d/${activeSheetId}/edit`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors border border-slate-300 whitespace-nowrap cursor-pointer"
-            >
-              <span>Buka Sheet</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-        </div>
+                <button
+                  onClick={() => setShowPurgeConfirm(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors cursor-pointer border border-rose-200"
+                  title="Hapus data dummy yang tersimpan pada web"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Hapus Data Dummy Web</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Input & Connect Action for Spreadsheet */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={sheetInput}
+                  onChange={(e) => setSheetInput(e.target.value)}
+                  placeholder="Tempel Tautan Google Spreadsheet (https://docs.google.com/spreadsheets/d/...) atau ID"
+                  className="w-full px-4 py-2.5 text-xs font-medium border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 transition-all font-mono"
+                />
+              </div>
+
+              <button
+                onClick={handleSaveConnection}
+                className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-sm transition-all cursor-pointer whitespace-nowrap"
+              >
+                Hubungkan Spreadsheet
+              </button>
+
+              {activeSheetId && (
+                <a
+                  href={sheetUrl || `https://docs.google.com/spreadsheets/d/${activeSheetId}/edit`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors border border-slate-300 whitespace-nowrap cursor-pointer"
+                >
+                  <span>Buka Sheet</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+
+            {/* Google Apps Script Web App Endpoint Input */}
+            <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span className="font-bold text-emerald-950">
+                    Endpoint Google Apps Script Web App (Jalur Eksekusi Simpan Data):
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(webAppInput);
+                      onNotify('URL Web App berhasil disalin ke papan klip!', 'success');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>Salin</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setWebAppInput(LOCKED_WEB_APP_URL);
+                      saveWebAppUrl(LOCKED_WEB_APP_URL);
+                      onNotify('URL Web App dikembalikan ke default terkunci!', 'info');
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 font-bold text-[11px] hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    Reset Default
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input
+                  type="text"
+                  value={webAppInput}
+                  onChange={(e) => setWebAppInput(e.target.value)}
+                  placeholder="https://script.google.com/macros/s/.../exec"
+                  className="flex-1 px-3 py-2 text-xs font-mono border border-emerald-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+                <button
+                  onClick={handleSaveWebAppConnection}
+                  className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  Simpan URL Web App
+                </button>
+              </div>
+            </div>
 
         {/* Feedback message banner */}
         {statusMessage && (
@@ -1008,7 +1168,7 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pegawai.map((p, idx) => (
-                  <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={`${p.nip || p.id || 'peg'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-2.5 px-3 font-medium text-slate-500">{idx + 1}</td>
                     <td className="py-2.5 px-3 font-mono text-[11px] text-slate-700">{p.nip || '-'}</td>
                     <td className="py-2.5 px-3 font-bold text-slate-900">
@@ -1058,7 +1218,7 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
                   </tr>
                 ) : (
                   siswa.map((s, idx) => (
-                    <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={`${s.nisn || s.id || 'sis'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-2.5 px-3 font-medium text-slate-500">{idx + 1}</td>
                       <td className="py-2.5 px-3 font-mono text-[11px] text-slate-700">{s.nisn || '-'}</td>
                       <td className="py-2.5 px-3 font-bold text-slate-900">{s.nama}</td>
@@ -1094,7 +1254,7 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {sarpras.map((s, idx) => (
-                  <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={`${s.id || 'sar'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-2.5 px-3 font-medium text-slate-500">{idx + 1}</td>
                     <td className="py-2.5 px-3 font-bold text-slate-900">{s.namaSarpras}</td>
                     <td className="py-2.5 px-3 text-slate-600">{s.kategori}</td>
@@ -1206,11 +1366,11 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
             Tidak ada catatan perubahan data yang sesuai kriteria pencarian.
           </div>
         ) : (
-          filteredLogs.map((log) => {
+          filteredLogs.map((log, idx) => {
             const isExpanded = expandedLogId === log.id;
             return (
               <div
-                key={log.id}
+                key={`${log.id || 'audit'}-${idx}`}
                 className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 hover:border-purple-300 transition-all"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

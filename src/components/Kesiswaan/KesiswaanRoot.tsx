@@ -5,18 +5,23 @@ import {
   RekapRaporSiswa, 
   NilaiIjazahBTQ, 
   UserRole,
-  AuthUser,
-  KesiswaanSubTab 
+  AuthUser, 
+  KesiswaanSubTab,
+  TabunganTransaksi,
+  SaldoAwalTabungan,
+  PresensiHarianSiswa,
+  PresensiRekapBulan
 } from '../../types';
 import { DataSiswa } from './DataSiswa';
-import { RekapRapor, ProcessedRapor } from './RekapRapor';
-import { IjazahBTQ } from './IjazahBTQ';
 import { PenilaianTerpadu } from './PenilaianTerpadu';
+import { TabunganSiswa } from './TabunganSiswa';
+import { PresensiSiswa } from './PresensiSiswa';
+import { ProcessedRapor } from './RekapRapor';
 import { 
   Users, 
-  Award, 
-  BookOpen, 
-  GraduationCap 
+  GraduationCap,
+  Wallet,
+  CalendarCheck
 } from 'lucide-react';
 
 interface KesiswaanRootProps {
@@ -34,6 +39,18 @@ interface KesiswaanRootProps {
   onOpenTranscriptModal: (item: ProcessedRapor) => void;
   onOpenCertificateModal: (item: NilaiIjazahBTQ) => void;
   onOpenSKPModal?: (item: ProcessedRapor) => void;
+  // Tabungan Props
+  tabunganList?: TabunganTransaksi[];
+  saldoAwalList?: SaldoAwalTabungan[];
+  onSaveTransaksi?: (t: TabunganTransaksi) => void;
+  onSaveSaldoAwal?: (s: SaldoAwalTabungan) => void;
+  onDeleteTransaksi?: (id: string) => void;
+  // Presensi Props
+  presensiHarianList?: PresensiHarianSiswa[];
+  presensiBulananList?: PresensiRekapBulan[];
+  onSavePresensiHarian?: (p: PresensiHarianSiswa) => void;
+  onSavePresensiBulanan?: (p: PresensiRekapBulan) => void;
+  onDeletePresensiHarian?: (id: string) => void;
 }
 
 export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
@@ -51,8 +68,21 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
   onOpenTranscriptModal,
   onOpenCertificateModal,
   onOpenSKPModal,
+  tabunganList = [],
+  saldoAwalList = [],
+  onSaveTransaksi = () => {},
+  onSaveSaldoAwal = () => {},
+  onDeleteTransaksi,
+  presensiHarianList = [],
+  presensiBulananList = [],
+  onSavePresensiHarian = () => {},
+  onSavePresensiBulanan = () => {},
+  onDeletePresensiHarian,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<KesiswaanSubTab>('siswa');
+  const [activeSubTab, setActiveSubTab] = useState<KesiswaanSubTab>(() => {
+    if (userRole === 'siswa') return 'tabungan';
+    return 'siswa';
+  });
 
   const subNavItems: { id: KesiswaanSubTab; label: string; icon: React.ReactNode; count?: number; badge?: string }[] = [
     {
@@ -63,24 +93,30 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
     },
     {
       id: 'penilaian',
-      label: 'Pusat Penilaian Terpadu (Rapor, TKA & BTQ)',
+      label: 'Penilaian',
       icon: <GraduationCap className="w-4 h-4 text-emerald-300" />,
-      badge: 'Semua Nilai Terpadu',
-    },
-    {
-      id: 'rapor',
-      label: 'Detail Rekap Rapor',
-      icon: <Award className="w-4 h-4" />,
-      badge: '4 vs 5 Semester',
-    },
-    {
-      id: 'btq',
-      label: "Detail Ijazah / Sertifikat BTQ",
-      icon: <BookOpen className="w-4 h-4" />,
-      count: btq.length,
-      badge: '5 Aspek Nilai',
+      badge: 'Rapor, TKA & BTQ',
     },
   ];
+
+  // Syarat: Akun Guest tidak bisa memantau "tabungan".
+  // Hanya tampilkan sub menu "tabungan" jika BUKAN guest!
+  if (userRole !== 'guest') {
+    subNavItems.push({
+      id: 'tabungan',
+      label: userRole === 'siswa' ? 'Buku Tabungan Saya' : 'Tabungan Siswa',
+      icon: <Wallet className="w-4 h-4 text-amber-400" />,
+      badge: userRole === 'siswa' ? 'Personal' : 'Kas Kelas',
+    });
+  }
+
+  // Sub menu "presensi" tersedia untuk semua peran dengan tampilan sesuai hak akses
+  subNavItems.push({
+    id: 'presensi',
+    label: userRole === 'siswa' ? 'Presensi Saya (S, I, TK, J)' : userRole === 'guest' ? 'Presensi Kelas (Agregat)' : 'Presensi Siswa',
+    icon: <CalendarCheck className="w-4 h-4 text-sky-400" />,
+    badge: userRole === 'guest' ? 'Publik' : userRole === 'siswa' ? 'Rekap Kehadiran' : 'Harian & Bulanan',
+  });
 
   return (
     <div className="space-y-6">
@@ -152,26 +188,31 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
         />
       )}
 
-      {activeSubTab === 'rapor' && (
-        <RekapRapor
-          rapor={rapor}
+      {activeSubTab === 'tabungan' && userRole !== 'guest' && (
+        <TabunganSiswa
+          siswa={siswa}
           profil={profil}
-          userRole={userRole}
           currentUser={currentUser}
-          onSaveRapor={onSaveRapor}
-          onOpenTranscriptModal={onOpenTranscriptModal}
-          onOpenSKPModal={onOpenSKPModal}
+          userRole={userRole}
+          tabunganList={tabunganList}
+          saldoAwalList={saldoAwalList}
+          onSaveTransaksi={onSaveTransaksi}
+          onSaveSaldoAwal={onSaveSaldoAwal}
+          onDeleteTransaksi={onDeleteTransaksi}
         />
       )}
 
-      {activeSubTab === 'btq' && (
-        <IjazahBTQ
-          btqList={btq}
-          siswaList={siswa}
+      {activeSubTab === 'presensi' && (
+        <PresensiSiswa
+          siswa={siswa}
           profil={profil}
-          onSaveBTQ={onSaveBTQ}
-          onDeleteBTQ={onDeleteBTQ}
-          onOpenCertificateModal={onOpenCertificateModal}
+          currentUser={currentUser}
+          userRole={userRole}
+          presensiHarianList={presensiHarianList}
+          presensiBulananList={presensiBulananList}
+          onSavePresensiHarian={onSavePresensiHarian}
+          onSavePresensiBulanan={onSavePresensiBulanan}
+          onDeletePresensiHarian={onDeletePresensiHarian}
         />
       )}
     </div>

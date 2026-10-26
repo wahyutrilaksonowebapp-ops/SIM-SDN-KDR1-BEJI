@@ -226,6 +226,7 @@ export function upsertWithDeduplication<T extends { id: string }>(
 
   // 1. Put existing items into map
   for (const item of existingList) {
+    if (!item || !item.id || String(item.id).trim().toUpperCase() === 'ID') continue;
     if (map.has(item.id)) {
       duplicatesRemoved++;
     } else {
@@ -236,6 +237,7 @@ export function upsertWithDeduplication<T extends { id: string }>(
 
   // 2. Upsert incoming items
   for (const incoming of incomingList) {
+    if (!incoming || !incoming.id || String(incoming.id).trim().toUpperCase() === 'ID') continue;
     if (map.has(incoming.id)) {
       const oldItem = map.get(incoming.id)!;
       const diffs: DataFieldDiff[] = [];
@@ -387,6 +389,7 @@ export function detectSyncConflicts<T extends { id: string }>(
 
   // 1. Detect duplicate IDs inside incoming data itself
   for (const inc of incomingList) {
+    if (!inc || !inc.id || String(inc.id).trim().toUpperCase() === 'ID') continue;
     if (incomingSeen.has(inc.id)) {
       duplicateIdsInIncoming++;
     } else {
@@ -396,7 +399,9 @@ export function detectSyncConflicts<T extends { id: string }>(
 
   // 2. Detect conflicts between existing data and incoming data
   for (const incoming of incomingList) {
+    if (!incoming || !incoming.id || String(incoming.id).trim().toUpperCase() === 'ID') continue;
     const match = existingList.find((ex) => {
+      if (!ex || !ex.id || String(ex.id).trim().toUpperCase() === 'ID') return false;
       if (ex.id === incoming.id) return true;
       if (idMatchers && idMatchers.length > 0) {
         for (const matcher of idMatchers) {
@@ -436,7 +441,7 @@ export function detectSyncConflicts<T extends { id: string }>(
 
       if (diffs.length > 0) {
         conflicts.push({
-          id: incoming.id,
+          id: `conflict-${module}-${incoming.id || 'item'}-${conflicts.length + 1}`,
           module,
           moduleLabel,
           entityName: getEntityName(incoming) || getEntityName(match),

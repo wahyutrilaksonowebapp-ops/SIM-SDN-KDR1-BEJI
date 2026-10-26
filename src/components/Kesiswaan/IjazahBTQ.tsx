@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NilaiIjazahBTQ, Siswa, ProfilSekolah } from '../../types';
+import { NilaiIjazahBTQ, Siswa, ProfilSekolah, UserRole } from '../../types';
 import { 
   Award, 
   Search, 
@@ -21,6 +21,7 @@ interface IjazahBTQProps {
   btqList: NilaiIjazahBTQ[];
   siswaList: Siswa[];
   profil: ProfilSekolah;
+  userRole?: UserRole;
   onSaveBTQ: (item: NilaiIjazahBTQ) => void;
   onDeleteBTQ: (id: string) => void;
   onOpenCertificateModal: (item: NilaiIjazahBTQ) => void;
@@ -30,6 +31,7 @@ export const IjazahBTQ: React.FC<IjazahBTQProps> = ({
   btqList,
   siswaList,
   profil,
+  userRole = 'admin',
   onSaveBTQ,
   onDeleteBTQ,
   onOpenCertificateModal,
@@ -270,7 +272,7 @@ export const IjazahBTQ: React.FC<IjazahBTQProps> = ({
               {filtered.map((item, idx) => {
                 const pred = getBTQPredicate(item.rataRata);
                 return (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={`${item.nisn || item.id || 'btq'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-4 font-medium text-slate-400">{idx + 1}</td>
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-slate-900 text-sm">{item.namaSiswa}</div>

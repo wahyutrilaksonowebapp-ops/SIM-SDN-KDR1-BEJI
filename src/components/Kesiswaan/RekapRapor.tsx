@@ -315,13 +315,15 @@ export const RekapRapor: React.FC<RekapRaporProps> = ({
             </button>
           </div>
 
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Ekspor CSV</span>
-          </button>
+          {userRole !== 'guest' && (
+            <button
+              onClick={handleExportCSV}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Ekspor CSV</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -415,10 +417,10 @@ export const RekapRapor: React.FC<RekapRaporProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((item) => {
+              {filtered.map((item, idx) => {
                 const tka = item.original.tka;
                 return (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={`${item.original.nisn || item.id || 'rr'}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-2 text-center font-bold">
                       <span
                         className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${

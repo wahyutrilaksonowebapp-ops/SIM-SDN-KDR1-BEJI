@@ -48,7 +48,7 @@ export const Sarpras: React.FC<SarprasProps> = ({
   onDeleteSarpras,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<SarprasSubTab>(() => {
-    if (currentUser?.role === 'guru') {
+    if (currentUser?.role === 'guru' || currentUser?.role === 'siswa') {
       return 'ruang_kelas';
     }
     return 'inventaris';
@@ -254,7 +254,7 @@ export const Sarpras: React.FC<SarprasProps> = ({
           >
             <School className="w-4 h-4 text-indigo-300" />
             <span>
-              {currentUser?.role === 'guru' && currentUser?.kelas
+              {(currentUser?.role === 'guru' || currentUser?.role === 'siswa') && currentUser?.kelas
                 ? `Sarpras Kelas: Ruang Kelas ${currentUser.kelas} (${currentUser.rombel || 'Rombel Anda'})`
                 : 'Gedung Ruang Kelas (1 s.d. 6)'}
             </span>

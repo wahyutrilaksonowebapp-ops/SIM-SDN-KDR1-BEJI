@@ -60,7 +60,7 @@ export async function generateAIInsight(summaryData: Record<string, any>): Promi
   return json.data;
 }
 
-export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew/exec';
+export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyGKR4TKbaL38H4R_pNvEzej9CwOogP9pAE7YKtlDYgm9fawAZPrewDWYATplrhbRr84w/exec';
 
 // Google Apps Script Web App Client (terkunci resmi ke endpoint SIM SDN Kedungringin 1)
 export async function syncWithGoogleAppsScript(scriptUrl: string = LOCKED_WEB_APP_URL, action: string = 'ping', payload?: any) {

@@ -59,7 +59,7 @@ interface PenilaianTerpaduProps {
   onOpenSKPModal?: (item: ProcessedRapor) => void;
 }
 
-export type PenilaianViewMode = 'all' | 'rapor' | 'tka' | 'btq';
+export type PenilaianViewMode = 'rapor_5_sem' | 'rapor_4_sem' | 'tka' | 'btq';
 
 export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
   siswa,
@@ -75,7 +75,7 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
   onOpenCertificateModal,
   onOpenSKPModal,
 }) => {
-  const [viewMode, setViewMode] = useState<PenilaianViewMode>('all');
+  const [viewMode, setViewMode] = useState<PenilaianViewMode>('rapor_5_sem');
   const [calculationMode, setCalculationMode] = useState<RaporCalculationMode>('5_semester');
   const [searchTerm, setSearchTerm] = useState('');
   const [kelasFilter, setKelasFilter] = useState<string>(() => {
@@ -105,6 +105,20 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
 
   // Form State for BTQ
   const [formBtq, setFormBtq] = useState<NilaiIjazahBTQ | null>(null);
+
+  const getSemesterAverage = (semScores: Record<string, number> | undefined) => {
+    if (!semScores) return '-';
+    let sum = 0;
+    let count = 0;
+    MANDATORY_MAPEL.forEach((mapel) => {
+      const val = getMapelScore(semScores, mapel);
+      if (val > 0) {
+        sum += val;
+        count++;
+      }
+    });
+    return count > 0 ? (sum / count).toFixed(1) : '-';
+  };
 
   const targetSemesters = calculationMode === '5_semester' ? [7, 8, 9, 10, 11] : [9, 10, 11, 12];
 
@@ -737,112 +751,105 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setTemplateModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-bold text-xs transition-colors border border-amber-400/30 cursor-pointer shadow-xs"
-              title="Unduh Template Excel/CSV per Semester"
-            >
-              <FileDown className="w-4 h-4 text-amber-300" />
-              <span>Unduh Template Impor</span>
-            </button>
-            <button
-              onClick={() => {
-                setImportModalOpen(true);
-                setImportSuccessMsg(null);
-                setImportErrorMsg(null);
-                setImportPreviewRows([]);
-                setImportRawText('');
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
-              title="Impor Nilai dari File CSV atau Tempel Data Excel"
-            >
-              <FileUp className="w-4 h-4 text-white" />
-              <span>Impor Nilai (CSV / Excel)</span>
-            </button>
-            <button
-              onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors border border-white/15 cursor-pointer shadow-xs"
-              title="Ekspor seluruh data penilaian ke CSV"
-            >
-              <Download className="w-4 h-4 text-emerald-300" />
-              <span>Ekspor Terpadu (CSV)</span>
-            </button>
-          </div>
+          {userRole !== 'guest' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setTemplateModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-bold text-xs transition-colors border border-amber-400/30 cursor-pointer shadow-xs"
+                title="Unduh Template Excel/CSV per Semester"
+              >
+                <FileDown className="w-4 h-4 text-amber-300" />
+                <span>Unduh Template Impor</span>
+              </button>
+              <button
+                onClick={() => {
+                  setImportModalOpen(true);
+                  setImportSuccessMsg(null);
+                  setImportErrorMsg(null);
+                  setImportPreviewRows([]);
+                  setImportRawText('');
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
+                title="Impor Nilai dari File CSV atau Tempel Data Excel"
+              >
+                <FileUp className="w-4 h-4 text-white" />
+                <span>Impor Nilai (CSV / Excel)</span>
+              </button>
+              <button
+                onClick={handleExportCSV}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors border border-white/15 cursor-pointer shadow-xs"
+                title="Ekspor seluruh data penilaian ke CSV"
+              >
+                <Download className="w-4 h-4 text-emerald-300" />
+                <span>Ekspor Terpadu (CSV)</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* View Mode Switcher */}
+        {/* Sub-Menu Penilaian: 4 Pilihan Resmi */}
         <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5 p-1 bg-black/20 rounded-xl border border-white/10 overflow-x-auto">
+          <div className="flex items-center gap-1.5 p-1 bg-black/25 rounded-xl border border-white/10 overflow-x-auto w-full md:w-auto">
             <button
-              onClick={() => setViewMode('all')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'all'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-emerald-200 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>🏆 Semua Penilaian (Matriks Terpadu)</span>
-            </button>
-            <button
-              onClick={() => setViewMode('rapor')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'rapor'
+              onClick={() => {
+                setViewMode('rapor_5_sem');
+                setCalculationMode('5_semester');
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                viewMode === 'rapor_5_sem'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-emerald-200 hover:text-white hover:bg-white/5'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>📘 Buku Rapor (8 Mapel)</span>
+              <span>Rekap Rapor 5 semester (4-1, 4-2, 5-1, 5-2, 6-1)</span>
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('rapor_4_sem');
+                setCalculationMode('4_semester');
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                viewMode === 'rapor_4_sem'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-emerald-200 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Rekap Rapor 4 Semester (5-1, 5-2, 6-1, 6-2)</span>
             </button>
             <button
               onClick={() => setViewMode('tka')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 viewMode === 'tka'
                   ? 'bg-amber-600 text-white shadow-xs'
                   : 'text-emerald-200 hover:text-white hover:bg-white/5'
               }`}
             >
               <Star className="w-3.5 h-3.5 text-amber-200" />
-              <span>⭐ Tes Kemampuan Akademik (TKA)</span>
+              <span>TKA</span>
             </button>
             <button
               onClick={() => setViewMode('btq')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 viewMode === 'btq'
                   ? 'bg-purple-600 text-white shadow-xs'
                   : 'text-emerald-200 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Award className="w-3.5 h-3.5" />
-              <span>📜 Ijazah / Sertifikat BTQ</span>
+              <Layers className="w-3.5 h-3.5" />
+              <span>BTQ</span>
             </button>
           </div>
 
-          {/* Rapor calculation toggle */}
-          <div className="flex items-center gap-2 text-xs bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
-            <span className="text-emerald-200 text-[11px] font-medium">Acuan Rapor:</span>
-            <button
-              onClick={() => setCalculationMode('5_semester')}
-              className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold transition-colors cursor-pointer ${
-                calculationMode === '5_semester'
-                  ? 'bg-emerald-400 text-slate-900'
-                  : 'text-emerald-100 hover:text-white'
-              }`}
-            >
-              5 Semester (PPDB)
-            </button>
-            <button
-              onClick={() => setCalculationMode('4_semester')}
-              className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold transition-colors cursor-pointer ${
-                calculationMode === '4_semester'
-                  ? 'bg-emerald-400 text-slate-900'
-                  : 'text-emerald-100 hover:text-white'
-              }`}
-            >
-              4 Semester (Kelulusan)
-            </button>
+          <div className="flex items-center gap-2 text-xs bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 text-emerald-100">
+            <span className="text-[11px] font-medium text-emerald-200">Sub-Menu Aktif:</span>
+            <span className="font-bold text-white text-[11px]">
+              {viewMode === 'rapor_5_sem' && 'Rekap Rapor 5 Semester (Kelas 4-1 s.d 6-1)'}
+              {viewMode === 'rapor_4_sem' && 'Rekap Rapor 4 Semester (Kelas 5-1 s.d 6-2)'}
+              {viewMode === 'tka' && 'Tes Kemampuan Akademik (TKA)'}
+              {viewMode === 'btq' && 'Baca Tulis Al-Qur\'an (BTQ)'}
+            </span>
           </div>
         </div>
       </div>
@@ -883,7 +890,7 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
         </div>
       </div>
 
-      {/* Main Unified Table */}
+      {/* Main Unified Table for 4 Sub-menus */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
@@ -893,43 +900,58 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
                 <th className="py-3 px-3">Identitas Siswa</th>
                 <th className="py-3 px-2 text-center">Kelas</th>
 
-                {/* Mode 'all' or 'rapor': Show Rapor Columns */}
-                {(viewMode === 'all' || viewMode === 'rapor') && (
+                {/* Sub-menu 1: Rekap Rapor 5 semester (4-1, 4-2, 5-1, 5-2, 6-1) */}
+                {viewMode === 'rapor_5_sem' && (
                   <>
-                    <th className="py-3 px-3 text-center bg-blue-50/60 text-blue-950">
-                      Rerata Rapor ({calculationMode === '5_semester' ? '5 Sem' : '4 Sem'})
-                    </th>
-                    <th className="py-3 px-2 text-center bg-blue-50/60 text-blue-950">
-                      Rank
-                    </th>
+                    <th className="py-3 px-2 text-center bg-blue-50/70 text-blue-950">4-1 (Sem 7)</th>
+                    <th className="py-3 px-2 text-center bg-blue-50/70 text-blue-950">4-2 (Sem 8)</th>
+                    <th className="py-3 px-2 text-center bg-blue-50/70 text-blue-950">5-1 (Sem 9)</th>
+                    <th className="py-3 px-2 text-center bg-blue-50/70 text-blue-950">5-2 (Sem 10)</th>
+                    <th className="py-3 px-2 text-center bg-blue-50/70 text-blue-950">6-1 (Sem 11)</th>
+                    <th className="py-3 px-3 text-center bg-blue-100/70 text-blue-950">Rerata 5 Sem</th>
+                    <th className="py-3 px-2 text-center bg-blue-100/70 text-blue-950">Rank</th>
                   </>
                 )}
 
-                {/* Mode 'all' or 'tka': Show TKA Columns */}
-                {(viewMode === 'all' || viewMode === 'tka') && (
+                {/* Sub-menu 2: Rekap Rapor 4 Semester (5-1, 5-2, 6-1, 6-2) */}
+                {viewMode === 'rapor_4_sem' && (
                   <>
-                    <th className="py-3 px-3 text-center bg-amber-50/70 text-amber-950">
-                      TKA (Num / Lit / IPA)
-                    </th>
-                    <th className="py-3 px-3 text-center bg-amber-50/70 text-amber-950">
-                      Rata & Predikat TKA
-                    </th>
+                    <th className="py-3 px-2.5 text-center bg-indigo-50/70 text-indigo-950">5-1 (Sem 9)</th>
+                    <th className="py-3 px-2.5 text-center bg-indigo-50/70 text-indigo-950">5-2 (Sem 10)</th>
+                    <th className="py-3 px-2.5 text-center bg-indigo-50/70 text-indigo-950">6-1 (Sem 11)</th>
+                    <th className="py-3 px-2.5 text-center bg-indigo-50/70 text-indigo-950">6-2 (Sem 12)</th>
+                    <th className="py-3 px-3 text-center bg-indigo-100/70 text-indigo-950">Rerata 4 Sem</th>
+                    <th className="py-3 px-2 text-center bg-indigo-100/70 text-indigo-950">Rank</th>
                   </>
                 )}
 
-                {/* Mode 'all' or 'btq': Show BTQ Columns */}
-                {(viewMode === 'all' || viewMode === 'btq') && (
+                {/* Sub-menu 3: TKA */}
+                {viewMode === 'tka' && (
                   <>
-                    <th className="py-3 px-3 text-center bg-purple-50/70 text-purple-950">
-                      Sertifikat BTQ (5 Aspek)
-                    </th>
-                    <th className="py-3 px-3 text-center bg-purple-50/70 text-purple-950">
-                      Status & Predikat BTQ
-                    </th>
+                    <th className="py-3 px-3 text-center bg-amber-50/70 text-amber-950">No. Peserta</th>
+                    <th className="py-3 px-2.5 text-center bg-amber-50/70 text-amber-950">Numerasi (Mtk)</th>
+                    <th className="py-3 px-2.5 text-center bg-amber-50/70 text-amber-950">Literasi (B. Ind)</th>
+                    <th className="py-3 px-2.5 text-center bg-amber-50/70 text-amber-950">IPA (Pilihan)</th>
+                    <th className="py-3 px-3 text-center bg-amber-100/70 text-amber-950">Rata-rata TKA</th>
+                    <th className="py-3 px-3 text-center bg-amber-100/70 text-amber-950">Predikat TKA</th>
                   </>
                 )}
 
-                <th className="py-3 px-3 text-center w-36">Aksi Terpadu</th>
+                {/* Sub-menu 4: BTQ */}
+                {viewMode === 'btq' && (
+                  <>
+                    <th className="py-3 px-3 text-center bg-purple-50/70 text-purple-950">No. Sertifikat</th>
+                    <th className="py-3 px-2 text-center bg-purple-50/70 text-purple-950">Tahsin</th>
+                    <th className="py-3 px-2 text-center bg-purple-50/70 text-purple-950">Tajwid</th>
+                    <th className="py-3 px-2 text-center bg-purple-50/70 text-purple-950">Tahfidz</th>
+                    <th className="py-3 px-2 text-center bg-purple-50/70 text-purple-950">Menulis</th>
+                    <th className="py-3 px-2 text-center bg-purple-50/70 text-purple-950">Membaca</th>
+                    <th className="py-3 px-2.5 text-center bg-purple-100/70 text-purple-950">Rerata BTQ</th>
+                    <th className="py-3 px-3 text-center bg-purple-100/70 text-purple-950">Predikat & Status</th>
+                  </>
+                )}
+
+                <th className="py-3 px-3 text-center w-36">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -940,7 +962,7 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
                   (userRole === 'guru' && (!currentUser?.kelas || currentUser.kelas === s.kelas));
 
                 return (
-                  <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
+                  <tr key={`${s.nisn || s.id || 'sis'}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-3.5 text-center font-mono text-slate-400 font-bold">
                       {idx + 1}
                     </td>
@@ -964,19 +986,34 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
                       </span>
                     </td>
 
-                    {/* Rapor Columns */}
-                    {(viewMode === 'all' || viewMode === 'rapor') && (
+                    {/* Sub-menu 1 Rows: Rekap Rapor 5 semester (4-1, 4-2, 5-1, 5-2, 6-1) */}
+                    {viewMode === 'rapor_5_sem' && (
                       <>
-                        <td className="py-3 px-3 text-center bg-blue-50/20">
+                        <td className="py-3 px-2 text-center font-mono text-[11px] text-slate-700 bg-blue-50/15">
+                          {getSemesterAverage(rp?.original?.semester7)}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] text-slate-700 bg-blue-50/15">
+                          {getSemesterAverage(rp?.original?.semester8)}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] text-slate-700 bg-blue-50/15">
+                          {getSemesterAverage(rp?.original?.semester9)}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] text-slate-700 bg-blue-50/15">
+                          {getSemesterAverage(rp?.original?.semester10)}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] text-slate-700 bg-blue-50/15">
+                          {getSemesterAverage(rp?.original?.semester11)}
+                        </td>
+                        <td className="py-3 px-3 text-center bg-blue-100/25">
                           {rp && rp.overallAverage > 0 ? (
-                            <span className="font-mono font-extrabold text-blue-900 text-xs px-2 py-0.5 rounded bg-blue-100/60">
+                            <span className="font-mono font-extrabold text-blue-900 text-xs px-2 py-0.5 rounded bg-blue-100/80">
                               {rp.overallAverage}
                             </span>
                           ) : (
                             <span className="text-[11px] text-slate-400 italic">Belum Ada</span>
                           )}
                         </td>
-                        <td className="py-3 px-2 text-center bg-blue-50/20">
+                        <td className="py-3 px-2 text-center bg-blue-100/25">
                           {rp && rp.rank ? (
                             <span className="text-[11px] font-bold text-blue-700 font-mono">
                               #{rp.rank}
@@ -988,26 +1025,35 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
                       </>
                     )}
 
-                    {/* TKA Columns */}
-                    {(viewMode === 'all' || viewMode === 'tka') && (
+                    {/* Sub-menu 2 Rows: Rekap Rapor 4 Semester (5-1, 5-2, 6-1, 6-2) */}
+                    {viewMode === 'rapor_4_sem' && (
                       <>
-                        <td className="py-3 px-3 text-center bg-amber-50/20">
-                          {tka ? (
-                            <div className="text-[11px] font-mono font-bold text-amber-900">
-                              {tka.numerasi} / {tka.literasi} / {tka.ipaPilihan}
-                            </div>
+                        <td className="py-3 px-2.5 text-center font-mono text-[11px] text-slate-700 bg-indigo-50/15">
+                          {getSemesterAverage(rp?.original?.semester9)}
+                        </td>
+                        <td className="py-3 px-2.5 text-center font-mono text-[11px] text-slate-700 bg-indigo-50/15">
+                          {getSemesterAverage(rp?.original?.semester10)}
+                        </td>
+                        <td className="py-3 px-2.5 text-center font-mono text-[11px] text-slate-700 bg-indigo-50/15">
+                          {getSemesterAverage(rp?.original?.semester11)}
+                        </td>
+                        <td className="py-3 px-2.5 text-center font-mono text-[11px] text-slate-700 bg-indigo-50/15">
+                          {getSemesterAverage(rp?.original?.semester12)}
+                        </td>
+                        <td className="py-3 px-3 text-center bg-indigo-100/25">
+                          {rp && rp.overallAverage > 0 ? (
+                            <span className="font-mono font-extrabold text-indigo-900 text-xs px-2 py-0.5 rounded bg-indigo-100/80">
+                              {rp.overallAverage}
+                            </span>
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">Belum Input TKA</span>
+                            <span className="text-[11px] text-slate-400 italic">Belum Ada</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center bg-amber-50/20">
-                          {tka ? (
-                            <div>
-                              <span className="font-bold text-amber-900 font-mono">{tka.rataRata}</span>
-                              <span className="text-[10px] ml-1.5 px-1.5 py-0.2 rounded-full font-bold bg-amber-100 text-amber-800">
-                                {tka.predikat || 'Baik'}
-                              </span>
-                            </div>
+                        <td className="py-3 px-2 text-center bg-indigo-100/25">
+                          {rp && rp.rank ? (
+                            <span className="text-[11px] font-bold text-indigo-700 font-mono">
+                              #{rp.rank}
+                            </span>
                           ) : (
                             '-'
                           )}
@@ -1015,32 +1061,83 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
                       </>
                     )}
 
-                    {/* BTQ Columns */}
-                    {(viewMode === 'all' || viewMode === 'btq') && (
+                    {/* Sub-menu 3 Rows: TKA */}
+                    {viewMode === 'tka' && (
                       <>
-                        <td className="py-3 px-3 text-center bg-purple-50/20">
-                          {b ? (
-                            <div className="text-[11px] font-mono text-purple-950 font-bold" title="Tahsin / Tajwid / Tahfidz / Menulis / Membaca">
-                              {b.tahsin} / {b.tajwid} / {b.tahfidz} / {b.menulis} / {b.membaca}
-                            </div>
+                        <td className="py-3 px-3 text-center font-mono text-[11px] text-slate-500 bg-amber-50/15">
+                          {tka?.nomorPeserta || `TKA-${s.nisn.slice(-4)}`}
+                        </td>
+                        <td className="py-3 px-2.5 text-center font-mono text-[11px] font-bold text-amber-950 bg-amber-50/15">
+                          {tka?.numerasi ?? '-'}
+                        </td>
+                        <td className="py-3 px-2.5 text-center font-mono text-[11px] font-bold text-amber-950 bg-amber-50/15">
+                          {tka?.literasi ?? '-'}
+                        </td>
+                        <td className="py-3 px-2.5 text-center font-mono text-[11px] font-bold text-amber-950 bg-amber-50/15">
+                          {tka?.ipaPilihan ?? '-'}
+                        </td>
+                        <td className="py-3 px-3 text-center bg-amber-100/25">
+                          {tka ? (
+                            <span className="font-bold text-amber-900 font-mono text-xs px-2 py-0.5 rounded bg-amber-100/80">
+                              {tka.rataRata}
+                            </span>
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">Belum Terbit</span>
+                            <span className="text-[11px] text-slate-400 italic">Belum Input</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-center bg-purple-50/20">
+                        <td className="py-3 px-3 text-center bg-amber-100/25">
+                          {tka?.predikat ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">
+                              {tka.predikat}
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                      </>
+                    )}
+
+                    {/* Sub-menu 4 Rows: BTQ */}
+                    {viewMode === 'btq' && (
+                      <>
+                        <td className="py-3 px-3 text-center font-mono text-[10px] text-slate-600 bg-purple-50/15 truncate max-w-[140px]" title={b?.noSertifikat}>
+                          {b?.noSertifikat || '-'}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] font-bold text-purple-950 bg-purple-50/15">
+                          {b?.tahsin ?? '-'}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] font-bold text-purple-950 bg-purple-50/15">
+                          {b?.tajwid ?? '-'}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] font-bold text-purple-950 bg-purple-50/15">
+                          {b?.tahfidz ?? '-'}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] font-bold text-purple-950 bg-purple-50/15">
+                          {b?.menulis ?? '-'}
+                        </td>
+                        <td className="py-3 px-2 text-center font-mono text-[11px] font-bold text-purple-950 bg-purple-50/15">
+                          {b?.membaca ?? '-'}
+                        </td>
+                        <td className="py-3 px-2.5 text-center bg-purple-100/25">
                           {b ? (
-                            <div className="flex items-center justify-center gap-1.5">
-                              <span className="font-mono font-bold text-purple-900">{b.rataRata}</span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                                  b.statusKelulusan === 'Lulus'
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : 'bg-rose-100 text-rose-800'
-                                }`}
-                              >
-                                {b.predikat}
-                              </span>
-                            </div>
+                            <span className="font-mono font-bold text-purple-900 text-xs px-2 py-0.5 rounded bg-purple-100/80">
+                              {b.rataRata}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">Belum Ada</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center bg-purple-100/25">
+                          {b ? (
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                b.statusKelulusan === 'Lulus'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {b.predikat} ({b.statusKelulusan})
+                            </span>
                           ) : (
                             '-'
                           )}
@@ -1054,25 +1151,25 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
                         {canEdit && (
                           <button
                             onClick={() => handleOpenUnifiedModal(s)}
-                            title={`Input / Edit Nilai Terpadu (Rapor + TKA + BTQ): ${s.nama}`}
+                            title={`Input / Edit Nilai: ${s.nama}`}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] transition-colors shadow-2xs cursor-pointer"
                           >
                             <Edit3 className="w-3 h-3 text-emerald-200" />
-                            <span>Edit Nilai</span>
+                            <span>Edit</span>
                           </button>
                         )}
 
-                        {rp && (
+                        {rp && (viewMode === 'rapor_5_sem' || viewMode === 'rapor_4_sem') && (
                           <button
                             onClick={() => onOpenTranscriptModal(rp)}
-                            title="Cetak Transkrip Rapor"
+                            title={`Cetak Transkrip Rapor (${calculationMode === '5_semester' ? '5 Semester' : '4 Semester'})`}
                             className="p-1.5 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
                           >
                             <Printer className="w-3.5 h-3.5" />
                           </button>
                         )}
 
-                        {rp && onOpenSKPModal && (
+                        {rp && onOpenSKPModal && (viewMode === 'rapor_5_sem' || viewMode === 'rapor_4_sem') && (
                           <button
                             onClick={() => onOpenSKPModal(rp)}
                             title="Cetak Surat Keterangan Prestasi (SKP)"
@@ -1082,7 +1179,7 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
                           </button>
                         )}
 
-                        {b && (
+                        {b && viewMode === 'btq' && (
                           <button
                             onClick={() => onOpenCertificateModal(b)}
                             title="Lihat & Cetak Ijazah Sertifikat BTQ"
@@ -1099,7 +1196,7 @@ export const PenilaianTerpadu: React.FC<PenilaianTerpaduProps> = ({
 
               {unifiedStudentList.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400 text-xs">
+                  <td colSpan={12} className="py-12 text-center text-slate-400 text-xs">
                     Tidak ditemukan data siswa yang sesuai filter.
                   </td>
                 </tr>

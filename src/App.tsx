@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   TabType, 
   ProfilSekolah, 
@@ -11,7 +11,11 @@ import {
   SuratMasuk,
   AuthUser,
   FaceprintPresensi,
-  SkpEKinerja 
+  SkpEKinerja,
+  TabunganTransaksi,
+  SaldoAwalTabungan,
+  PresensiHarianSiswa,
+  PresensiRekapBulan
 } from './types';
 import { 
   INITIAL_PROFIL, 
@@ -25,6 +29,12 @@ import {
   INITIAL_PRESENSI_FACEPRINT,
   INITIAL_SKP_EKINERJA 
 } from './data/initialData';
+import {
+  INITIAL_TABUNGAN_TRANSAKSI,
+  INITIAL_SALDO_AWAL_TABUNGAN,
+  INITIAL_PRESENSI_HARIAN,
+  INITIAL_PRESENSI_BULANAN
+} from './data/tabunganPresensiData';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { Kepegawaian } from './components/Kepegawaian';
@@ -45,11 +55,13 @@ import { logUserActivity } from './services/logger';
 import { 
   getSavedMasterSheetId, 
   fetchMasterDatabaseRealtime,
-  fetchAllLiveMasterData 
+  fetchAllLiveMasterData,
+  pushDataToMasterSpreadsheet,
+  LOCKED_WEB_APP_URL
 } from './services/singleMasterSheetService';
 import { Lock, ShieldCheck, RefreshCw } from 'lucide-react';
 
-const CURRENT_DB_VERSION = '2026_2027_v1';
+const CURRENT_DB_VERSION = '2026_2027_v3';
 
 // Enforce locking database to the exact master spreadsheet data & purge any old dummy data
 const initializeAndLockDatabase = () => {
@@ -72,7 +84,13 @@ const initializeAndLockDatabase = () => {
       localStorage.setItem('sim_kdr1_profil', JSON.stringify(INITIAL_PROFIL));
       localStorage.setItem('sim_kdr1_presensi', JSON.stringify(INITIAL_PRESENSI_FACEPRINT));
       localStorage.setItem('sim_kdr1_skp_ekinerja', JSON.stringify(INITIAL_SKP_EKINERJA));
+      localStorage.setItem('sim_kdr1_web_app_url', LOCKED_WEB_APP_URL);
       localStorage.setItem('sim_kdr1_db_lock_version', CURRENT_DB_VERSION);
+    } else {
+      const currentGasUrl = localStorage.getItem('sim_kdr1_web_app_url');
+      if (!currentGasUrl || currentGasUrl.includes('AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew')) {
+        localStorage.setItem('sim_kdr1_web_app_url', LOCKED_WEB_APP_URL);
+      }
     }
   } catch (e) {
     console.warn('DB lock check error:', e);
@@ -103,6 +121,14 @@ export default function App() {
     return 'login';
   });
 
+  // Sanitizer to eliminate any dummy/header rows where ID is literally "ID"
+  const sanitizeEntityList = <T extends { id?: string }>(items: any): T[] => {
+    if (!Array.isArray(items)) return [];
+    return items.filter(
+      (item) => item && typeof item === 'object' && item.id && String(item.id).trim().toUpperCase() !== 'ID'
+    );
+  };
+
   // LocalStorage persistence helpers with sanitization for master lock
   const loadStored = <T,>(key: string, fallback: T): T => {
     try {
@@ -110,7 +136,7 @@ export default function App() {
       if (!item) return fallback;
       if (key === 'pegawai') {
         if (item.includes('Siti Fatimah') || item.includes('Suhartono') || item.includes('Nur Aini')) {
-          return INITIAL_PEGAWAI as unknown as T;
+          return sanitizeEntityList(INITIAL_PEGAWAI) as unknown as T;
         }
       }
       if (key === 'profil') {
@@ -118,7 +144,11 @@ export default function App() {
           return INITIAL_PROFIL as unknown as T;
         }
       }
-      return JSON.parse(item);
+      const parsed = JSON.parse(item);
+      if (Array.isArray(parsed)) {
+        return sanitizeEntityList(parsed) as unknown as T;
+      }
+      return parsed;
     } catch {
       return fallback;
     }
@@ -153,12 +183,12 @@ export default function App() {
 
   // Main State
   const [profil, setProfil] = useState<ProfilSekolah>(() => loadStored('profil', INITIAL_PROFIL));
-  const [pegawai, setPegawai] = useState<Pegawai[]>(() => loadStored('pegawai', INITIAL_PEGAWAI));
-  const [siswa, setSiswa] = useState<Siswa[]>(() => loadStored('siswa', INITIAL_SISWA));
-  const [rapor, setRapor] = useState<RekapRaporSiswa[]>(() => loadStored('rapor', INITIAL_REKAP_RAPOR));
-  const [btq, setBtq] = useState<NilaiIjazahBTQ[]>(() => loadStored('btq', INITIAL_NILAI_BTQ));
+  const [pegawai, setPegawai] = useState<Pegawai[]>(() => sanitizeEntityList(loadStored('pegawai', INITIAL_PEGAWAI)));
+  const [siswa, setSiswa] = useState<Siswa[]>(() => sanitizeEntityList(loadStored('siswa', INITIAL_SISWA)));
+  const [rapor, setRapor] = useState<RekapRaporSiswa[]>(() => sanitizeEntityList(loadStored('rapor', INITIAL_REKAP_RAPOR)));
+  const [btq, setBtq] = useState<NilaiIjazahBTQ[]>(() => sanitizeEntityList(loadStored('btq', INITIAL_NILAI_BTQ)));
   const [sarpras, setSarpras] = useState<SarprasItem[]>(() => {
-    const items = loadStored('sarpras', INITIAL_SARPRAS);
+    const items = sanitizeEntityList<SarprasItem>(loadStored('sarpras', INITIAL_SARPRAS));
     return items.map((item: SarprasItem) => ({
       ...item,
       fotoUrl: (item.fotoUrl && item.fotoUrl.trim() !== '') 
@@ -166,10 +196,24 @@ export default function App() {
         : 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
     }));
   });
-  const [suratKeluar, setSuratKeluar] = useState<SuratKeluar[]>(() => loadStored('surat_keluar', INITIAL_SURAT_KELUAR));
-  const [suratMasuk, setSuratMasuk] = useState<SuratMasuk[]>(() => loadStored('surat_masuk', INITIAL_SURAT_MASUK));
-  const [presensiList, setPresensiList] = useState<FaceprintPresensi[]>(() => loadStored('presensi', INITIAL_PRESENSI_FACEPRINT));
-  const [skpList, setSkpList] = useState<SkpEKinerja[]>(() => loadStored('skp_ekinerja', INITIAL_SKP_EKINERJA));
+  const [suratKeluar, setSuratKeluar] = useState<SuratKeluar[]>(() => sanitizeEntityList(loadStored('surat_keluar', INITIAL_SURAT_KELUAR)));
+  const [suratMasuk, setSuratMasuk] = useState<SuratMasuk[]>(() => sanitizeEntityList(loadStored('surat_masuk', INITIAL_SURAT_MASUK)));
+  const [presensiList, setPresensiList] = useState<FaceprintPresensi[]>(() => sanitizeEntityList(loadStored('presensi', INITIAL_PRESENSI_FACEPRINT)));
+  const [skpList, setSkpList] = useState<SkpEKinerja[]>(() => sanitizeEntityList(loadStored('skp_ekinerja', INITIAL_SKP_EKINERJA)));
+
+  // Tabungan & Presensi Siswa State
+  const [tabunganList, setTabunganList] = useState<TabunganTransaksi[]>(() => 
+    sanitizeEntityList(loadStored('tabungan_transaksi', INITIAL_TABUNGAN_TRANSAKSI))
+  );
+  const [saldoAwalList, setSaldoAwalList] = useState<SaldoAwalTabungan[]>(() => 
+    sanitizeEntityList(loadStored('tabungan_saldo_awal', INITIAL_SALDO_AWAL_TABUNGAN))
+  );
+  const [presensiHarianList, setPresensiHarianList] = useState<PresensiHarianSiswa[]>(() => 
+    sanitizeEntityList(loadStored('presensi_harian_siswa', INITIAL_PRESENSI_HARIAN))
+  );
+  const [presensiBulananList, setPresensiBulananList] = useState<PresensiRekapBulan[]>(() => 
+    sanitizeEntityList(loadStored('presensi_bulanan_siswa', INITIAL_PRESENSI_BULANAN))
+  );
 
   // Sync to localStorage
   useEffect(() => saveStored('auth_user', currentUser), [currentUser]);
@@ -183,6 +227,10 @@ export default function App() {
   useEffect(() => saveStored('surat_masuk', suratMasuk), [suratMasuk]);
   useEffect(() => saveStored('presensi', presensiList), [presensiList]);
   useEffect(() => saveStored('skp_ekinerja', skpList), [skpList]);
+  useEffect(() => saveStored('tabungan_transaksi', tabunganList), [tabunganList]);
+  useEffect(() => saveStored('tabungan_saldo_awal', saldoAwalList), [saldoAwalList]);
+  useEffect(() => saveStored('presensi_harian_siswa', presensiHarianList), [presensiHarianList]);
+  useEffect(() => saveStored('presensi_bulanan_siswa', presensiBulananList), [presensiBulananList]);
 
   // Modal Viewers
   const [activeCertificate, setActiveCertificate] = useState<NilaiIjazahBTQ | null>(null);
@@ -192,6 +240,35 @@ export default function App() {
 
   // Toast Notifications State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // One-time startup sweep to purge any corrupt row where id === "ID" from localStorage
+  useEffect(() => {
+    const keysToClean = ['pegawai', 'siswa', 'sarpras', 'rapor', 'btq', 'surat_masuk', 'surat_keluar', 'presensi', 'skp_ekinerja'];
+    keysToClean.forEach((key) => {
+      try {
+        const raw = localStorage.getItem(`sim_kdr1_${key}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const cleaned = sanitizeEntityList(parsed);
+            if (cleaned.length !== parsed.length) {
+              localStorage.setItem(`sim_kdr1_${key}`, JSON.stringify(cleaned));
+            }
+          }
+        }
+      } catch {}
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleSynced = (e: any) => {
+      if (e.detail?.timestamp) {
+        setLastSyncTime(e.detail.timestamp);
+      }
+    };
+    window.addEventListener('master_spreadsheet_synced', handleSynced);
+    return () => window.removeEventListener('master_spreadsheet_synced', handleSynced);
+  }, []);
 
   const addToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -229,6 +306,7 @@ export default function App() {
     let roleTitle = 'Tamu (Guest)';
     if (user.role === 'admin') roleTitle = 'Administrator (Akses Penuh)';
     else if (user.role === 'guru') roleTitle = `Guru: ${user.name} (${user.rombel || user.jabatan || 'Guru Kelas'})`;
+    else if (user.role === 'siswa') roleTitle = `Siswa: ${user.name} (${user.rombel || 'Kelas ' + user.kelas})`;
     addToast(
       `Berhasil masuk sebagai ${roleTitle}!`,
       'success'
@@ -324,11 +402,24 @@ export default function App() {
     addToast(`Evaluasi SKP Tribulan ${item.nama} berhasil disimpan!`, 'success');
   };
 
-  // Entity Handlers
-  const handleSavePegawai = (item: Pegawai) => {
-    const isExisting = pegawai.some((p) => p.id === item.id);
-    setPegawai((prev) => {
-      const idx = prev.findIndex((p) => p.id === item.id);
+  // Tabungan Handlers
+  const handleSaveTransaksiTabungan = (item: TabunganTransaksi) => {
+    setTabunganList((prev) => [item, ...prev]);
+    logUserActivity({
+      role: currentUser.role,
+      userName: currentUser.name,
+      userNip: currentUser.nip,
+      action: 'TAMBAH',
+      category: 'SISWA',
+      description: `Mencatat mutasi tabungan ${item.jenis.toUpperCase()} ${item.namaSiswa} (Rp ${item.jumlah.toLocaleString('id-ID')})`,
+      details: `Kelas: ${item.kelas} | Keterangan: ${item.keterangan}`
+    });
+    addToast(`Transaksi ${item.jenis === 'setor' ? 'Setor' : 'Tarik'} Rp ${item.jumlah.toLocaleString('id-ID')} untuk ${item.namaSiswa} berhasil dicatat!`, 'success');
+  };
+
+  const handleSaveSaldoAwalTabungan = (item: SaldoAwalTabungan) => {
+    setSaldoAwalList((prev) => {
+      const idx = prev.findIndex((sa) => sa.siswaId === item.siswaId);
       if (idx >= 0) {
         const copy = [...prev];
         copy[idx] = item;
@@ -336,6 +427,54 @@ export default function App() {
       }
       return [item, ...prev];
     });
+    addToast(`Saldo awal tabungan ${item.namaSiswa} berhasil ditetapkan!`, 'success');
+  };
+
+  const handleDeleteTransaksiTabungan = (id: string) => {
+    setTabunganList((prev) => prev.filter((t) => t.id !== id));
+    addToast('Catatan transaksi tabungan berhasil dihapus.', 'info');
+  };
+
+  // Presensi Handlers
+  const handleSavePresensiHarian = (item: PresensiHarianSiswa) => {
+    setPresensiHarianList((prev) => {
+      const idx = prev.findIndex((ph) => ph.tanggal === item.tanggal && ph.kelas === item.kelas);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = item;
+        return copy;
+      }
+      return [item, ...prev];
+    });
+    addToast(`Presensi harian Kelas ${item.kelas} tanggal ${item.tanggal} berhasil disimpan!`, 'success');
+  };
+
+  const handleSavePresensiBulanan = (item: PresensiRekapBulan) => {
+    setPresensiBulananList((prev) => {
+      const idx = prev.findIndex((pb) => pb.bulan === item.bulan && pb.kelas === item.kelas);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = item;
+        return copy;
+      }
+      return [item, ...prev];
+    });
+    addToast(`Rekapitulasi presensi bulanan ${item.bulan} Kelas ${item.kelas} berhasil disimpan!`, 'success');
+  };
+
+  const handleDeletePresensiHarian = (id: string) => {
+    setPresensiHarianList((prev) => prev.filter((p) => p.id !== id));
+    addToast('Catatan presensi harian berhasil dihapus.', 'info');
+  };
+
+  // Entity Handlers
+  const handleSavePegawai = (item: Pegawai) => {
+    const isExisting = pegawai.some((p) => p.id === item.id);
+    const updatedPegawai = isExisting
+      ? pegawai.map((p) => (p.id === item.id ? item : p))
+      : [item, ...pegawai];
+
+    setPegawai(updatedPegawai);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -347,12 +486,30 @@ export default function App() {
         : `Menambahkan GTK baru: ${item.nama} (NIP: ${item.nip || '-'}, ${item.jabatan})`,
       details: `Status: ${item.statusKepegawaian} | Golongan: ${item.golongan}`
     });
-    addToast(`Data pegawai ${item.nama} berhasil disimpan!`, 'success');
+
+    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai: updatedPegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'savePegawai',
+      item,
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data pegawai ${item.nama} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
   };
 
   const handleDeletePegawai = (id: string) => {
     const target = pegawai.find((p) => p.id === id);
-    setPegawai((prev) => prev.filter((p) => p.id !== id));
+    const updatedPegawai = pegawai.filter((p) => p.id !== id);
+    setPegawai(updatedPegawai);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -362,20 +519,31 @@ export default function App() {
       description: `Menghapus data pegawai GTK: ${target?.nama || id} (NIP: ${target?.nip || '-'})`,
       details: `Jabatan: ${target?.jabatan || '-'} | Status: ${target?.statusKepegawaian || '-'}`
     });
-    addToast(`Data pegawai ${target?.nama || id} berhasil dihapus.`, 'info');
+
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai: updatedPegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'deletePegawai',
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data pegawai ${target?.nama || id} berhasil dihapus & disinkronkan ke Spreadsheet.`, 'info');
   };
 
   const handleSaveSiswa = (item: Siswa) => {
     const isExisting = siswa.some((s) => s.id === item.id);
-    setSiswa((prev) => {
-      const idx = prev.findIndex((s) => s.id === item.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = item;
-        return copy;
-      }
-      return [item, ...prev];
-    });
+    const updatedSiswa = isExisting
+      ? siswa.map((s) => (s.id === item.id ? item : s))
+      : [item, ...siswa];
+
+    setSiswa(updatedSiswa);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -387,12 +555,30 @@ export default function App() {
         : `Menambahkan siswa baru: ${item.nama} (NISN: ${item.nisn}, Kelas: ${item.kelas})`,
       details: `Jenis Kelamin: ${item.jenisKelamin} | Rombel: ${item.rombel}`
     });
-    addToast(`Data siswa ${item.nama} berhasil disimpan!`, 'success');
+
+    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa: updatedSiswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'saveSiswa',
+      item,
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data siswa ${item.nama} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
   };
 
   const handleDeleteSiswa = (id: string) => {
     const target = siswa.find((s) => s.id === id);
-    setSiswa((prev) => prev.filter((s) => s.id !== id));
+    const updatedSiswa = siswa.filter((s) => s.id !== id);
+    setSiswa(updatedSiswa);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -402,19 +588,31 @@ export default function App() {
       description: `Menghapus data siswa: ${target?.nama || id} (NISN: ${target?.nisn || '-'}, Kelas: ${target?.kelas || '-'})`,
       details: `Rombel: ${target?.rombel || '-'} | Agama: ${target?.agama || '-'}`
     });
-    addToast(`Data siswa ${target?.nama || id} berhasil dihapus.`, 'info');
+
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa: updatedSiswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'deleteSiswa',
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data siswa ${target?.nama || id} berhasil dihapus & disinkronkan ke Spreadsheet.`, 'info');
   };
 
   const handleSaveRapor = (item: RekapRaporSiswa) => {
-    setRapor((prev) => {
-      const idx = prev.findIndex((r) => r.id === item.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = item;
-        return copy;
-      }
-      return [item, ...prev];
-    });
+    const isExisting = rapor.some((r) => r.id === item.id);
+    const updatedRapor = isExisting
+      ? rapor.map((r) => (r.id === item.id ? item : r))
+      : [item, ...rapor];
+
+    setRapor(updatedRapor);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -424,20 +622,33 @@ export default function App() {
       description: `Memperbarui nilai rapor siswa: ${item.namaSiswa} (NISN: ${item.nisn}, Kelas: ${item.kelas})`,
       details: `Rata-rata TKA: ${item.tka?.rataRata || '-'} | Predikat: ${item.tka?.predikat || '-'}`
     });
-    addToast(`Data nilai rapor ${item.namaSiswa} berhasil disimpan!`, 'success');
+
+    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor: updatedRapor,
+      btq,
+      sarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'saveRapor',
+      item,
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data nilai rapor ${item.namaSiswa} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
   };
 
   const handleSaveBTQ = (item: NilaiIjazahBTQ) => {
     const isExisting = btq.some((b) => b.id === item.id);
-    setBtq((prev) => {
-      const idx = prev.findIndex((b) => b.id === item.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = item;
-        return copy;
-      }
-      return [item, ...prev];
-    });
+    const updatedBtq = isExisting
+      ? btq.map((b) => (b.id === item.id ? item : b))
+      : [item, ...btq];
+
+    setBtq(updatedBtq);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -449,12 +660,30 @@ export default function App() {
         : `Menerbitkan penilaian ijazah BTQ baru: ${item.namaSiswa} (No: ${item.noSertifikat})`,
       details: `Rata-rata: ${item.rataRata} | Predikat: ${item.predikat}`
     });
-    addToast(`Data nilai BTQ ${item.namaSiswa} berhasil disimpan!`, 'success');
+
+    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor,
+      btq: updatedBtq,
+      sarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'saveNilaiBTQ',
+      item,
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data nilai BTQ ${item.namaSiswa} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
   };
 
   const handleDeleteBTQ = (id: string) => {
     const target = btq.find((b) => b.id === id);
-    setBtq((prev) => prev.filter((b) => b.id !== id));
+    const updatedBtq = btq.filter((b) => b.id !== id);
+    setBtq(updatedBtq);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -464,20 +693,31 @@ export default function App() {
       description: `Menghapus sertifikat / nilai BTQ: ${target?.namaSiswa || id} (No: ${target?.noSertifikat || '-'})`,
       details: `NISN: ${target?.nisn || '-'}`
     });
-    addToast(`Data nilai BTQ ${target?.namaSiswa || id} berhasil dihapus.`, 'info');
+
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor,
+      btq: updatedBtq,
+      sarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'deleteNilaiBTQ',
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data nilai BTQ ${target?.namaSiswa || id} berhasil dihapus & disinkronkan ke Spreadsheet.`, 'info');
   };
 
   const handleSaveSarpras = (item: SarprasItem) => {
     const isExisting = sarpras.some((s) => s.id === item.id);
-    setSarpras((prev) => {
-      const idx = prev.findIndex((s) => s.id === item.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = item;
-        return copy;
-      }
-      return [item, ...prev];
-    });
+    const updatedSarpras = isExisting
+      ? sarpras.map((s) => (s.id === item.id ? item : s))
+      : [item, ...sarpras];
+
+    setSarpras(updatedSarpras);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -489,12 +729,30 @@ export default function App() {
         : `Menambahkan aset sarpras baru: ${item.namaSarpras} (${item.jumlah} ${item.satuan})`,
       details: `Kategori: ${item.kategori} | Lokasi: ${item.lokasi}`
     });
-    addToast(`Data sarpras ${item.namaSarpras} berhasil disimpan!`, 'success');
+
+    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras: updatedSarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'saveSarpras',
+      item,
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data sarpras ${item.namaSarpras} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
   };
 
   const handleDeleteSarpras = (id: string) => {
     const target = sarpras.find((s) => s.id === id);
-    setSarpras((prev) => prev.filter((s) => s.id !== id));
+    const updatedSarpras = sarpras.filter((s) => s.id !== id);
+    setSarpras(updatedSarpras);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -504,12 +762,28 @@ export default function App() {
       description: `Menghapus aset sarpras: ${target?.namaSarpras || id} (Kategori: ${target?.kategori || '-'})`,
       details: `Lokasi: ${target?.lokasi || '-'} | Kondisi: ${target?.kondisi || '-'}`
     });
-    addToast(`Data sarpras ${target?.namaSarpras || id} berhasil dihapus.`, 'info');
+
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras: updatedSarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'deleteSarpras',
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Data sarpras ${target?.namaSarpras || id} berhasil dihapus & disinkronkan ke Spreadsheet.`, 'info');
   };
 
   const handleSaveSuratKeluar = (item: SuratKeluar) => {
     const isExisting = suratKeluar.some((s) => s.id === item.id);
-    setSuratKeluar((prev) => [item, ...prev.filter((s) => s.id !== item.id)]);
+    const updatedSuratKeluar = [item, ...suratKeluar.filter((s) => s.id !== item.id)];
+    setSuratKeluar(updatedSuratKeluar);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -521,12 +795,29 @@ export default function App() {
         : `Menambahkan Surat Keluar baru No: ${item.nomorSurat} (${item.perihal}) - Tujuan: ${item.tujuan}`,
       details: `Jenis: ${item.jenisSurat} | Tanggal: ${item.tanggalSurat}`
     });
-    addToast(`Surat Keluar ${item.nomorSurat} berhasil disimpan!`, 'success');
+
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk,
+      suratKeluar: updatedSuratKeluar,
+      actionName: 'saveSuratKeluar',
+      item,
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Surat Keluar ${item.nomorSurat} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
   };
 
   const handleDeleteSuratKeluar = (id: string) => {
     const target = suratKeluar.find((s) => s.id === id);
-    setSuratKeluar((prev) => prev.filter((s) => s.id !== id));
+    const updatedSuratKeluar = suratKeluar.filter((s) => s.id !== id);
+    setSuratKeluar(updatedSuratKeluar);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -536,20 +827,31 @@ export default function App() {
       description: `Menghapus arsip surat keluar No: ${target?.nomorSurat || id} - Perihal: ${target?.perihal || '-'}`,
       details: `Tujuan: ${target?.tujuan || '-'}`
     });
-    addToast('Arsip Surat Keluar berhasil dihapus.', 'info');
+
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk,
+      suratKeluar: updatedSuratKeluar,
+      actionName: 'deleteSuratKeluar',
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast('Arsip Surat Keluar berhasil dihapus & disinkronkan ke Spreadsheet.', 'info');
   };
 
   const handleSaveSuratMasuk = (item: SuratMasuk) => {
     const isExisting = suratMasuk.some((s) => s.id === item.id);
-    setSuratMasuk((prev) => {
-      const idx = prev.findIndex((s) => s.id === item.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = item;
-        return copy;
-      }
-      return [item, ...prev];
-    });
+    const updatedSuratMasuk = isExisting
+      ? suratMasuk.map((s) => (s.id === item.id ? item : s))
+      : [item, ...suratMasuk];
+
+    setSuratMasuk(updatedSuratMasuk);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -561,12 +863,29 @@ export default function App() {
         : `Menambahkan Surat Masuk baru No: ${item.nomorSuratMasuk} dari ${item.pengirim} - Perihal: ${item.perihal}`,
       details: `Diterima: ${item.tanggalDiterima} | Disposisi: ${item.disposisiKepsek || '-'}`
     });
-    addToast(`Surat Masuk ${item.nomorSuratMasuk} berhasil disimpan!`, 'success');
+
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk: updatedSuratMasuk,
+      suratKeluar,
+      actionName: 'saveSuratMasuk',
+      item,
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast(`Surat Masuk ${item.nomorSuratMasuk} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
   };
 
   const handleDeleteSuratMasuk = (id: string) => {
     const target = suratMasuk.find((s) => s.id === id);
-    setSuratMasuk((prev) => prev.filter((s) => s.id !== id));
+    const updatedSuratMasuk = suratMasuk.filter((s) => s.id !== id);
+    setSuratMasuk(updatedSuratMasuk);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -576,7 +895,22 @@ export default function App() {
       description: `Menghapus arsip surat masuk No: ${target?.nomorSuratMasuk || id} dari: ${target?.pengirim || '-'}`,
       details: `Perihal: ${target?.perihal || '-'}`
     });
-    addToast('Arsip Surat Masuk berhasil dihapus.', 'info');
+
+    pushDataToMasterSpreadsheet({
+      profil,
+      pegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk: updatedSuratMasuk,
+      suratKeluar,
+      actionName: 'deleteSuratMasuk',
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+
+    addToast('Arsip Surat Masuk berhasil dihapus & disinkronkan ke Spreadsheet.', 'info');
   };
 
   const handleBatchUpdateData = (newData: {
@@ -588,13 +922,32 @@ export default function App() {
     suratMasuk?: SuratMasuk[];
     suratKeluar?: SuratKeluar[];
   }) => {
-    if (newData.siswa) setSiswa(newData.siswa);
-    if (newData.pegawai) setPegawai(newData.pegawai);
-    if (newData.rapor) setRapor(newData.rapor);
-    if (newData.btq) setBtq(newData.btq);
-    if (newData.sarpras) setSarpras(newData.sarpras);
-    if (newData.suratMasuk) setSuratMasuk(newData.suratMasuk);
-    if (newData.suratKeluar) setSuratKeluar(newData.suratKeluar);
+    if (newData.siswa) setSiswa(sanitizeEntityList(newData.siswa));
+    if (newData.pegawai) setPegawai(sanitizeEntityList(newData.pegawai));
+    if (newData.rapor) setRapor(sanitizeEntityList(newData.rapor));
+    if (newData.btq) setBtq(sanitizeEntityList(newData.btq));
+    if (newData.sarpras) setSarpras(sanitizeEntityList(newData.sarpras));
+    if (newData.suratMasuk) setSuratMasuk(sanitizeEntityList(newData.suratMasuk));
+    if (newData.suratKeluar) setSuratKeluar(sanitizeEntityList(newData.suratKeluar));
+  };
+
+  const handleUpdateProfil = (newProfil: ProfilSekolah) => {
+    setProfil(newProfil);
+    saveStored('profil', newProfil);
+    pushDataToMasterSpreadsheet({
+      profil: newProfil,
+      pegawai,
+      siswa,
+      rapor,
+      btq,
+      sarpras,
+      suratMasuk,
+      suratKeluar,
+      actionName: 'saveProfil',
+    }).then((res) => {
+      setLastSyncTime(res.timestamp);
+    });
+    addToast('Identitas Sekolah berhasil disimpan & disinkronkan ke Master Spreadsheet!', 'success');
   };
 
   const handlePurgeDummyData = () => {
@@ -644,8 +997,20 @@ export default function App() {
     }
   };
 
+  // Reference to current state for real-time comparison
+  const dataRef = useRef({ profil, pegawai, siswa, rapor, btq, sarpras });
+  useEffect(() => {
+    dataRef.current = { profil, pegawai, siswa, rapor, btq, sarpras };
+  }, [profil, pegawai, siswa, rapor, btq, sarpras]);
+
+  // Helper: Deep comparison of datasets
+  const hasDataDifference = (prev: any, next: any): boolean => {
+    if (!prev && !next) return false;
+    if (!prev || !next) return true;
+    return JSON.stringify(prev) !== JSON.stringify(next);
+  };
+
   // 1. Initial Mount: Immediately load the latest real data updated by admin from Google Apps Script / Spreadsheet
-  // Ensuring Guest, Guru, and Admin see live real data rather than stale dummy state
   useEffect(() => {
     let isMounted = true;
     const loadInitialLiveMasterData = async () => {
@@ -655,18 +1020,33 @@ export default function App() {
 
         let hasUpdated = false;
         if (live.pegawai && live.pegawai.length > 0) {
-          setPegawai(live.pegawai);
-          saveStored('pegawai', live.pegawai);
+          const cleaned = sanitizeEntityList<Pegawai>(live.pegawai);
+          setPegawai(cleaned);
+          saveStored('pegawai', cleaned);
           hasUpdated = true;
         }
         if (live.siswa && live.siswa.length > 0) {
-          setSiswa(live.siswa);
-          saveStored('siswa', live.siswa);
+          const cleaned = sanitizeEntityList<Siswa>(live.siswa);
+          setSiswa(cleaned);
+          saveStored('siswa', cleaned);
+          hasUpdated = true;
+        }
+        if (live.rapor && live.rapor.length > 0) {
+          const cleaned = sanitizeEntityList<RekapRaporSiswa>(live.rapor);
+          setRapor(cleaned);
+          saveStored('rapor', cleaned);
+          hasUpdated = true;
+        }
+        if (live.btq && live.btq.length > 0) {
+          const cleaned = sanitizeEntityList<NilaiIjazahBTQ>(live.btq);
+          setBtq(cleaned);
+          saveStored('btq', cleaned);
           hasUpdated = true;
         }
         if (live.sarpras && live.sarpras.length > 0) {
-          setSarpras(live.sarpras);
-          saveStored('sarpras', live.sarpras);
+          const cleaned = sanitizeEntityList<SarprasItem>(live.sarpras);
+          setSarpras(cleaned);
+          saveStored('sarpras', cleaned);
           hasUpdated = true;
         }
         if (live.profil && live.profil.nama) {
@@ -675,7 +1055,7 @@ export default function App() {
           hasUpdated = true;
         }
         if (hasUpdated) {
-          addToast('Data real spreadsheet & update admin terbaru berhasil dimuat otomatis.', 'info');
+          // Notifikasi pembaruan otomatis dimatikan sesuai permintaan user
         }
       } catch (err) {
         console.warn('Gagal memuat data awal live spreadsheet:', err);
@@ -688,73 +1068,110 @@ export default function App() {
     };
   }, []);
 
-  // 2. Real-time periodic synchronization heartbeat
-  // Runs universally for all users (Guest, Guru, Admin) so any update made by admin is mirrored live
+  // 2. Real-time periodic synchronization heartbeat (every 5 seconds) + window focus listener
+  // Whenever anyone edits directly in Google Spreadsheet, the web SIM automatically reads and displays changes
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const checkSpreadsheetUpdates = async (isFocusTrigger = false) => {
       try {
-        const sheetId = getSavedMasterSheetId();
-        let res: any = null;
+        // Prioritize fast, direct Apps Script live fetch
+        let res: any = await fetchAllLiveMasterData(dataRef.current.profil).catch(() => null);
 
-        if (sheetId) {
-          res = await fetchMasterDatabaseRealtime(sheetId, null, profil).catch(() => null);
-        }
+        // Fallback to GViz if spreadsheet ID is manually configured
         if (!res) {
-          res = await fetchAllLiveMasterData(profil).catch(() => null);
+          const sheetId = getSavedMasterSheetId();
+          if (sheetId) {
+            res = await fetchMasterDatabaseRealtime(sheetId, null, dataRef.current.profil).catch(() => null);
+          }
         }
 
         if (!res) return;
 
         let hasChanges = false;
         if (res.pegawai && res.pegawai.length > 0) {
-          if (res.pegawai.length !== pegawai.length || res.pegawai[0]?.nama !== pegawai[0]?.nama) {
-            setPegawai(res.pegawai);
-            saveStored('pegawai', res.pegawai);
+          const cleaned = sanitizeEntityList<Pegawai>(res.pegawai);
+          if (hasDataDifference(dataRef.current.pegawai, cleaned)) {
+            setPegawai(cleaned);
+            saveStored('pegawai', cleaned);
             hasChanges = true;
           }
         }
         if (res.siswa && res.siswa.length > 0) {
-          if (res.siswa.length !== siswa.length || res.siswa[0]?.nama !== siswa[0]?.nama) {
-            setSiswa(res.siswa);
-            saveStored('siswa', res.siswa);
+          const cleaned = sanitizeEntityList<Siswa>(res.siswa);
+          if (hasDataDifference(dataRef.current.siswa, cleaned)) {
+            setSiswa(cleaned);
+            saveStored('siswa', cleaned);
             hasChanges = true;
           }
         }
-        if (res.profil && res.profil.nama) {
-          if (
-            res.profil.nama !== profil.nama ||
-            res.profil.kepalaSekolah !== profil.kepalaSekolah ||
-            res.profil.npsn !== profil.npsn ||
-            res.profil.tahunPelajaranAktif !== profil.tahunPelajaranAktif
-          ) {
-            setProfil(res.profil);
-            saveStored('profil', res.profil);
+        if (res.rapor && res.rapor.length > 0) {
+          const cleaned = sanitizeEntityList<RekapRaporSiswa>(res.rapor);
+          if (hasDataDifference(dataRef.current.rapor, cleaned)) {
+            setRapor(cleaned);
+            saveStored('rapor', cleaned);
             hasChanges = true;
           }
         }
+        if (res.btq && res.btq.length > 0) {
+          const cleaned = sanitizeEntityList<NilaiIjazahBTQ>(res.btq);
+          if (hasDataDifference(dataRef.current.btq, cleaned)) {
+            setBtq(cleaned);
+            saveStored('btq', cleaned);
+            hasChanges = true;
+          }
+        }
+        if (res.sarpras && res.sarpras.length > 0) {
+          const cleaned = sanitizeEntityList<SarprasItem>(res.sarpras);
+          if (hasDataDifference(dataRef.current.sarpras, cleaned)) {
+            setSarpras(cleaned);
+            saveStored('sarpras', cleaned);
+            hasChanges = true;
+          }
+        }
+        if (res.profil && res.profil.nama && hasDataDifference(dataRef.current.profil, res.profil)) {
+          setProfil(res.profil);
+          saveStored('profil', res.profil);
+          hasChanges = true;
+        }
+
         if (hasChanges) {
-          addToast('Pembaruan data terbaru dari admin & spreadsheet berhasil disinkronkan secara real-time!', 'info');
+          const syncTime = new Date().toLocaleTimeString('id-ID');
+          setLastSyncTime(syncTime);
+          // Notifikasi pembaruan otomatis dimatikan sesuai permintaan user agar tidak mengganggu UI
+        } else if (res.timestamp && !isFocusTrigger) {
+          setLastSyncTime(res.timestamp);
         }
       } catch (err) {
         // Silent background check
       }
-    }, 30000);
+    };
 
-    return () => clearInterval(interval);
-  }, [pegawai.length, siswa.length, profil.nama, profil.kepalaSekolah, profil.npsn, profil.tahunPelajaranAktif]);
+    // Fast heartbeat every 5 seconds for responsive live sync
+    const interval = setInterval(() => checkSpreadsheetUpdates(false), 5000);
+
+    // Immediate check when user switches back to this browser tab (e.g. after editing spreadsheet)
+    const handleWindowFocus = () => checkSpreadsheetUpdates(true);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, []);
 
   // Manual / Immediate Realtime Synchronization Handler
   const handleManualRealtimeSync = async () => {
     setIsSyncingRealtime(true);
     try {
-      const sheetId = getSavedMasterSheetId();
-      let res: any = null;
-      if (sheetId) {
-        res = await fetchMasterDatabaseRealtime(sheetId, null, profil).catch(() => null);
-      }
+      // Prioritize fast, direct Apps Script live fetch
+      let res: any = await fetchAllLiveMasterData(profil).catch(() => null);
+
       if (!res) {
-        res = await fetchAllLiveMasterData(profil).catch(() => null);
+        const sheetId = getSavedMasterSheetId();
+        if (sheetId) {
+          res = await fetchMasterDatabaseRealtime(sheetId, null, profil).catch(() => null);
+        }
       }
+
       const nowTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastSyncTime(nowTime);
       try {
@@ -765,22 +1182,39 @@ export default function App() {
         let countPeg = 0;
         let countSis = 0;
         if (res.pegawai && res.pegawai.length > 0) {
-          setPegawai(res.pegawai);
-          saveStored('pegawai', res.pegawai);
-          countPeg = res.pegawai.length;
+          const cleaned = sanitizeEntityList<Pegawai>(res.pegawai);
+          setPegawai(cleaned);
+          saveStored('pegawai', cleaned);
+          countPeg = cleaned.length;
         }
         if (res.siswa && res.siswa.length > 0) {
-          setSiswa(res.siswa);
-          saveStored('siswa', res.siswa);
-          countSis = res.siswa.length;
+          const cleaned = sanitizeEntityList<Siswa>(res.siswa);
+          setSiswa(cleaned);
+          saveStored('siswa', cleaned);
+          countSis = cleaned.length;
+        }
+        if (res.rapor && res.rapor.length > 0) {
+          const cleaned = sanitizeEntityList<RekapRaporSiswa>(res.rapor);
+          setRapor(cleaned);
+          saveStored('rapor', cleaned);
+        }
+        if (res.btq && res.btq.length > 0) {
+          const cleaned = sanitizeEntityList<NilaiIjazahBTQ>(res.btq);
+          setBtq(cleaned);
+          saveStored('btq', cleaned);
+        }
+        if (res.sarpras && res.sarpras.length > 0) {
+          const cleaned = sanitizeEntityList<SarprasItem>(res.sarpras);
+          setSarpras(cleaned);
+          saveStored('sarpras', cleaned);
         }
         if (res.profil && res.profil.nama) {
           setProfil(res.profil);
           saveStored('profil', res.profil);
         }
-        addToast(`Sinkronisasi real-time berhasil (${nowTime})! Terhubung ke Master Database (${countPeg || pegawai.length} Pegawai, ${countSis || siswa.length} Siswa).`, 'success');
+        addToast(`Sinkronisasi real-time berhasil (${nowTime})! Membaca ${countPeg || pegawai.length} Pegawai, ${countSis || siswa.length} Siswa langsung dari Spreadsheet.`, 'success');
       } else {
-        addToast(`Sistem SIM SDN Kedungringin 1 terkunci dengan 11 Pegawai Master Spreadsheet (${nowTime}).`, 'success');
+        addToast(`Sistem SIM SDN Kedungringin 1 terhubung ke Master Spreadsheet (${nowTime}).`, 'success');
       }
     } catch (err: any) {
       addToast('Pemeriksaan real-time database selesai.', 'info');
@@ -799,7 +1233,7 @@ export default function App() {
           profil={profil}
           currentUser={currentUser}
           isLoggedIn={isLoggedIn}
-          onUpdateProfil={setProfil}
+          onUpdateProfil={handleUpdateProfil}
           onResetData={handleResetData}
           onOpenLoginModal={() => setLoginModalOpen(true)}
           onLogout={handleLogout}
@@ -814,6 +1248,7 @@ export default function App() {
             <LoginMenu
               profil={profil}
               pegawaiList={pegawai}
+              siswaList={siswa}
               currentUser={currentUser}
               onLogin={handleLogin}
               onLogout={handleLogout}
@@ -870,6 +1305,16 @@ export default function App() {
               onOpenTranscriptModal={setActiveTranscript}
               onOpenCertificateModal={setActiveCertificate}
               onOpenSKPModal={setActiveSKP}
+              tabunganList={tabunganList}
+              saldoAwalList={saldoAwalList}
+              onSaveTransaksi={handleSaveTransaksiTabungan}
+              onSaveSaldoAwal={handleSaveSaldoAwalTabungan}
+              onDeleteTransaksi={handleDeleteTransaksiTabungan}
+              presensiHarianList={presensiHarianList}
+              presensiBulananList={presensiBulananList}
+              onSavePresensiHarian={handleSavePresensiHarian}
+              onSavePresensiBulanan={handleSavePresensiBulanan}
+              onDeletePresensiHarian={handleDeletePresensiHarian}
             />
           )}
 
@@ -956,7 +1401,7 @@ export default function App() {
                 presensiList={presensiList}
                 skpList={skpList}
                 userRole={currentUser.role}
-                onUpdateProfil={setProfil}
+                onUpdateProfil={handleUpdateProfil}
                 onUpdateData={handleBatchUpdateData}
                 onNotify={(msg, type) => addToast(msg, type || 'info')}
                 onPurgeDummyData={handlePurgeDummyData}

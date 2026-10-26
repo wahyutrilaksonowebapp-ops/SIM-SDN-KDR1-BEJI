@@ -156,11 +156,11 @@ export const SyncConflictModal: React.FC<SyncConflictModalProps> = ({
               Tidak ada konflik terdeteksi pada kategori ini.
             </div>
           ) : (
-            filteredConflicts.map((c) => {
+            filteredConflicts.map((c, idx) => {
               const isExpanded = expandedId === c.id;
               return (
                 <div
-                  key={c.id}
+                  key={`${c.id || 'conflict'}-${idx}`}
                   className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs transition-all"
                 >
                   <div

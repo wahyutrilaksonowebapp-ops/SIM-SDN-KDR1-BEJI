@@ -13,13 +13,14 @@ import {
   upsertWithDeduplication, 
   FIELD_LABELS 
 } from './dataSyncDeduplicator';
-import { SheetDefinition } from './googleDriveSheets';
+import { SheetDefinition, populateSpreadsheet } from './googleDriveSheets';
+import { getAccessToken } from './googleAuth';
 import { INITIAL_PROFIL } from '../data/initialData';
 
 export const TARGET_GDRIVE_FOLDER_ID = '1cry49dLyjsyXfkGJIARR_PLwUV67t7ur';
 export const MASTER_SPREADSHEET_TITLE = 'SIM_SDN_Kedungringin1_Master_Database_2026_2027';
 
-export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew/exec';
+export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyGKR4TKbaL38H4R_pNvEzej9CwOogP9pAE7YKtlDYgm9fawAZPrewDWYATplrhbRr84w/exec';
 
 export const STORAGE_KEYS = {
   MASTER_SHEET_ID: 'sim_kdr1_master_sheet_id',
@@ -31,6 +32,39 @@ export const STORAGE_KEYS = {
   LAST_SYNC_STATUS: 'sim_kdr1_master_last_sync_status',
   DATA_SOURCE_MODE: 'sim_kdr1_data_source_mode', // 'spreadsheet' | 'local'
 };
+
+// Normalize Google Spreadsheet date strings (such as "Date(1980,5,18)" or ISO timestamp) into standard YYYY-MM-DD
+export function normalizeDateString(val: any): string {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (!s || s === '-' || s.toLowerCase() === 'undefined' || s.toLowerCase() === 'null') return '';
+
+  // Handle Google Visualization Date(YYYY, monthIndex, day) format
+  const gvizMatch = s.match(/Date\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (gvizMatch) {
+    const y = parseInt(gvizMatch[1], 10);
+    // GViz month is 0-indexed (0=Jan, 5=Jun, etc.)
+    const m = parseInt(gvizMatch[2], 10) + 1;
+    const d = parseInt(gvizMatch[3], 10);
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  // Handle ISO 2026-02-19T17:00:00.000Z
+  if (s.includes('T') && !isNaN(Date.parse(s))) {
+    try {
+      const d = new Date(s);
+      return d.toISOString().split('T')[0];
+    } catch {}
+  }
+
+  // Handle DD/MM/YYYY
+  const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) {
+    return `${dmyMatch[3]}-${String(dmyMatch[2]).padStart(2, '0')}-${String(dmyMatch[1]).padStart(2, '0')}`;
+  }
+
+  return s;
+}
 
 // =========================================================================
 // HELPER: EXTRACT SPREADSHEET ID FROM URL OR RAW STRING
@@ -74,6 +108,32 @@ export function saveMasterSheetId(id: string, url?: string) {
   }
 }
 
+export function getSavedWebAppUrl(): string {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.WEB_APP_URL);
+    // If not found or if user had the previous script URL cached, migrate to the locked URL
+    if (!saved || saved.includes('AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew')) {
+      localStorage.setItem(STORAGE_KEYS.WEB_APP_URL, LOCKED_WEB_APP_URL);
+      return LOCKED_WEB_APP_URL;
+    }
+    return saved;
+  } catch {
+    return LOCKED_WEB_APP_URL;
+  }
+}
+
+export function saveWebAppUrl(url: string) {
+  try {
+    if (url && url.trim()) {
+      localStorage.setItem(STORAGE_KEYS.WEB_APP_URL, url.trim());
+    } else {
+      localStorage.setItem(STORAGE_KEYS.WEB_APP_URL, LOCKED_WEB_APP_URL);
+    }
+  } catch (err) {
+    console.error('Failed to save Web App URL:', err);
+  }
+}
+
 // =========================================================================
 // BUILD 1 SINGLE MASTER DATABASE SPREADSHEET (ALL IN ONE)
 // =========================================================================
@@ -97,7 +157,10 @@ export function buildMasterDatabaseSpreadsheet(data: {
     'ID', 'NIP', 'Nama Lengkap', 'Gelar Depan', 'Gelar Belakang', 'Jenis Kelamin',
     'Golongan', 'Pangkat', 'Jabatan', 'Status Pegawai', 'Pendidikan Terakhir',
     'TMT CPNS/PPPK', 'Tempat Lahir', 'Tanggal Lahir', 'Kontak / WA', 'Email',
-    'Unit Kerja', 'No Karpeg', 'No Taspen', 'NPWP'
+    'Unit Kerja', 'No Karpeg', 'No Taspen', 'NPWP',
+    'Nomor SK Tingkat', 'Tanggal SK Tingkat', 'TMT SK Tingkat',
+    'Nomor SK Berkala', 'Tanggal SK Berkala', 'TMT SK Berkala',
+    'Nomor SK Angkatan', 'Tanggal SK Angkatan', 'TMT SK Angkatan'
   ];
   const pegRows: (string | number)[][] = [
     pegHeader,
@@ -121,7 +184,16 @@ export function buildMasterDatabaseSpreadsheet(data: {
       p.unitKerja || profil.nama,
       p.karpeg || '-',
       p.nomorTaspen || '-',
-      p.npwp || '-'
+      p.npwp || '-',
+      p.skPangkatTerakhir?.nomor || '-',
+      p.skPangkatTerakhir?.tanggal || '-',
+      p.skPangkatTerakhir?.tmt || '-',
+      p.skBerkalaTerakhir?.nomor || '-',
+      p.skBerkalaTerakhir?.tanggal || '-',
+      p.skBerkalaTerakhir?.tmt || '-',
+      p.skAngkatan?.nomor || '-',
+      p.skAngkatan?.tanggal || '-',
+      p.skAngkatan?.tmt || '-'
     ])
   ];
 
@@ -472,12 +544,26 @@ export function buildMasterDatabaseSpreadsheet(data: {
 export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
   if (!rows || rows.length === 0) return [];
 
+  const isHeaderRow = (idVal: any, nameVal: any) => {
+    const id = String(idVal || '').trim().toUpperCase();
+    if (id === 'ID') return true;
+    const name = String(nameVal || '').trim().toLowerCase();
+    if (!name || name === 'nama lengkap' || name === 'nama' || name === 'nama pegawai') return true;
+    return false;
+  };
+
   // Case A: Array of Objects (from Google Apps Script getAllData)
   if (rows[0] && typeof rows[0] === 'object' && !Array.isArray(rows[0])) {
     return rows
-      .filter((item) => item && (item['Nama Lengkap'] || item['Nama'] || item['nama']))
+      .filter((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const rawId = item['ID'] || item['id'] || '';
+        const rawName = item['Nama Lengkap'] || item['Nama'] || item['nama'] || '';
+        return !isHeaderRow(rawId, rawName);
+      })
       .map((item, idx) => {
-        const id = String(item['ID'] || item['id'] || `peg-${idx + 1}`).trim();
+        let id = String(item['ID'] || item['id'] || `peg-${idx + 1}`).trim();
+        if (!id || id.toUpperCase() === 'ID') id = `peg-${idx + 1}`;
         const nip = String(item['NIP'] || item['nip'] || '-').trim();
         const nama = String(item['Nama Lengkap'] || item['Nama'] || item['nama'] || '').trim();
         const gelarDepan = String(item['Gelar Depan'] || item['gelarDepan'] || '').trim();
@@ -492,15 +578,47 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
         const jabatan = String(item['Jabatan'] || item['jabatan'] || 'Guru');
         const statusKepegawaian = String(item['Status Pegawai'] || item['statusKepegawaian'] || 'PNS') as any;
         const pendidikanTerakhir = String(item['Pendidikan Terakhir'] || item['pendidikanTerakhir'] || 'S1');
-        const tmt = String(item['TMT CPNS/PPPK'] || item['TMT'] || item['tmt'] || '2010-01-01');
+        const tmt = normalizeDateString(item['TMT CPNS/PPPK'] || item['TMT'] || item['tmt'] || '2010-01-01');
         const tempatLahir = String(item['Tempat Lahir'] || item['tempatLahir'] || 'Pasuruan');
-        const tanggalLahir = String(item['Tanggal Lahir'] || item['tanggalLahir'] || '1985-01-01');
+        const tanggalLahir = normalizeDateString(item['Tanggal Lahir'] || item['tanggalLahir'] || '1985-01-01');
         const kontak = String(item['Kontak / WA'] || item['kontak'] || '-');
         const email = String(item['Email'] || item['email'] || '-');
         const unitKerja = String(item['Unit Kerja'] || item['unitKerja'] || 'SDN Kedungringin 1 Beji');
         const karpeg = String(item['No Karpeg'] || item['karpeg'] || '-');
         const nomorTaspen = String(item['No Taspen'] || item['nomorTaspen'] || '-');
         const npwp = String(item['NPWP'] || item['npwp'] || '-');
+
+        const skPangkatNomor = String(item['Nomor SK Tingkat'] || item['skPangkatNomor'] || '').trim();
+        const skPangkatTanggal = normalizeDateString(item['Tanggal SK Tingkat'] || item['skPangkatTanggal'] || '');
+        const skPangkatTmt = normalizeDateString(item['TMT SK Tingkat'] || item['skPangkatTmt'] || '');
+        const skPangkatTerakhir = (skPangkatNomor && skPangkatNomor !== '-') ? {
+          nomor: skPangkatNomor,
+          tanggal: skPangkatTanggal,
+          tmt: skPangkatTmt,
+          pejabatPenetap: 'Bupati Pasuruan',
+        } : undefined;
+
+        const skBerkalaNomor = String(item['Nomor SK Berkala'] || item['skBerkalaNomor'] || '').trim();
+        const skBerkalaTanggal = normalizeDateString(item['Tanggal SK Berkala'] || item['skBerkalaTanggal'] || '');
+        const skBerkalaTmt = normalizeDateString(item['TMT SK Berkala'] || item['skBerkalaTmt'] || '');
+        const skBerkalaTerakhir = (skBerkalaNomor && skBerkalaNomor !== '-') ? {
+          nomor: skBerkalaNomor,
+          tanggal: skBerkalaTanggal,
+          tmt: skBerkalaTmt,
+          gajiPokok: 0,
+          tmtBerikutnya: '',
+          pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
+        } : undefined;
+
+        const skAngkatanNomor = String(item['Nomor SK Angkatan'] || item['skAngkatanNomor'] || '').trim();
+        const skAngkatanTanggal = normalizeDateString(item['Tanggal SK Angkatan'] || item['skAngkatanTanggal'] || '');
+        const skAngkatanTmt = normalizeDateString(item['TMT SK Angkatan'] || item['skAngkatanTmt'] || '');
+        const skAngkatan = (skAngkatanNomor && skAngkatanNomor !== '-') ? {
+          nomor: skAngkatanNomor,
+          tanggal: skAngkatanTanggal,
+          tmt: skAngkatanTmt,
+          pejabatPenetap: 'Bupati Pasuruan',
+        } : undefined;
 
         return {
           id,
@@ -523,6 +641,9 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
           karpeg,
           nomorTaspen,
           npwp,
+          skPangkatTerakhir,
+          skBerkalaTerakhir,
+          skAngkatan,
         };
       });
   }
@@ -531,9 +652,13 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
   if (rows.length < 2) return [];
   const dataRows = rows.slice(1);
   return dataRows
-    .filter((r) => r && r[2]) // must have nama
+    .filter((r) => {
+      if (!r || !r[2]) return false;
+      return !isHeaderRow(r[0], r[2]);
+    })
     .map((r, idx) => {
-      const id = String(r[0] || `peg-${idx + 1}`).trim();
+      let id = String(r[0] || `peg-${idx + 1}`).trim();
+      if (!id || id.toUpperCase() === 'ID') id = `peg-${idx + 1}`;
       const nip = String(r[1] || '').trim();
       const nama = String(r[2] || '').trim();
       const gelarDepan = String(r[3] || '').trim();
@@ -548,15 +673,47 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
       const jabatan = String(r[8] || 'Guru');
       const statusKepegawaian = String(r[9] || 'PNS') as any;
       const pendidikanTerakhir = String(r[10] || 'S1');
-      const tmt = String(r[11] || '2010-01-01');
+      const tmt = normalizeDateString(r[11] || '2010-01-01');
       const tempatLahir = String(r[12] || 'Pasuruan');
-      const tanggalLahir = String(r[13] || '1985-01-01');
+      const tanggalLahir = normalizeDateString(r[13] || '1985-01-01');
       const kontak = String(r[14] || '-');
       const email = String(r[15] || '-');
       const unitKerja = String(r[16] || 'SDN Kedungringin 1 Beji');
       const karpeg = String(r[17] || '-');
       const nomorTaspen = String(r[18] || '-');
       const npwp = String(r[19] || '-');
+
+      const skPangkatNomor = String(r[20] || '').trim();
+      const skPangkatTanggal = normalizeDateString(r[21] || '');
+      const skPangkatTmt = normalizeDateString(r[22] || '');
+      const skPangkatTerakhir = (skPangkatNomor && skPangkatNomor !== '-') ? {
+        nomor: skPangkatNomor,
+        tanggal: skPangkatTanggal,
+        tmt: skPangkatTmt,
+        pejabatPenetap: 'Bupati Pasuruan',
+      } : undefined;
+
+      const skBerkalaNomor = String(r[23] || '').trim();
+      const skBerkalaTanggal = normalizeDateString(r[24] || '');
+      const skBerkalaTmt = normalizeDateString(r[25] || '');
+      const skBerkalaTerakhir = (skBerkalaNomor && skBerkalaNomor !== '-') ? {
+        nomor: skBerkalaNomor,
+        tanggal: skBerkalaTanggal,
+        tmt: skBerkalaTmt,
+        gajiPokok: 0,
+        tmtBerikutnya: '',
+        pejabatPenetap: 'Kepala Dinas Pendidikan Kab. Pasuruan',
+      } : undefined;
+
+      const skAngkatanNomor = String(r[26] || '').trim();
+      const skAngkatanTanggal = normalizeDateString(r[27] || '');
+      const skAngkatanTmt = normalizeDateString(r[28] || '');
+      const skAngkatan = (skAngkatanNomor && skAngkatanNomor !== '-') ? {
+        nomor: skAngkatanNomor,
+        tanggal: skAngkatanTanggal,
+        tmt: skAngkatanTmt,
+        pejabatPenetap: 'Bupati Pasuruan',
+      } : undefined;
 
       return {
         id,
@@ -579,6 +736,9 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
         karpeg,
         nomorTaspen,
         npwp,
+        skPangkatTerakhir,
+        skBerkalaTerakhir,
+        skAngkatan,
       };
     });
 }
@@ -587,19 +747,33 @@ export function parseSiswaFromSheetRows(rows: any[]): Siswa[] {
   if (!rows || rows.length === 0) return [];
   const validAgama: Siswa['agama'][] = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'];
 
+  const isHeaderRow = (idVal: any, nameVal: any) => {
+    const id = String(idVal || '').trim().toUpperCase();
+    if (id === 'ID') return true;
+    const name = String(nameVal || '').trim().toLowerCase();
+    if (!name || name.includes('nama lengkap') || name === 'nama' || name.includes('nama siswa')) return true;
+    return false;
+  };
+
   // Case A: Array of Objects (from Google Apps Script getAllData)
   if (rows[0] && typeof rows[0] === 'object' && !Array.isArray(rows[0])) {
     return rows
-      .filter((item) => item && (item['Nama Lengkap Siswa'] || item['Nama Siswa'] || item['Nama'] || item['nama']))
+      .filter((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const rawId = item['ID'] || item['id'] || '';
+        const rawName = item['Nama Lengkap Siswa'] || item['Nama Siswa'] || item['Nama'] || item['nama'] || '';
+        return !isHeaderRow(rawId, rawName);
+      })
       .map((item, idx) => {
-        const id = String(item['ID'] || item['id'] || `sis-${idx + 1}`).trim();
+        let id = String(item['ID'] || item['id'] || `sis-${idx + 1}`).trim();
+        if (!id || id.toUpperCase() === 'ID') id = `sis-${idx + 1}`;
         const nisn = String(item['NISN'] || item['nisn'] || '').trim();
         const nis = String(item['NIS'] || item['nis'] || '').trim();
         const nama = String(item['Nama Lengkap Siswa'] || item['Nama Siswa'] || item['Nama'] || item['nama'] || '').trim();
         const rawJk = String(item['Jenis Kelamin'] || item['JK'] || item['jenisKelamin'] || 'L').toUpperCase();
         const jenisKelamin = rawJk.startsWith('P') ? 'P' : 'L';
         const tempatLahir = String(item['Tempat Lahir'] || item['tempatLahir'] || 'Pasuruan').trim();
-        const tanggalLahir = String(item['Tanggal Lahir'] || item['tanggalLahir'] || '2014-01-01').trim();
+        const tanggalLahir = normalizeDateString(item['Tanggal Lahir'] || item['tanggalLahir'] || '2014-01-01');
         const rawAgama = String(item['Agama'] || item['agama'] || 'Islam').trim();
         const agama: Siswa['agama'] = validAgama.includes(rawAgama as any) ? (rawAgama as Siswa['agama']) : 'Islam';
         const kelas = Number(item['Kelas'] || item['kelas']) || 1;
@@ -608,7 +782,7 @@ export function parseSiswaFromSheetRows(rows: any[]): Siswa[] {
         const namaIbu = String(item['Nama Ibu'] || item['namaIbu'] || '-').trim();
         const alamat = String(item['Alamat Rumah'] || item['Alamat'] || item['alamat'] || 'Kedungringin, Beji').trim();
         const noHpOrtu = String(item['No HP Ortu'] || item['noHpOrtu'] || '-').trim();
-        const tmtDiterima = String(item['TMT Diterima'] || item['tmtDiterima'] || '2024-07-15').trim();
+        const tmtDiterima = normalizeDateString(item['TMT Diterima'] || item['tmtDiterima'] || '2024-07-15');
         const statusSiswa = (String(item['Status Siswa'] || item['statusSiswa'] || 'Aktif').trim()) as any;
 
         return {
@@ -636,15 +810,19 @@ export function parseSiswaFromSheetRows(rows: any[]): Siswa[] {
   if (rows.length < 2) return [];
   const dataRows = rows.slice(1);
   return dataRows
-    .filter((r) => r && r[3]) // must have nama
+    .filter((r) => {
+      if (!r || !r[3]) return false;
+      return !isHeaderRow(r[0], r[3]);
+    })
     .map((r, idx) => {
-      const id = String(r[0] || `sis-${idx + 1}`).trim();
+      let id = String(r[0] || `sis-${idx + 1}`).trim();
+      if (!id || id.toUpperCase() === 'ID') id = `sis-${idx + 1}`;
       const nisn = String(r[1] || '').trim();
       const nis = String(r[2] || '').trim();
       const nama = String(r[3] || '').trim();
       const jenisKelamin = String(r[4] || 'L').toUpperCase().startsWith('P') ? 'P' : 'L';
       const tempatLahir = String(r[5] || 'Pasuruan').trim();
-      const tanggalLahir = String(r[6] || '2014-01-01').trim();
+      const tanggalLahir = normalizeDateString(r[6] || '2014-01-01');
       const rawAgama = String(r[7] || 'Islam').trim();
       const agama: Siswa['agama'] = validAgama.includes(rawAgama as any) ? (rawAgama as Siswa['agama']) : 'Islam';
       const kelas = Number(r[8]) || 1;
@@ -653,7 +831,7 @@ export function parseSiswaFromSheetRows(rows: any[]): Siswa[] {
       const namaIbu = String(r[11] || '-').trim();
       const alamat = String(r[12] || 'Kedungringin, Beji').trim();
       const noHpOrtu = String(r[13] || '-').trim();
-      const tmtDiterima = String(r[14] || '2024-07-15').trim();
+      const tmtDiterima = normalizeDateString(r[14] || '2024-07-15');
       const statusSiswa = (String(r[15] || 'Aktif').trim()) as any;
 
       return {
@@ -677,8 +855,8 @@ export function parseSiswaFromSheetRows(rows: any[]): Siswa[] {
     });
 }
 
-export function parseSarprasFromSheetRows(rows: any[][]): SarprasItem[] {
-  if (!rows || rows.length < 2) return [];
+export function parseSarprasFromSheetRows(rows: any[]): SarprasItem[] {
+  if (!rows || rows.length === 0) return [];
   const validKategori: SarprasItem['kategori'][] = [
     'Ruang Pembelajaran',
     'Ruang Penunjang',
@@ -686,10 +864,63 @@ export function parseSarprasFromSheetRows(rows: any[][]): SarprasItem[] {
     'Fasilitas Terbuka',
     'Peralatan',
   ];
+
+  const isHeaderRow = (idVal: any, nameVal: any) => {
+    const id = String(idVal || '').trim().toUpperCase();
+    if (id === 'ID') return true;
+    const name = String(nameVal || '').trim().toLowerCase();
+    if (!name || name.includes('nama sarpras') || name === 'nama' || name.includes('sarpras')) return true;
+    return false;
+  };
+
+  // Case A: Array of Objects
+  if (rows[0] && typeof rows[0] === 'object' && !Array.isArray(rows[0])) {
+    return rows
+      .filter((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const rawId = item['ID'] || item['id'] || '';
+        const rawName = item['Nama Sarpras'] || item['namaSarpras'] || item['Nama'] || '';
+        return !isHeaderRow(rawId, rawName);
+      })
+      .map((item, idx) => {
+        let id = String(item['ID'] || item['id'] || `sar-${idx + 1}`).trim();
+        if (!id || id.toUpperCase() === 'ID') id = `sar-${idx + 1}`;
+        const rawKategori = String(item['Kategori'] || item['kategori'] || 'Peralatan').trim();
+        const kategori: SarprasItem['kategori'] = validKategori.includes(rawKategori as any)
+          ? (rawKategori as SarprasItem['kategori'])
+          : 'Peralatan';
+        const rawKondisi = String(item['Kondisi'] || item['kondisi'] || 'Baik').trim();
+        const kondisi: SarprasItem['kondisi'] = rawKondisi.toLowerCase().includes('rusak berat')
+          ? 'Rusak Berat'
+          : rawKondisi.toLowerCase().includes('rusak')
+          ? 'Rusak Ringan'
+          : 'Baik';
+
+        return {
+          id,
+          namaSarpras: String(item['Nama Sarpras'] || item['namaSarpras'] || item['Nama'] || '').trim(),
+          kategori,
+          jumlah: Number(item['Jumlah'] || item['jumlah']) || 1,
+          satuan: String(item['Satuan'] || item['satuan'] || 'Unit').trim(),
+          kondisi,
+          lokasi: String(item['Lokasi'] || item['lokasi'] || 'Ruang Kelas').trim(),
+          fotoUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
+          keterangan: String(item['Keterangan'] || item['keterangan'] || 'Tercatat di SIM').trim(),
+        };
+      });
+  }
+
+  // Case B: 2D Array
+  if (rows.length < 2) return [];
   const dataRows = rows.slice(1);
   return dataRows
-    .filter((r) => r && r[2])
+    .filter((r) => {
+      if (!r || !r[2]) return false;
+      return !isHeaderRow(r[0], r[2]);
+    })
     .map((r, idx) => {
+      let id = String(r[0] || `sar-${idx + 1}`).trim();
+      if (!id || id.toUpperCase() === 'ID') id = `sar-${idx + 1}`;
       const rawKategori = String(r[3] || 'Peralatan').trim();
       const kategori: SarprasItem['kategori'] = validKategori.includes(rawKategori as any)
         ? (rawKategori as SarprasItem['kategori'])
@@ -702,7 +933,7 @@ export function parseSarprasFromSheetRows(rows: any[][]): SarprasItem[] {
         : 'Baik';
 
       return {
-        id: String(r[0] || `sar-${idx + 1}`).trim(),
+        id,
         namaSarpras: String(r[2] || '').trim(),
         kategori,
         jumlah: Number(r[4]) || 1,
@@ -711,6 +942,204 @@ export function parseSarprasFromSheetRows(rows: any[][]): SarprasItem[] {
         lokasi: String(r[7] || 'Ruang Kelas').trim(),
         fotoUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
         keterangan: String(r[8] || 'Tercatat di SIM').trim(),
+      };
+    });
+}
+
+export function parseRaporFromSheetRows(rows: any[]): RekapRaporSiswa[] {
+  if (!rows || rows.length === 0) return [];
+
+  const isHeaderRow = (idVal: any, nameVal: any) => {
+    const id = String(idVal || '').trim().toUpperCase();
+    if (id === 'ID') return true;
+    const name = String(nameVal || '').trim().toLowerCase();
+    if (!name || name.includes('nama siswa') || name === 'nama') return true;
+    return false;
+  };
+
+  // Case A: Array of Objects (Google Apps Script getAllData)
+  if (typeof rows[0] === 'object' && !Array.isArray(rows[0])) {
+    return rows
+      .filter((r) => {
+        if (!r || typeof r !== 'object') return false;
+        const rawId = r['ID'] || r['id'] || '';
+        const rawName = r['Nama Siswa'] || r['namaSiswa'] || r['Nama'] || '';
+        return !isHeaderRow(rawId, rawName);
+      })
+      .map((r, idx) => {
+        let id = String(r['ID'] || r['id'] || `rr-${idx + 1}`).trim();
+        if (!id || id.toUpperCase() === 'ID') id = `rr-${idx + 1}`;
+        const s7 = Number(r['Sem 7'] || r['sem7'] || 85);
+        const s8 = Number(r['Sem 8'] || r['sem8'] || 85);
+        const s9 = Number(r['Sem 9'] || r['sem9'] || 86);
+        const s10 = Number(r['Sem 10'] || r['sem10'] || 87);
+        const s11 = Number(r['Sem 11'] || r['sem11'] || 88);
+        const s12 = Number(r['Sem 12'] || r['sem12'] || 89);
+        const num = Number(r['TKA Numerasi'] || r['tkaNumerasi'] || 0);
+        const lit = Number(r['TKA Literasi'] || r['tkaLiterasi'] || 0);
+        const ipa = Number(r['TKA IPA'] || r['tkaIpa'] || 0);
+        const tkaAvg = Number(r['Rata TKA'] || r['rataTka'] || (num && lit ? ((num + lit + ipa) / 3).toFixed(1) : 0));
+        return {
+          id,
+          siswaId: String(r['Siswa ID'] || r['siswaId'] || `sis-${idx + 1}`),
+          nisn: String(r['NISN'] || r['nisn'] || '').replace("'", '').trim(),
+          namaSiswa: String(r['Nama Siswa'] || r['namaSiswa'] || '').trim(),
+          kelas: Number(r['Kelas'] || r['kelas']) || 6,
+          rombel: String(r['Rombel'] || r['rombel'] || 'A'),
+          semester7: { 'Pendidikan Pancasila': s7, 'Bahasa Indonesia': s7, 'Matematika': s7, 'IPAS': s7 },
+          semester8: { 'Pendidikan Pancasila': s8, 'Bahasa Indonesia': s8, 'Matematika': s8, 'IPAS': s8 },
+          semester9: { 'Pendidikan Pancasila': s9, 'Bahasa Indonesia': s9, 'Matematika': s9, 'IPAS': s9 },
+          semester10: { 'Pendidikan Pancasila': s10, 'Bahasa Indonesia': s10, 'Matematika': s10, 'IPAS': s10 },
+          semester11: { 'Pendidikan Pancasila': s11, 'Bahasa Indonesia': s11, 'Matematika': s11, 'IPAS': s11 },
+          semester12: { 'Pendidikan Pancasila': s12, 'Bahasa Indonesia': s12, 'Matematika': s12, 'IPAS': s12 },
+          tka: {
+            numerasi: num,
+            literasi: lit,
+            ipaPilihan: ipa,
+            rataRata: tkaAvg,
+            predikat: (r['Predikat'] || (tkaAvg >= 85 ? 'Sangat Baik' : tkaAvg >= 75 ? 'Baik' : 'Cukup')) as any,
+          },
+        };
+      });
+  }
+
+  // Case B: 2D Array (GViz / Sheets API)
+  if (rows.length < 2) return [];
+  return rows.slice(1)
+    .filter((r) => {
+      if (!r || !(r[1] || r[2])) return false;
+      return !isHeaderRow(r[0], r[2]);
+    })
+    .map((r, idx) => {
+      let id = String(r[0] || `rr-${idx + 1}`).trim();
+      if (!id || id.toUpperCase() === 'ID') id = `rr-${idx + 1}`;
+      const s7 = Number(r[5]) || 85;
+      const s8 = Number(r[6]) || 85;
+      const s9 = Number(r[7]) || 86;
+      const s10 = Number(r[8]) || 87;
+      const s11 = Number(r[9]) || 88;
+      const s12 = Number(r[10]) || 89;
+      const num = Number(r[13]) || 0;
+      const lit = Number(r[14]) || 0;
+      const ipa = Number(r[15]) || 0;
+      const tkaAvg = Number(r[16]) || 0;
+      return {
+        id,
+        siswaId: `sis-${idx + 1}`,
+        nisn: String(r[1] || '').replace("'", '').trim(),
+        namaSiswa: String(r[2] || '').trim(),
+        kelas: Number(r[3]) || 6,
+        rombel: String(r[4] || 'A'),
+        semester7: { 'Pendidikan Pancasila': s7, 'Bahasa Indonesia': s7, 'Matematika': s7, 'IPAS': s7 },
+        semester8: { 'Pendidikan Pancasila': s8, 'Bahasa Indonesia': s8, 'Matematika': s8, 'IPAS': s8 },
+        semester9: { 'Pendidikan Pancasila': s9, 'Bahasa Indonesia': s9, 'Matematika': s9, 'IPAS': s9 },
+        semester10: { 'Pendidikan Pancasila': s10, 'Bahasa Indonesia': s10, 'Matematika': s10, 'IPAS': s10 },
+        semester11: { 'Pendidikan Pancasila': s11, 'Bahasa Indonesia': s11, 'Matematika': s11, 'IPAS': s11 },
+        semester12: { 'Pendidikan Pancasila': s12, 'Bahasa Indonesia': s12, 'Matematika': s12, 'IPAS': s12 },
+        tka: {
+          numerasi: num,
+          literasi: lit,
+          ipaPilihan: ipa,
+          rataRata: tkaAvg,
+          predikat: (r[17] || (tkaAvg >= 85 ? 'Sangat Baik' : 'Baik')) as any,
+        },
+      };
+    });
+}
+
+export function parseBTQFromSheetRows(rows: any[]): NilaiIjazahBTQ[] {
+  if (!rows || rows.length === 0) return [];
+
+  const isHeaderRow = (idVal: any, nameVal: any) => {
+    const id = String(idVal || '').trim().toUpperCase();
+    if (id === 'ID') return true;
+    const name = String(nameVal || '').trim().toLowerCase();
+    if (!name || name.includes('nama siswa') || name === 'nama') return true;
+    return false;
+  };
+
+  // Case A: Array of Objects (Google Apps Script getAllData)
+  if (typeof rows[0] === 'object' && !Array.isArray(rows[0])) {
+    return rows
+      .filter((r) => {
+        if (!r || typeof r !== 'object') return false;
+        const rawId = r['ID'] || r['id'] || '';
+        const rawName = r['Nama Siswa'] || r['namaSiswa'] || r['Nama'] || '';
+        return !isHeaderRow(rawId, rawName);
+      })
+      .map((r, idx) => {
+        let id = String(r['ID'] || r['id'] || `btq-${idx + 1}`).trim();
+        if (!id || id.toUpperCase() === 'ID') id = `btq-${idx + 1}`;
+        const tahsin = Number(r['Tahsin'] || r['tahsin']) || 80;
+        const tajwid = Number(r['Tajwid'] || r['tajwid']) || 80;
+        const tahfidz = Number(r['Tahfidz'] || r['tahfidz']) || 80;
+        const menulis = Number(r['Menulis'] || r['menulis']) || 80;
+        const membaca = Number(r['Membaca'] || r['membaca']) || 80;
+        const avg = Number(r['Rata-rata'] || r['rataRata']) || Number(((tahsin + tajwid + tahfidz + menulis + membaca) / 5).toFixed(1));
+        let predikat = (r['Predikat'] || r['predikat'] || 'Jayyid') as any;
+        if (!r['Predikat']) {
+          if (avg >= 90) predikat = 'Mumtaz';
+          else if (avg >= 80) predikat = 'Jayyid Jiddan';
+          else if (avg >= 75) predikat = 'Jayyid';
+          else if (avg >= 60) predikat = 'Maqbul';
+          else predikat = 'Kurang';
+        }
+        return {
+          id,
+          siswaId: String(r['Siswa ID'] || r['siswaId'] || `sis-${idx + 1}`),
+          nisn: String(r['NISN'] || r['nisn'] || '').replace("'", '').trim(),
+          namaSiswa: String(r['Nama Siswa'] || r['namaSiswa'] || '').trim(),
+          kelas: Number(r['Kelas'] || r['kelas']) || 6,
+          noSertifikat: String(r['No Sertifikat'] || r['noSertifikat'] || `421.2/BTQ-${String(idx + 1).padStart(3, '0')}/424.072.24/2026`),
+          tahsin,
+          tajwid,
+          tahfidz,
+          menulis,
+          membaca,
+          rataRata: avg,
+          predikat,
+          statusKelulusan: avg >= 60 ? 'Lulus' : 'Remedial',
+          catatan: String(r['Catatan'] || r['catatan'] || 'Memenuhi standarisasi kelulusan BTQ'),
+          tanggalTerbit: String(r['Tanggal Terbit'] || r['tanggalTerbit'] || '2026-06-20'),
+          penguji: String(r['Penguji'] || r['penguji'] || 'Ust. Ahmad Fauzi, S.Pd.I'),
+        };
+      });
+  }
+
+  // Case B: 2D Array (GViz / Sheets API)
+  if (rows.length < 2) return [];
+  return rows.slice(1)
+    .filter((r) => {
+      if (!r || !(r[1] || r[2])) return false;
+      return !isHeaderRow(r[0], r[2]);
+    })
+    .map((r, idx) => {
+      let id = String(r[0] || `btq-${idx + 1}`).trim();
+      if (!id || id.toUpperCase() === 'ID') id = `btq-${idx + 1}`;
+      const tahsin = Number(r[4]) || 80;
+      const tajwid = Number(r[5]) || 80;
+      const tahfidz = Number(r[6]) || 80;
+      const menulis = Number(r[7]) || 80;
+      const membaca = Number(r[8]) || 80;
+      const avg = Number(r[9]) || Number(((tahsin + tajwid + tahfidz + menulis + membaca) / 5).toFixed(1));
+      return {
+        id,
+        siswaId: `sis-${idx + 1}`,
+        nisn: String(r[1] || '').replace("'", '').trim(),
+        namaSiswa: String(r[2] || '').trim(),
+        kelas: 6,
+        noSertifikat: String(r[3] || `421.2/BTQ-${String(idx + 1).padStart(3, '0')}/424.072.24/2026`),
+        tahsin,
+        tajwid,
+        tahfidz,
+        menulis,
+        membaca,
+        rataRata: avg,
+        predikat: (r[10] || (avg >= 90 ? 'Mumtaz' : avg >= 80 ? 'Jayyid Jiddan' : 'Jayyid')) as any,
+        statusKelulusan: avg >= 60 ? 'Lulus' : 'Remedial',
+        catatan: 'Standar kelulusan BTQ',
+        tanggalTerbit: String(r[11] || '2026-06-20'),
+        penguji: String(r[12] || 'Ust. Ahmad Fauzi, S.Pd.I'),
       };
     });
 }
@@ -868,6 +1297,8 @@ export async function fetchMasterDatabaseRealtime(
 ): Promise<{
   pegawai?: Pegawai[];
   siswa?: Siswa[];
+  rapor?: RekapRaporSiswa[];
+  btq?: NilaiIjazahBTQ[];
   sarpras?: SarprasItem[];
   profil?: ProfilSekolah;
   rawRows?: Record<string, any[][]>;
@@ -878,7 +1309,7 @@ export async function fetchMasterDatabaseRealtime(
     throw new Error('ID atau link Google Spreadsheet tidak boleh kosong.');
   }
 
-  const sheetNames = ['Data_Pegawai', 'Data_Siswa', 'Sarpras_Aset', 'Profil_Sekolah'];
+  const sheetNames = ['Data_Pegawai', 'Data_Siswa', 'Sarpras_Aset', 'Profil_Sekolah', 'Rekap_Rapor', 'Nilai_BTQ'];
   let rawData: Record<string, any[][]> = {};
 
   // Try API v4 if accessToken provided
@@ -910,6 +1341,8 @@ export async function fetchMasterDatabaseRealtime(
   const parsedPegawai = rawData['Data_Pegawai'] ? parsePegawaiFromSheetRows(rawData['Data_Pegawai']) : undefined;
   const parsedSiswa = rawData['Data_Siswa'] ? parseSiswaFromSheetRows(rawData['Data_Siswa']) : undefined;
   const parsedSarpras = rawData['Sarpras_Aset'] ? parseSarprasFromSheetRows(rawData['Sarpras_Aset']) : undefined;
+  const parsedRapor = rawData['Rekap_Rapor'] ? parseRaporFromSheetRows(rawData['Rekap_Rapor']) : undefined;
+  const parsedBtq = rawData['Nilai_BTQ'] ? parseBTQFromSheetRows(rawData['Nilai_BTQ']) : undefined;
   const parsedProfil = rawData['Profil_Sekolah'] && rawData['Profil_Sekolah'].length > 0 
     ? parseProfilFromSheetRows(rawData['Profil_Sekolah'], currentProfil) 
     : undefined;
@@ -923,6 +1356,8 @@ export async function fetchMasterDatabaseRealtime(
   return {
     pegawai: parsedPegawai,
     siswa: parsedSiswa,
+    rapor: parsedRapor,
+    btq: parsedBtq,
     sarpras: parsedSarpras,
     profil: parsedProfil,
     rawRows: rawData,
@@ -967,12 +1402,13 @@ export async function fetchProfilSekolahFromSpreadsheet(
     }
   }
 
-  // 2. Fetch via Google Apps Script (LOCKED_WEB_APP_URL)
+  // 2. Fetch via Google Apps Script (proxy or direct)
   try {
-    const url = `${LOCKED_WEB_APP_URL}?action=getAllData`;
-    const gasRes = await fetch(url);
-    if (gasRes.ok) {
-      const data = await gasRes.json();
+    const webAppUrl = getSavedWebAppUrl();
+    const proxyRes = await fetch(`/api/live-data?scriptUrl=${encodeURIComponent(webAppUrl)}`);
+    if (proxyRes.ok) {
+      const resJson = await proxyRes.json();
+      const data = resJson.data;
       if (data && data.profil && Array.isArray(data.profil) && data.profil.length > 0) {
         const rows: any[][] = [];
         for (const item of data.profil) {
@@ -980,19 +1416,13 @@ export async function fetchProfilSekolahFromSpreadsheet(
             rows.push(item);
           } else if (typeof item === 'object' && item !== null) {
             const vals = Object.values(item);
-            if (vals.length >= 2) {
-              rows.push([vals[0], vals[1]]);
-            } else if (vals.length === 1) {
-              const keys = Object.keys(item);
-              rows.push([keys[0], vals[0]]);
-            }
+            if (vals.length >= 2) rows.push([vals[0], vals[1]]);
+            else if (vals.length === 1) rows.push([Object.keys(item)[0], vals[0]]);
           }
         }
         if (rows.length > 0) {
           const parsed = parseProfilFromSheetRows(rows, currentProfil);
-          if (parsed && parsed.nama) {
-            return parsed;
-          }
+          if (parsed && parsed.nama) return parsed;
         }
       }
     }
@@ -1009,33 +1439,40 @@ export async function fetchProfilSekolahFromSpreadsheet(
 
 /**
  * Mengambil data terbaru secara langsung dari Google Spreadsheet / Google Apps Script
- * Dipakai saat aplikasi pertama kali dimuat agar Pengunjung (Guest), Akun Guru, dan Admin
- * langsung mendapatkan data real spreadsheet & pembaruan terakhir dari admin.
+ * Dipakai saat aplikasi pertama kali dimuat & polling otomatis berkala
  */
 export async function fetchAllLiveMasterData(currentProfil?: ProfilSekolah): Promise<{
   pegawai?: Pegawai[];
   siswa?: Siswa[];
+  rapor?: RekapRaporSiswa[];
+  btq?: NilaiIjazahBTQ[];
   sarpras?: SarprasItem[];
   profil?: ProfilSekolah;
   timestamp: string;
 } | null> {
-  // 1. Prioritas 1: Google Apps Script Web App (LOCKED_WEB_APP_URL)
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
-    const url = `${LOCKED_WEB_APP_URL}?action=getAllData`;
-    const gasRes = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
+  const targetScriptUrl = getSavedWebAppUrl();
 
-    if (gasRes.ok) {
-      const data = await gasRes.json();
-      if (data && typeof data === 'object') {
+  // 1. Prioritas 1: Google Apps Script Web App via Backend Proxy /api/live-data (Bebas CORS & Sangat Cepat)
+  try {
+    const proxyRes = await fetch(`/api/live-data?scriptUrl=${encodeURIComponent(targetScriptUrl)}`);
+    if (proxyRes.ok) {
+      const json = await proxyRes.json();
+      if (json.success && json.data) {
+        const data = json.data;
         const parsedPeg = (data.pegawai && Array.isArray(data.pegawai) && data.pegawai.length > 0)
           ? parsePegawaiFromSheetRows(data.pegawai)
           : undefined;
 
         const parsedSis = (data.siswa && Array.isArray(data.siswa) && data.siswa.length > 0)
           ? parseSiswaFromSheetRows(data.siswa)
+          : undefined;
+
+        const parsedRap = (data.rapor && Array.isArray(data.rapor) && data.rapor.length > 0)
+          ? parseRaporFromSheetRows(data.rapor)
+          : undefined;
+
+        const parsedBtq = (data.btq && Array.isArray(data.btq) && data.btq.length > 0)
+          ? parseBTQFromSheetRows(data.btq)
           : undefined;
 
         const parsedSar = (data.sarpras && Array.isArray(data.sarpras) && data.sarpras.length > 0)
@@ -1046,15 +1483,11 @@ export async function fetchAllLiveMasterData(currentProfil?: ProfilSekolah): Pro
         if (data.profil && Array.isArray(data.profil) && data.profil.length > 0) {
           const rows: any[][] = [];
           for (const item of data.profil) {
-            if (Array.isArray(item)) {
-              rows.push(item);
-            } else if (typeof item === 'object' && item !== null) {
+            if (Array.isArray(item)) rows.push(item);
+            else if (typeof item === 'object' && item !== null) {
               const vals = Object.values(item);
               if (vals.length >= 2) rows.push([vals[0], vals[1]]);
-              else if (vals.length === 1) {
-                const keys = Object.keys(item);
-                rows.push([keys[0], vals[0]]);
-              }
+              else if (vals.length === 1) rows.push([Object.keys(item)[0], vals[0]]);
             }
           }
           if (rows.length > 0) {
@@ -1062,7 +1495,7 @@ export async function fetchAllLiveMasterData(currentProfil?: ProfilSekolah): Pro
           }
         }
 
-        if (parsedPeg || parsedSis || parsedSar || parsedProf) {
+        if (parsedPeg || parsedSis || parsedRap || parsedBtq || parsedSar || parsedProf) {
           const now = new Date().toLocaleTimeString('id-ID');
           try {
             localStorage.setItem(STORAGE_KEYS.LAST_SYNC_TIME, now);
@@ -1072,6 +1505,8 @@ export async function fetchAllLiveMasterData(currentProfil?: ProfilSekolah): Pro
           return {
             pegawai: parsedPeg,
             siswa: parsedSis,
+            rapor: parsedRap,
+            btq: parsedBtq,
             sarpras: parsedSar,
             profil: parsedProf,
             timestamp: now,
@@ -1079,8 +1514,8 @@ export async function fetchAllLiveMasterData(currentProfil?: ProfilSekolah): Pro
         }
       }
     }
-  } catch (gasErr) {
-    console.warn('Apps Script fetchAllLiveMasterData error:', gasErr);
+  } catch (proxyErr) {
+    console.warn('Backend proxy /api/live-data notice:', proxyErr);
   }
 
   // 2. Prioritas 2: Spreadsheet Google Sheets ID (GViz endpoint)
@@ -1088,7 +1523,7 @@ export async function fetchAllLiveMasterData(currentProfil?: ProfilSekolah): Pro
   if (savedId) {
     try {
       const res = await fetchMasterDatabaseRealtime(savedId, null, currentProfil);
-      if (res.pegawai || res.siswa || res.sarpras || res.profil) {
+      if (res.pegawai || res.siswa || res.rapor || res.btq || res.sarpras || res.profil) {
         return res;
       }
     } catch (gvizErr) {
@@ -1098,5 +1533,377 @@ export async function fetchAllLiveMasterData(currentProfil?: ProfilSekolah): Pro
 
   return null;
 }
+
+// =========================================================================
+// SPREADSHEET PAYLOAD SERIALIZERS (Bilingual Keys for Guaranteed GAS Compatibility)
+// =========================================================================
+export function formatPegawaiPayload(p: Pegawai): any {
+  if (!p) return {};
+  return {
+    ID: p.id,
+    id: p.id,
+    NIP: p.nip || '-',
+    nip: p.nip || '-',
+    'Nama Lengkap': p.nama,
+    nama: p.nama,
+    'Gelar Depan': p.gelarDepan || '',
+    gelarDepan: p.gelarDepan || '',
+    'Gelar Belakang': p.gelarBelakang || '',
+    gelarBelakang: p.gelarBelakang || '',
+    'Jenis Kelamin': p.jenisKelamin || 'L',
+    jenisKelamin: p.jenisKelamin || 'L',
+    Golongan: p.golongan || '-',
+    golongan: p.golongan || '-',
+    Pangkat: p.pangkat || '-',
+    pangkat: p.pangkat || '-',
+    Jabatan: p.jabatan || 'Guru',
+    jabatan: p.jabatan || 'Guru',
+    'Status Pegawai': p.statusKepegawaian || 'PNS',
+    statusKepegawaian: p.statusKepegawaian || 'PNS',
+    'Pendidikan Terakhir': p.pendidikanTerakhir || 'S1',
+    pendidikanTerakhir: p.pendidikanTerakhir || 'S1',
+    'TMT CPNS/PPPK': p.tmt || '-',
+    tmt: p.tmt || '-',
+    'Tempat Lahir': p.tempatLahir || 'Pasuruan',
+    tempatLahir: p.tempatLahir || 'Pasuruan',
+    'Tanggal Lahir': p.tanggalLahir || '-',
+    tanggalLahir: p.tanggalLahir || '-',
+    'Kontak / WA': p.kontak || '-',
+    kontak: p.kontak || '-',
+    Email: p.email || '-',
+    email: p.email || '-',
+    'Unit Kerja': p.unitKerja || 'SDN Kedungringin 1 Beji',
+    unitKerja: p.unitKerja || 'SDN Kedungringin 1 Beji',
+    'No Karpeg': p.karpeg || '-',
+    'No Taspen': p.nomorTaspen || '-',
+    NPWP: p.npwp || '-',
+    'Nomor SK Tingkat': p.skPangkatTerakhir?.nomor || '-',
+    'Tanggal SK Tingkat': p.skPangkatTerakhir?.tanggal || '-',
+    'TMT SK Tingkat': p.skPangkatTerakhir?.tmt || '-',
+    'Nomor SK Berkala': p.skBerkalaTerakhir?.nomor || '-',
+    'Tanggal SK Berkala': p.skBerkalaTerakhir?.tanggal || '-',
+    'TMT SK Berkala': p.skBerkalaTerakhir?.tmt || '-',
+    'Nomor SK Angkatan': p.skAngkatan?.nomor || '-',
+    'Tanggal SK Angkatan': p.skAngkatan?.tanggal || '-',
+    'TMT SK Angkatan': p.skAngkatan?.tmt || '-'
+  };
+}
+
+export function formatSiswaPayload(s: Siswa): any {
+  if (!s) return {};
+  return {
+    ID: s.id,
+    id: s.id,
+    NISN: s.nisn,
+    nisn: s.nisn,
+    NIS: s.nis,
+    nis: s.nis,
+    'Nama Lengkap Siswa': s.nama,
+    'Nama Siswa': s.nama,
+    nama: s.nama,
+    'Jenis Kelamin': s.jenisKelamin || 'L',
+    jenisKelamin: s.jenisKelamin || 'L',
+    'Tempat Lahir': s.tempatLahir || 'Pasuruan',
+    tempatLahir: s.tempatLahir || 'Pasuruan',
+    'Tanggal Lahir': s.tanggalLahir || '-',
+    tanggalLahir: s.tanggalLahir || '-',
+    Agama: s.agama || 'Islam',
+    agama: s.agama || 'Islam',
+    Kelas: s.kelas,
+    kelas: s.kelas,
+    Rombel: s.rombel || 'A',
+    rombel: s.rombel || 'A',
+    'Nama Ayah': s.namaAyah || '-',
+    namaAyah: s.namaAyah || '-',
+    'Nama Ibu': s.namaIbu || '-',
+    namaIbu: s.namaIbu || '-',
+    'Alamat Rumah': s.alamat || '-',
+    alamat: s.alamat || '-',
+    'No HP Ortu': s.noHpOrtu || '-',
+    noHpOrtu: s.noHpOrtu || '-',
+    'TMT Diterima': s.tmtDiterima || '2024-07-15',
+    tmtDiterima: s.tmtDiterima || '2024-07-15',
+    'Status Siswa': s.statusSiswa || 'Aktif',
+    statusSiswa: s.statusSiswa || 'Aktif',
+  };
+}
+
+export function formatSarprasPayload(s: SarprasItem): any {
+  if (!s) return {};
+  return {
+    ID: s.id,
+    id: s.id,
+    'Nama Sarpras': s.namaSarpras,
+    namaSarpras: s.namaSarpras,
+    nama: s.namaSarpras,
+    Kategori: s.kategori,
+    kategori: s.kategori,
+    Jumlah: s.jumlah,
+    jumlah: s.jumlah,
+    Satuan: s.satuan,
+    satuan: s.satuan,
+    Kondisi: s.kondisi,
+    kondisi: s.kondisi,
+    Lokasi: s.lokasi,
+    lokasi: s.lokasi,
+    Keterangan: s.keterangan || '-',
+    keterangan: s.keterangan || '-'
+  };
+}
+
+export function formatRaporPayload(r: any): any {
+  if (!r) return {};
+  const calcAvg = (map?: Record<string, number> | number) => {
+    if (!map) return 0;
+    if (typeof map === 'number') return map;
+    const vals = Object.values(map);
+    return vals.length > 0 ? Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)) : 0;
+  };
+  const s7 = calcAvg(r.semester7);
+  const s8 = calcAvg(r.semester8);
+  const s9 = calcAvg(r.semester9);
+  const s10 = calcAvg(r.semester10);
+  const s11 = calcAvg(r.semester11);
+  const s12 = calcAvg(r.semester12);
+  const avg5 = Number(((s7 + s8 + s9 + s10 + s11) / 5).toFixed(2));
+  const avg4 = Number(((s7 + s8 + s9 + s10) / 4).toFixed(2));
+
+  return {
+    ID: r.id,
+    id: r.id,
+    NISN: r.nisn,
+    nisn: r.nisn,
+    'Nama Siswa': r.namaSiswa,
+    namaSiswa: r.namaSiswa,
+    nama: r.namaSiswa,
+    Kelas: r.kelas,
+    kelas: r.kelas,
+    Rombel: r.rombel || 'A',
+    rombel: r.rombel || 'A',
+    'Sem 7': s7,
+    'Sem 8': s8,
+    'Sem 9': s9,
+    'Sem 10': s10,
+    'Sem 11': s11,
+    'Sem 12': s12,
+    'Rata Rapor 5 Sem': avg5,
+    'Rata Rapor 4 Sem': avg4,
+    'TKA Numerasi': r.tka?.numerasi || 0,
+    'TKA Literasi': r.tka?.literasi || 0,
+    'TKA IPA': r.tka?.ipaPilihan || 0,
+    'Rata TKA': r.tka?.rataRata || 0,
+    Predikat: r.tka?.predikat || '-'
+  };
+}
+
+export function formatBTQPayload(b: NilaiIjazahBTQ): any {
+  if (!b) return {};
+  return {
+    ID: b.id,
+    id: b.id,
+    NISN: b.nisn,
+    nisn: b.nisn,
+    'Nama Siswa': b.namaSiswa,
+    namaSiswa: b.namaSiswa,
+    nama: b.namaSiswa,
+    'No Sertifikat': b.noSertifikat,
+    noSertifikat: b.noSertifikat,
+    Tahsin: b.tahsin,
+    tahsin: b.tahsin,
+    Tajwid: b.tajwid,
+    tajwid: b.tajwid,
+    Tahfidz: b.tahfidz,
+    tahfidz: b.tahfidz,
+    Menulis: b.menulis,
+    menulis: b.menulis,
+    Membaca: b.membaca,
+    membaca: b.membaca,
+    'Rata-rata': b.rataRata,
+    rataRata: b.rataRata,
+    Predikat: b.predikat,
+    predikat: b.predikat
+  };
+}
+
+export function formatSuratMasukPayload(sm: SuratMasuk): any {
+  if (!sm) return {};
+  return {
+    ID: sm.id,
+    id: sm.id,
+    'Nomor Surat Masuk': sm.nomorSuratMasuk,
+    nomorSuratMasuk: sm.nomorSuratMasuk,
+    'Tanggal Surat': sm.tanggalSurat,
+    tanggalSurat: sm.tanggalSurat,
+    'Tanggal Diterima': sm.tanggalDiterima,
+    tanggalDiterima: sm.tanggalDiterima,
+    Pengirim: sm.pengirim,
+    pengirim: sm.pengirim,
+    Perihal: sm.perihal,
+    perihal: sm.perihal,
+    Disposisi: sm.disposisiKepsek || '-',
+    disposisiKepsek: sm.disposisiKepsek || '-'
+  };
+}
+
+export function formatSuratKeluarPayload(sk: SuratKeluar): any {
+  if (!sk) return {};
+  return {
+    ID: sk.id,
+    id: sk.id,
+    'Nomor Surat': sk.nomorSurat,
+    nomorSurat: sk.nomorSurat,
+    'Tanggal Surat': sk.tanggalSurat,
+    tanggalSurat: sk.tanggalSurat,
+    Perihal: sk.perihal,
+    perihal: sk.perihal,
+    'Tujuan / Penerima': sk.tujuan,
+    tujuan: sk.tujuan,
+    'Pejabat NIP': sk.pejabatNip || '-',
+    pejabatNip: sk.pejabatNip || '-',
+    Status: sk.status || 'Terkirim',
+    status: sk.status || 'Terkirim'
+  };
+}
+
+export function formatProfilPayload(p: ProfilSekolah): any {
+  if (!p) return {};
+  return {
+    ...p,
+    'Nama Sekolah': p.nama,
+    NPSN: p.npsn,
+    'Bentuk Pendidikan': p.bentukPendidikan,
+    Status: p.status,
+    Akreditasi: p.akreditasi,
+    Alamat: p.alamat,
+    Kecamatan: p.kecamatan,
+    Kabupaten: p.kabupaten,
+    'Kepala Sekolah': p.kepalaSekolah,
+    'NIP Kepala Sekolah': p.nipKepalaSekolah,
+    'Tahun Pelajaran': p.tahunPelajaranAktif
+  };
+}
+
+/**
+ * Otomatis mengirim dan menyinkronkan data yang disimpan di web langsung ke Google Spreadsheet Master
+ * Dipanggil di setiap aksi Simpan (Pegawai, Siswa, Rapor, BTQ, Sarpras, Surat, Profil)
+ */
+export async function pushDataToMasterSpreadsheet(data: {
+  profil: ProfilSekolah;
+  pegawai: Pegawai[];
+  siswa: Siswa[];
+  rapor: RekapRaporSiswa[];
+  btq: NilaiIjazahBTQ[];
+  sarpras: SarprasItem[];
+  suratMasuk: SuratMasuk[];
+  suratKeluar: SuratKeluar[];
+  actionName?: string;
+  item?: any;
+}): Promise<{
+  success: boolean;
+  message: string;
+  timestamp: string;
+  channel: 'apps_script' | 'sheets_api' | 'cached';
+}> {
+  const timestamp = new Date().toLocaleTimeString('id-ID');
+  const cleanId = extractSpreadsheetId(getSavedMasterSheetId());
+  const webAppUrl = getSavedWebAppUrl();
+  let syncedViaGas = false;
+  let syncedViaSheetsApi = false;
+  let serverMessage = '';
+
+  // Determine specific item formatting based on actionName
+  let formattedItem: any = null;
+  if (data.item) {
+    if (data.actionName === 'savePegawai') formattedItem = formatPegawaiPayload(data.item);
+    else if (data.actionName === 'saveSiswa') formattedItem = formatSiswaPayload(data.item);
+    else if (data.actionName === 'saveSarpras') formattedItem = formatSarprasPayload(data.item);
+    else if (data.actionName === 'saveRapor') formattedItem = formatRaporPayload(data.item);
+    else if (data.actionName === 'saveNilaiBTQ') formattedItem = formatBTQPayload(data.item);
+    else if (data.actionName === 'saveSuratMasuk') formattedItem = formatSuratMasukPayload(data.item);
+    else if (data.actionName === 'saveSuratKeluar') formattedItem = formatSuratKeluarPayload(data.item);
+    else if (data.actionName === 'saveProfil') formattedItem = formatProfilPayload(data.item);
+    else formattedItem = data.item;
+  }
+
+  // 1. Kirim update ke backend proxy /api/sync-spreadsheet (Bebas CORS, Langsung ke Google Apps Script)
+  try {
+    const proxyRes = await fetch('/api/sync-spreadsheet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scriptUrl: webAppUrl,
+        action: data.actionName || 'syncAllData',
+        payload: {
+          ...(formattedItem || {}),
+          item: formattedItem || data.item,
+          profil: formatProfilPayload(data.profil),
+          pegawai: (data.pegawai || []).map(formatPegawaiPayload),
+          siswa: (data.siswa || []).map(formatSiswaPayload),
+          rapor: (data.rapor || []).map(formatRaporPayload),
+          btq: (data.btq || []).map(formatBTQPayload),
+          sarpras: (data.sarpras || []).map(formatSarprasPayload),
+          suratMasuk: (data.suratMasuk || []).map(formatSuratMasukPayload),
+          suratKeluar: (data.suratKeluar || []).map(formatSuratKeluarPayload),
+          timestamp,
+        },
+      }),
+    });
+
+    if (proxyRes.ok) {
+      const resJson = await proxyRes.json();
+      if (resJson.success) {
+        syncedViaGas = true;
+        serverMessage = resJson.message || '';
+      }
+    }
+  } catch (proxyErr) {
+    console.warn('Proxy sync error:', proxyErr);
+  }
+
+  // 2. Sinkronkan langsung ke Google Spreadsheet via Google Sheets API (jika Google OAuth aktif & Master Sheet ID ada)
+  if (cleanId) {
+    try {
+      const token = await getAccessToken();
+      if (token) {
+        const sheets = buildMasterDatabaseSpreadsheet({
+          profil: data.profil,
+          pegawai: data.pegawai,
+          siswa: data.siswa,
+          rapor: data.rapor,
+          btq: data.btq,
+          sarpras: data.sarpras,
+          suratMasuk: data.suratMasuk,
+          suratKeluar: data.suratKeluar,
+        });
+        await populateSpreadsheet(cleanId, sheets, token);
+        syncedViaSheetsApi = true;
+      }
+    } catch (sheetErr) {
+      console.warn('Auto-sync via Google Sheets API skipped/error:', sheetErr);
+    }
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEYS.LAST_SYNC_TIME, timestamp);
+    localStorage.setItem(STORAGE_KEYS.LAST_SYNC_STATUS, 'SUCCESS');
+    window.dispatchEvent(new CustomEvent('master_spreadsheet_synced', { detail: { timestamp } }));
+  } catch {}
+
+  const channel: 'apps_script' | 'sheets_api' | 'cached' = 
+    syncedViaSheetsApi ? 'sheets_api' : syncedViaGas ? 'apps_script' : 'cached';
+
+  return {
+    success: true,
+    message: serverMessage || (syncedViaSheetsApi 
+      ? `Tersinkron langsung ke Master Google Spreadsheet (${timestamp})`
+      : syncedViaGas
+      ? `Terkirim ke Google Apps Script Web App (${timestamp})`
+      : `Disimpan ke basis data & cache sinkronisasi lokal (${timestamp})`),
+    timestamp,
+    channel,
+  };
+}
+
+
 
 

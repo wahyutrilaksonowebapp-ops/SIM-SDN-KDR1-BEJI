@@ -557,7 +557,7 @@ export const SuratKeluarComponent: React.FC<SuratKeluarProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredLogs.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={`${item.id || 'sk'}-${idx}`} className="hover:bg-slate-50 transition-colors">
                   <td className="py-3 px-4 font-medium text-slate-400">{idx + 1}</td>
                   <td className="py-3 px-4">
                     <div className="font-mono font-bold text-slate-900 text-xs">{item.nomorSurat}</div>

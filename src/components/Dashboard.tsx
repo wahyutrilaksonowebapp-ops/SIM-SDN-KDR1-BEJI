@@ -238,8 +238,67 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
+  const isSiswa = currentUser?.role === 'siswa';
+  const siswaRombelKelas = currentUser?.kelas || 6;
+  const classmates = siswa.filter((s) => s.kelas === siswaRombelKelas);
+  const classmatesL = classmates.filter((s) => s.jenisKelamin === 'L').length;
+  const classmatesP = classmates.filter((s) => s.jenisKelamin === 'P').length;
+
   return (
     <div className="space-y-6">
+      {/* Student Specific Welcome Banner */}
+      {isSiswa && (
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-md border border-blue-700/50 relative overflow-hidden animate-in fade-in duration-200">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-700/70 text-blue-100 border border-blue-500/40">
+                <GraduationCap className="w-3.5 h-3.5 text-blue-300" />
+                Portal Dashboard Siswa - {currentUser.rombel || `Kelas ${siswaRombelKelas}`}
+              </span>
+              <h2 className="text-2xl font-black">Halo, {currentUser.name}! 👋</h2>
+              <p className="text-xs text-blue-200">
+                NISN: <strong>{currentUser.nisn || '-'}</strong> | Rombongan Belajar: <strong>Kelas {siswaRombelKelas}</strong> | SDN Kedungringin 1 Beji
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setActiveTab('kesiswaan')}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Lihat Tabungan & Presensi</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setActiveTab('sarpras')}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition border border-white/20 cursor-pointer"
+              >
+                <span>Fasilitas Sarpras Kelas</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-blue-800/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="bg-blue-950/60 p-2.5 rounded-xl border border-blue-800/40">
+              <span className="text-blue-300 text-[11px]">Teman Sekelas:</span>
+              <div className="font-bold text-white text-base mt-0.5">{classmates.length} Siswa</div>
+            </div>
+            <div className="bg-blue-950/60 p-2.5 rounded-xl border border-blue-800/40">
+              <span className="text-blue-300 text-[11px]">Laki-laki / Perempuan:</span>
+              <div className="font-bold text-white text-base mt-0.5">{classmatesL} L / {classmatesP} P</div>
+            </div>
+            <div className="bg-blue-950/60 p-2.5 rounded-xl border border-blue-800/40">
+              <span className="text-blue-300 text-[11px]">Wali Kelas:</span>
+              <div className="font-bold text-white truncate mt-0.5">Guru Kelas {siswaRombelKelas}</div>
+            </div>
+            <div className="bg-blue-950/60 p-2.5 rounded-xl border border-blue-800/40">
+              <span className="text-blue-300 text-[11px]">Tahun Pelajaran:</span>
+              <div className="font-bold text-white mt-0.5">{profil.tahunPelajaranAktif}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Welcome & School Identity Card */}
       <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-emerald-700/10 rounded-full blur-3xl pointer-events-none" />
@@ -444,7 +503,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           {/* Cards of Pegawai nearing BUP */}
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {displayedBupList.map(({ pegawai: p, bup }) => {
+            {displayedBupList.map(({ pegawai: p, bup }, idx) => {
               const fullName = `${p.gelarDepan ? p.gelarDepan + ' ' : ''}${p.nama}${p.gelarBelakang ? ', ' + p.gelarBelakang : ''}`;
               const isUrgent = bup.status === 'Mendesak' || bup.status === 'Sudah Pensiun';
               const cardBg = isUrgent
@@ -455,7 +514,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
               return (
                 <div
-                  key={p.id}
+                  key={`${p.nip || p.id || 'bup'}-${idx}`}
                   className={`p-4 rounded-xl border shadow-2xs transition-all flex flex-col justify-between ${cardBg}`}
                 >
                   <div>
@@ -814,11 +873,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             <div className="mt-4 space-y-3">
-              {perKelasCount.map((item) => {
+              {perKelasCount.map((item, idx) => {
                 const max = Math.max(...perKelasCount.map((p) => p.total), 1);
                 const percent = Math.round((item.total / max) * 100);
                 return (
-                  <div key={item.kelas} className="space-y-1">
+                  <div key={`kelas-${item.kelas}-${idx}`} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-slate-700">Kelas {item.kelas}</span>
                       <div className="text-[11px] text-slate-500 space-x-2">
@@ -900,7 +959,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="divide-y divide-slate-100">
-            {getActivityLogs().slice(0, 4).map((log) => {
+            {getActivityLogs().slice(0, 4).map((log, idx) => {
               let actionBadge = 'bg-slate-100 text-slate-700 border-slate-200';
               if (log.action === 'HAPUS') actionBadge = 'bg-rose-100 text-rose-800 border-rose-300 font-bold';
               else if (log.action === 'TAMBAH') actionBadge = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold';
@@ -908,7 +967,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               else if (log.action === 'LOGIN') actionBadge = 'bg-blue-100 text-blue-800 border-blue-300 font-bold';
 
               return (
-                <div key={log.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div key={`${log.id || 'log'}-${idx}`} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2.5">
                     <span className={`px-2 py-0.5 rounded text-[10px] border uppercase ${actionBadge}`}>
                       {log.action}
