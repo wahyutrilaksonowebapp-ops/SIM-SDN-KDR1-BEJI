@@ -40,12 +40,13 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
   onDeleteSiswa,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [kelasFilter, setKelasFilter] = useState<string>(() => {
-    if (currentUser?.role === 'guru' && currentUser?.kelas) {
+  const [jenjangFilter, setJenjangFilter] = useState<string>(() => {
+    if ((currentUser?.role === 'guru' || currentUser?.role === 'siswa') && currentUser?.kelas) {
       return String(currentUser.kelas);
     }
     return 'ALL';
   });
+  const [tahunAjaranFilter, setTahunAjaranFilter] = useState<string>('ALL');
   const [genderFilter, setGenderFilter] = useState<string>('ALL');
   const [agamaFilter, setAgamaFilter] = useState<string>('ALL');
   const [usiaFilter, setUsiaFilter] = useState<string>('ALL');
@@ -83,9 +84,40 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
       s.nisn.includes(searchTerm) ||
       s.nis.includes(searchTerm);
 
-    const matchKelas = (userRole === 'guru' && currentUser?.kelas)
-      ? s.kelas === currentUser.kelas
-      : (kelasFilter === 'ALL' || s.kelas === Number(kelasFilter));
+    const isSiswaRole = userRole === 'siswa' && !!currentUser?.kelas;
+    const isGuruRole = userRole === 'guru' && !!currentUser?.kelas;
+
+    let matchKelas = true;
+    if (isSiswaRole) {
+      matchKelas = s.kelas === currentUser.kelas;
+    } else if (isGuruRole) {
+      matchKelas = s.kelas === currentUser.kelas;
+    } else {
+      if (jenjangFilter === 'FASE_A') {
+        matchKelas = s.kelas === 1 || s.kelas === 2;
+      } else if (jenjangFilter === 'FASE_B') {
+        matchKelas = s.kelas === 3 || s.kelas === 4;
+      } else if (jenjangFilter === 'FASE_C') {
+        matchKelas = s.kelas === 5 || s.kelas === 6;
+      } else if (jenjangFilter !== 'ALL') {
+        matchKelas = s.kelas === Number(jenjangFilter);
+      }
+    }
+
+    let matchTahunAjaran = true;
+    if (tahunAjaranFilter !== 'ALL') {
+      const yearFromTmt = s.tmtDiterima ? s.tmtDiterima.substring(0, 4) : '';
+      const tmtYearNum = Number(yearFromTmt);
+      const calculatedStartYear = tmtYearNum ? tmtYearNum + (s.kelas - 1) : 2026;
+      const expectedAcademicYear = `${calculatedStartYear}/${calculatedStartYear + 1}`;
+      const currentAcademic = profil.tahunPelajaranAktif || '2026/2027';
+      const studentTa = (s as any).tahunAjaran || (s.statusSiswa === 'Aktif' ? currentAcademic : expectedAcademicYear);
+
+      matchTahunAjaran = studentTa.includes(tahunAjaranFilter) ||
+                         expectedAcademicYear.includes(tahunAjaranFilter) ||
+                         yearFromTmt.includes(tahunAjaranFilter.substring(0, 4));
+    }
+
     const matchGender = genderFilter === 'ALL' || s.jenisKelamin === genderFilter;
     const matchAgama = agamaFilter === 'ALL' || s.agama === agamaFilter;
 
@@ -98,7 +130,7 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
     else if (usiaFilter === '12-13') matchUsia = ageInfo.years >= 12 && ageInfo.years <= 13;
     else if (usiaFilter === '>13') matchUsia = ageInfo.years > 13;
 
-    return matchSearch && matchKelas && matchGender && matchAgama && matchUsia;
+    return matchSearch && matchKelas && matchTahunAjaran && matchGender && matchAgama && matchUsia;
   });
 
   // Rekapitulasi Jenis Kelamin & Agama per Kelas
@@ -366,12 +398,28 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
       </div>
 
       {/* Role Notice Banners */}
-      {(userRole === 'guest' || userRole === 'siswa') && (
+      {userRole === 'guest' && (
         <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 text-xs flex items-center gap-2.5">
           <HelpCircle className="w-4 h-4 text-slate-600 shrink-0" />
           <span>
             <strong>Mode Guest:</strong> Anda sedang melihat direktori umum kesiswaan SDN Kedungringin 1 Beji (Hanya Lihat). Wewenang merubah data tersedia untuk Administrator dan Guru rombel kelas terkait.
           </span>
+        </div>
+      )}
+
+      {userRole === 'siswa' && (
+        <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-950 text-xs flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              <strong>Mode Akun Siswa:</strong> Menampilkan direktori data kesiswaan khusus rombongan belajar <strong>Kelas {currentUser?.kelas} ({currentUser?.rombel || `Kelas ${currentUser?.kelas}`})</strong> Anda.
+            </span>
+          </div>
+          {currentUser?.kelas && (
+            <span className="px-2.5 py-0.5 bg-blue-700 text-white font-bold rounded-md text-[11px] shrink-0">
+              Rombel Kelas {currentUser.kelas}
+            </span>
+          )}
         </div>
       )}
 
@@ -648,32 +696,55 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto text-xs">
-            {/* Filter Kelas */}
+            {/* Filter Jenjang & Tingkat Kelas */}
             <select
-              value={userRole === 'guru' && currentUser?.kelas ? String(currentUser.kelas) : kelasFilter}
-              onChange={(e) => setKelasFilter(e.target.value)}
-              disabled={userRole === 'guru' && !!currentUser?.kelas}
+              value={(userRole === 'guru' || userRole === 'siswa') && currentUser?.kelas ? String(currentUser.kelas) : jenjangFilter}
+              onChange={(e) => setJenjangFilter(e.target.value)}
+              disabled={(userRole === 'guru' || userRole === 'siswa') && !!currentUser?.kelas}
               className={`px-2.5 py-1.5 border rounded-lg font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                userRole === 'guru' && currentUser?.kelas
-                  ? 'bg-emerald-50 border-emerald-300 font-bold text-emerald-900 cursor-not-allowed'
+                (userRole === 'guru' || userRole === 'siswa') && currentUser?.kelas
+                  ? 'bg-blue-50 border-blue-300 font-bold text-blue-900 cursor-not-allowed'
                   : 'bg-slate-50 border-slate-200 cursor-pointer'
               }`}
             >
-              {userRole === 'guru' && currentUser?.kelas ? (
+              {(userRole === 'guru' || userRole === 'siswa') && currentUser?.kelas ? (
                 <option value={String(currentUser.kelas)}>
-                  Rombel Kelas {currentUser.kelas} (Tugas Anda)
+                  Rombel Kelas {currentUser.kelas} ({currentUser.rombel || `Kelas ${currentUser.kelas}`})
                 </option>
               ) : (
                 <>
-                  <option value="ALL">Semua Kelas</option>
-                  <option value="1">Kelas 1</option>
-                  <option value="2">Kelas 2</option>
-                  <option value="3">Kelas 3</option>
-                  <option value="4">Kelas 4</option>
-                  <option value="5">Kelas 5</option>
-                  <option value="6">Kelas 6</option>
+                  <option value="ALL">Semua Jenjang Kelas</option>
+                  <optgroup label="Kelompok Jenjang Fase">
+                    <option value="FASE_A">Fase A (Kelas 1 - 2)</option>
+                    <option value="FASE_B">Fase B (Kelas 3 - 4)</option>
+                    <option value="FASE_C">Fase C (Kelas 5 - 6)</option>
+                  </optgroup>
+                  <optgroup label="Tingkat Kelas Individual">
+                    <option value="1">Kelas 1</option>
+                    <option value="2">Kelas 2</option>
+                    <option value="3">Kelas 3</option>
+                    <option value="4">Kelas 4</option>
+                    <option value="5">Kelas 5</option>
+                    <option value="6">Kelas 6</option>
+                  </optgroup>
                 </>
               )}
+            </select>
+
+            {/* Filter Tahun Ajaran */}
+            <select
+              value={tahunAjaranFilter}
+              onChange={(e) => setTahunAjaranFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+            >
+              <option value="ALL">Semua Tahun Ajaran</option>
+              <option value="2026/2027">TP 2026/2027 (Aktif)</option>
+              <option value="2025/2026">TP 2025/2026</option>
+              <option value="2024/2025">TP 2024/2025</option>
+              <option value="2023/2024">TP 2023/2024</option>
+              <option value="2022/2023">TP 2022/2023</option>
+              <option value="2021/2022">TP 2021/2022</option>
+              <option value="2020/2021">TP 2020/2021</option>
             </select>
 
             {/* Filter Gender */}
@@ -715,10 +786,11 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
               <option value=">13">&gt; 13 Tahun</option>
             </select>
 
-            {(kelasFilter !== 'ALL' || genderFilter !== 'ALL' || agamaFilter !== 'ALL' || usiaFilter !== 'ALL' || searchTerm) && (
+            {(jenjangFilter !== 'ALL' || tahunAjaranFilter !== 'ALL' || genderFilter !== 'ALL' || agamaFilter !== 'ALL' || usiaFilter !== 'ALL' || searchTerm) && (
               <button
                 onClick={() => {
-                  setKelasFilter('ALL');
+                  setJenjangFilter('ALL');
+                  setTahunAjaranFilter('ALL');
                   setGenderFilter('ALL');
                   setAgamaFilter('ALL');
                   setUsiaFilter('ALL');

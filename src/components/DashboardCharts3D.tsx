@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Pegawai, Siswa, NilaiIjazahBTQ } from '../types';
+import { Pegawai, Siswa, NilaiIjazahBTQ, AuthUser } from '../types';
 import { 
   Users, 
   GraduationCap, 
@@ -20,16 +20,21 @@ interface DashboardCharts3DProps {
   pegawai: Pegawai[];
   siswa: Siswa[];
   btq: NilaiIjazahBTQ[];
+  currentUser?: AuthUser;
 }
 
 export const DashboardCharts3D: React.FC<DashboardCharts3DProps> = ({
   pegawai,
   siswa,
   btq,
+  currentUser,
 }) => {
+  const isStudent = currentUser?.role === 'siswa';
+  const studentKelas = currentUser?.kelas;
+
   // Mode toggles
   const [pegawaiMode, setPegawaiMode] = useState<'status' | 'gender'>('status');
-  const [siswaMode, setSiswaMode] = useState<'kelas' | 'gender' | 'btq'>('kelas');
+  const [siswaMode, setSiswaMode] = useState<'kelas' | 'gender' | 'btq'>(() => isStudent ? 'gender' : 'kelas');
   const [autoRotate, setAutoRotate] = useState(true);
 
   // Hover states for tooltips
@@ -41,8 +46,18 @@ export const DashboardCharts3D: React.FC<DashboardCharts3DProps> = ({
   const siswaCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // -------------------------------------------------------------
-  // DATA CALCULATION
+  // DATA CALCULATION (Scoped to Rombel if Student)
   // -------------------------------------------------------------
+  const scopedSiswa = (isStudent && studentKelas)
+    ? siswa.filter((s) => s.kelas === studentKelas)
+    : siswa;
+
+  const scopedBtq = (isStudent && studentKelas)
+    ? btq.filter((b) => {
+        const match = siswa.find((s) => s.nama.toLowerCase() === b.namaSiswa.toLowerCase());
+        return match ? match.kelas === studentKelas : true;
+      })
+    : btq;
   const totalPegawai = pegawai.length || 1;
   const pnsCount = pegawai.filter((p) => p.statusKepegawaian === 'PNS').length;
   const pppkCount = pegawai.filter((p) => p.statusKepegawaian === 'PPPK').length;
@@ -60,15 +75,15 @@ export const DashboardCharts3D: React.FC<DashboardCharts3DProps> = ({
     { label: 'Perempuan (♀)', shortLabel: 'Perempuan', count: pegPerempuanCount, percent: Number(((pegPerempuanCount / totalPegawai) * 100).toFixed(1)), color: '#E11D48', hex: 0xE11D48 },
   ];
 
-  const totalSiswa = siswa.length || 1;
-  const siswaLakiCount = siswa.filter((s) => s.jenisKelamin === 'L').length;
-  const siswaPerempuanCount = siswa.filter((s) => s.jenisKelamin === 'P').length;
+  const totalSiswa = scopedSiswa.length || 1;
+  const siswaLakiCount = scopedSiswa.filter((s) => s.jenisKelamin === 'L').length;
+  const siswaPerempuanCount = scopedSiswa.filter((s) => s.jenisKelamin === 'P').length;
 
   const kelasColors = ['#10B981', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899'];
   const kelasHex = [0x10B981, 0x06B6D4, 0x3B82F6, 0x6366F1, 0x8B5CF6, 0xEC4899];
 
   const perKelasData = [1, 2, 3, 4, 5, 6].map((k, idx) => {
-    const c = siswa.filter((s) => s.kelas === k).length;
+    const c = scopedSiswa.filter((s) => s.kelas === k).length;
     return {
       label: `Kelas ${k}`,
       shortLabel: `Kls ${k}`,
@@ -80,12 +95,12 @@ export const DashboardCharts3D: React.FC<DashboardCharts3DProps> = ({
   });
 
   const siswaGenderData = [
-    { label: 'Laki-laki (♂)', shortLabel: 'Laki-laki', count: siswaLakiCount, percent: Number(((siswaLakiCount / totalSiswa) * 100).toFixed(1)), color: '#0284C7', hex: 0x0284C7 },
-    { label: 'Perempuan (♀)', shortLabel: 'Perempuan', count: siswaPerempuanCount, percent: Number(((siswaPerempuanCount / totalSiswa) * 100).toFixed(1)), color: '#E11D48', hex: 0xE11D48 },
+    { label: isStudent ? 'Teman Laki-laki (♂)' : 'Laki-laki (♂)', shortLabel: 'Laki-laki', count: siswaLakiCount, percent: Number(((siswaLakiCount / totalSiswa) * 100).toFixed(1)), color: '#0284C7', hex: 0x0284C7 },
+    { label: isStudent ? 'Teman Perempuan (♀)' : 'Perempuan (♀)', shortLabel: 'Perempuan', count: siswaPerempuanCount, percent: Number(((siswaPerempuanCount / totalSiswa) * 100).toFixed(1)), color: '#E11D48', hex: 0xE11D48 },
   ];
 
-  const totalBtq = btq.length || 1;
-  const btqLulus = btq.filter((b) => b.statusKelulusan === 'Lulus').length;
+  const totalBtq = scopedBtq.length || 1;
+  const btqLulus = scopedBtq.filter((b) => b.statusKelulusan === 'Lulus').length;
   const btqProses = Math.max(0, totalBtq - btqLulus);
   const btqData = [
     { label: 'Lulus Sertifikasi BTQ', shortLabel: 'Lulus', count: btqLulus, percent: Number(((btqLulus / totalBtq) * 100).toFixed(1)), color: '#059669', hex: 0x059669 },
@@ -556,162 +571,31 @@ export const DashboardCharts3D: React.FC<DashboardCharts3DProps> = ({
   }, [activeSiswaData, autoRotate, totalSiswa]);
 
   return (
-    <div className="space-y-4">
-      {/* Section Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white p-5 rounded-2xl shadow-sm border border-emerald-800/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 flex items-center justify-center font-black shadow-sm shrink-0">
-            <Sparkles className="w-5 h-5" />
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between">
+      <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+            <GraduationCap className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-bold tracking-wide text-white">
-                Visualisasi 3D Interaktif Rekapitulasi Data Lembaga
-              </h3>
-              <span className="text-[10px] bg-emerald-700/80 text-emerald-200 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Three.js WebGL
-              </span>
-              <span className="text-[10px] bg-amber-400 text-amber-950 font-black px-2 py-0.5 rounded-full">
-                Real-Time Prosentase
-              </span>
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+              {isStudent && studentKelas
+                ? `Grafik 3D Rekapitulasi Rombel Kelas ${studentKelas}`
+                : 'Grafik 3D Prosentase Kesiswaan'}
+            </h4>
+            <div className="text-[11px] text-slate-500">
+              {isStudent && studentKelas ? (
+                <>Teman Sekelas Rombel Anda: <strong className="text-slate-800">{totalSiswa} Siswa</strong></>
+              ) : (
+                <>Total Terdaftar: <strong className="text-slate-800">{totalSiswa} Siswa</strong></>
+              )}
             </div>
-            <p className="text-xs text-emerald-200/80 mt-0.5">
-              Putar model 3D dengan mouse/sentuhan, amati sudut ruang, dan arahkan kursor ke elemen grafik untuk rincian persentase data.
-            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setAutoRotate((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
-              autoRotate 
-                ? 'bg-emerald-600/30 text-emerald-200 border-emerald-500/50 hover:bg-emerald-600/50' 
-                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-            }`}
-            title="Aktifkan/nonaktifkan rotasi otomatis 3D"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${autoRotate ? 'animate-spin' : ''}`} />
-            <span>{autoRotate ? 'Rotasi 3D Aktif' : 'Rotasi Diam'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Grid: 2 Side-by-Side 3D Visualizers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* ========================================================= */}
-        {/* GRAFIK 3D 1: REKAP KEPEGAWAIAN (GTK) */}
-        {/* ========================================================= */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between">
-          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
-                <Users className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                  Grafik 3D Prosentase Kepegawaian & GTK
-                </h4>
-                <div className="text-[11px] text-slate-500">
-                  Total Terdaftar: <strong className="text-slate-800">{totalPegawai} Personil</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setPegawaiMode('status')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                  pegawaiMode === 'status' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Status ASN
-              </button>
-              <button
-                type="button"
-                onClick={() => setPegawaiMode('gender')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                  pegawaiMode === 'gender' ? 'bg-white text-blue-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Gender (L/P)
-              </button>
-            </div>
-          </div>
-
-          {/* 3D Canvas Viewport */}
-          <div className="relative w-full h-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center overflow-hidden">
-            <canvas 
-              ref={pegawaiCanvasRef} 
-              className="w-full h-full block cursor-grab active:cursor-grabbing"
-            />
-
-            {/* Hover Tooltip Overlay */}
-            {hoveredPegawaiItem && (
-              <div 
-                className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white px-3 py-1.5 rounded-xl shadow-lg text-xs pointer-events-none animate-in fade-in"
-              >
-                <div className="flex items-center gap-1.5 font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hoveredPegawaiItem.color }} />
-                  <span>{hoveredPegawaiItem.label}</span>
-                </div>
-                <div className="text-emerald-300 font-mono text-[11px] mt-0.5">
-                  Jumlah: <strong>{hoveredPegawaiItem.count} Personil</strong> ({hoveredPegawaiItem.percent}%)
-                </div>
-              </div>
-            )}
-
-            <div className="absolute bottom-2 right-3 text-[10px] text-slate-500 font-mono pointer-events-none">
-              Geser mouse / sentuh untuk memutar 3D
-            </div>
-          </div>
-
-          {/* Data List & Percentage Bars */}
-          <div className="p-4 bg-slate-50/70 border-t border-slate-100 space-y-2.5">
-            {pegawaiData.map((item) => (
-              <div key={item.label} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="font-semibold text-slate-800">{item.label}</span>
-                  </div>
-                  <div className="font-mono font-bold text-slate-900">
-                    {item.count} <span className="text-slate-500 font-normal">({item.percent}%)</span>
-                  </div>
-                </div>
-                <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${item.percent}%`, backgroundColor: item.color }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ========================================================= */}
-        {/* GRAFIK 3D 2: REKAP KESISWAAN */}
-        {/* ========================================================= */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between">
-          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                <GraduationCap className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                  Grafik 3D Prosentase Kesiswaan
-                </h4>
-                <div className="text-[11px] text-slate-500">
-                  Total Terdaftar: <strong className="text-slate-800">{totalSiswa} Siswa</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 self-start sm:self-auto flex-wrap gap-0.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 self-start sm:self-auto flex-wrap gap-0.5">
+            {!isStudent && (
               <button
                 type="button"
                 onClick={() => setSiswaMode('kelas')}
@@ -721,80 +605,94 @@ export const DashboardCharts3D: React.FC<DashboardCharts3DProps> = ({
               >
                 Tingkat Kelas
               </button>
-              <button
-                type="button"
-                onClick={() => setSiswaMode('gender')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                  siswaMode === 'gender' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Gender (L/P)
-              </button>
-              <button
-                type="button"
-                onClick={() => setSiswaMode('btq')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                  siswaMode === 'btq' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Kelulusan BTQ
-              </button>
-            </div>
-          </div>
-
-          {/* 3D Canvas Viewport */}
-          <div className="relative w-full h-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center overflow-hidden">
-            <canvas 
-              ref={siswaCanvasRef} 
-              className="w-full h-full block cursor-grab active:cursor-grabbing"
-            />
-
-            {/* Hover Tooltip Overlay */}
-            {hoveredSiswaItem && (
-              <div 
-                className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white px-3 py-1.5 rounded-xl shadow-lg text-xs pointer-events-none animate-in fade-in"
-              >
-                <div className="flex items-center gap-1.5 font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hoveredSiswaItem.color }} />
-                  <span>{hoveredSiswaItem.label}</span>
-                </div>
-                <div className="text-cyan-300 font-mono text-[11px] mt-0.5">
-                  Jumlah: <strong>{hoveredSiswaItem.count} Siswa</strong> ({hoveredSiswaItem.percent}%)
-                </div>
-              </div>
             )}
-
-            <div className="absolute bottom-2 right-3 text-[10px] text-slate-500 font-mono pointer-events-none">
-              Geser mouse / sentuh untuk memutar 3D
-            </div>
+            <button
+              type="button"
+              onClick={() => setSiswaMode('gender')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                siswaMode === 'gender' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Gender (L/P)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSiswaMode('btq')}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                siswaMode === 'btq' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Kelulusan BTQ
+            </button>
           </div>
 
-          {/* Data List & Percentage Grid */}
-          <div className="p-4 bg-slate-50/70 border-t border-slate-100">
-            <div className={`grid gap-2 text-xs ${siswaMode === 'kelas' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
-              {activeSiswaData.map((item) => (
-                <div key={item.label} className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 flex items-center gap-1.5 truncate">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="truncate">{item.shortLabel || item.label}</span>
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">{item.count}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                    <span>Prosentase:</span>
-                    <strong className="text-emerald-700">{item.percent}%</strong>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${item.percent}%`, backgroundColor: item.color }}
-                    />
-                  </div>
-                </div>
-              ))}
+          <button
+            type="button"
+            onClick={() => setAutoRotate((prev) => !prev)}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+              autoRotate 
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900'
+            }`}
+            title="Aktifkan/nonaktifkan rotasi otomatis 3D"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${autoRotate ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{autoRotate ? 'Rotasi 3D' : 'Diam'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3D Canvas Viewport */}
+      <div className="relative w-full h-72 sm:h-80 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center overflow-hidden">
+        <canvas 
+          ref={siswaCanvasRef} 
+          className="w-full h-full block cursor-grab active:cursor-grabbing"
+        />
+
+        {/* Hover Tooltip Overlay */}
+        {hoveredSiswaItem && (
+          <div 
+            className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700 text-white px-3 py-1.5 rounded-xl shadow-lg text-xs pointer-events-none animate-in fade-in"
+          >
+            <div className="flex items-center gap-1.5 font-bold">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hoveredSiswaItem.color }} />
+              <span>{hoveredSiswaItem.label}</span>
+            </div>
+            <div className="text-cyan-300 font-mono text-[11px] mt-0.5">
+              Jumlah: <strong>{hoveredSiswaItem.count} Siswa</strong> ({hoveredSiswaItem.percent}%)
             </div>
           </div>
+        )}
+
+        <div className="absolute bottom-2 right-3 text-[10px] text-slate-500 font-mono pointer-events-none">
+          Geser mouse / sentuh untuk memutar 3D
+        </div>
+      </div>
+
+      {/* Data List & Percentage Grid */}
+      <div className="p-4 bg-slate-50/70 border-t border-slate-100">
+        <div className={`grid gap-2 text-xs ${siswaMode === 'kelas' ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' : 'grid-cols-1 sm:grid-cols-2'}`}>
+          {activeSiswaData.map((item) => (
+            <div key={item.label} className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="truncate">{item.shortLabel || item.label}</span>
+                </span>
+                <span className="font-mono font-bold text-slate-900">{item.count}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono">
+                <span>Prosentase:</span>
+                <strong className="text-emerald-700">{item.percent}%</strong>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div 
+                  className="h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${item.percent}%`, backgroundColor: item.color }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

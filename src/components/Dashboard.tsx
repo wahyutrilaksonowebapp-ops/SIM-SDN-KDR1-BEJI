@@ -6,6 +6,8 @@ import {
   SarprasItem, 
   RekapRaporSiswa, 
   NilaiIjazahBTQ,
+  SuratMasuk,
+  SuratKeluar,
   TabType,
   AIInsightData,
   AuthUser
@@ -56,6 +58,8 @@ interface DashboardProps {
   sarpras: SarprasItem[];
   rapor: RekapRaporSiswa[];
   btq: NilaiIjazahBTQ[];
+  suratMasuk?: SuratMasuk[];
+  suratKeluar?: SuratKeluar[];
   currentUser?: AuthUser;
   setActiveTab: (tab: TabType) => void;
   onUpdateProfil?: (updated: ProfilSekolah) => void;
@@ -72,6 +76,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   sarpras,
   rapor,
   btq,
+  suratMasuk = [],
+  suratKeluar = [],
   currentUser,
   setActiveTab,
   onUpdateProfil,
@@ -107,6 +113,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // BTQ Pass Rate
   const btqLulus = btq.filter((b) => b.statusKelulusan === 'Lulus').length;
   const btqRate = btq.length > 0 ? Math.round((btqLulus / btq.length) * 100) : 100;
+
+  // Persuratan / Letters Statistics
+  const totalLetters = (suratMasuk?.length || 0) + (suratKeluar?.length || 0);
+  const pendingLetters = (suratMasuk || []).filter(
+    (s) => !s.disposisiKepsek || 
+           s.disposisiKepsek.toLowerCase().includes('pending') || 
+           s.disposisiKepsek.toLowerCase().includes('belum') || 
+           s.disposisiKepsek.toLowerCase().includes('proses')
+  ).length;
 
   // Siswa per kelas
   const perKelasCount = [1, 2, 3, 4, 5, 6].map((k) => ({
@@ -243,6 +258,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const classmates = siswa.filter((s) => s.kelas === siswaRombelKelas);
   const classmatesL = classmates.filter((s) => s.jenisKelamin === 'L').length;
   const classmatesP = classmates.filter((s) => s.jenisKelamin === 'P').length;
+
+  const classBtq = btq.filter((b) => {
+    const s = siswa.find((x) => x.nama.toLowerCase() === b.namaSiswa.toLowerCase());
+    return s ? s.kelas === siswaRombelKelas : true;
+  });
+  const classBtqLulus = classBtq.filter((b) => b.statusKelulusan === 'Lulus').length;
+  const classBtqRate = classBtq.length > 0 ? Math.round((classBtqLulus / classBtq.length) * 100) : 100;
+
+  const classSarpras = sarpras.filter((item) => {
+    const l = item.lokasi.toLowerCase();
+    const k = String(siswaRombelKelas);
+    return l.includes(`kelas ${k}`) || l.includes(`ruang ${k}`);
+  });
+  const classSarprasBaik = classSarpras.filter((s) => s.kondisi === 'Baik').length;
 
   return (
     <div className="space-y-6">
@@ -406,530 +435,133 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* NOTIFIKASI OTOMATIS BATAS USIA PENSIUN (BUP) PEGAWAI                      */}
-      {/* Deteksi otomatis usia pensiun berdasarkan tanggal lahir & regulasi BKN    */}
+      {/* SUMMARY STATISTIC CARDS (Total Students, Active Staff, Pending Letters, Facilities) */}
       {/* ========================================================================= */}
-      {bupSummary.totalAlert > 0 && (
-        <div className="bg-gradient-to-br from-amber-50/90 via-white to-rose-50/60 rounded-2xl border-2 border-amber-300 shadow-sm p-5 relative overflow-hidden transition-all">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-amber-200/70">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-xs shrink-0 mt-0.5">
-                <CalendarClock className="w-5 h-5 animate-pulse" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>Notifikasi Otomatis Batas Usia Pensiun (BUP) Pegawai</span>
-                  </h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300">
-                    {bupSummary.totalAlert} Pegawai
-                  </span>
-                  {currentUser?.role === 'admin' ? (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-600 text-white uppercase tracking-wider">
-                      Alert Administrator
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-200 text-slate-700">
-                      Monitoring Publik
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                  Berdasarkan UU ASN & UU Guru: BUP Guru/Kepsek <strong>60 tahun</strong>, Tenaga Kependidikan/Pelaksana <strong>58 tahun</strong>. TMT Pensiun resmi BKN berlaku terhitung <strong>tanggal 1 bulan berikutnya</strong> setelah tanggal lahir saat genap usia pensiun.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setActiveTab('kepegawaian')}
-                className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <span>Kelola DUK & Kepegawaian</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
-            <button
-              onClick={() => setBupTab('ALL')}
-              className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
-                bupTab === 'ALL'
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                  : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              Semua Terdeteksi ({bupSummary.totalAlert})
-            </button>
-            {bupSummary.mendeak.length > 0 && (
-              <button
-                onClick={() => setBupTab('MENDESAK')}
-                className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
-                  bupTab === 'MENDESAK'
-                    ? 'bg-rose-700 text-white border-rose-700 shadow-xs'
-                    : 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
-                }`}
-              >
-                🔴 Mendesak / Telah BUP ({bupSummary.mendeak.length})
-              </button>
-            )}
-            {bupSummary.mendekati.length > 0 && (
-              <button
-                onClick={() => setBupTab('MENDEKATI')}
-                className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
-                  bupTab === 'MENDEKATI'
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                    : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
-                }`}
-              >
-                🟡 Mendekati 6–12 Bulan ({bupSummary.mendekati.length})
-              </button>
-            )}
-            {bupSummary.persiapan.length > 0 && (
-              <button
-                onClick={() => setBupTab('PERSIAPAN')}
-                className={`px-3 py-1 rounded-lg border transition-all cursor-pointer ${
-                  bupTab === 'PERSIAPAN'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
-                }`}
-              >
-                🔵 Masa Persiapan 1–2 Tahun ({bupSummary.persiapan.length})
-              </button>
-            )}
-          </div>
-
-          {/* Cards of Pegawai nearing BUP */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {displayedBupList.map(({ pegawai: p, bup }, idx) => {
-              const fullName = `${p.gelarDepan ? p.gelarDepan + ' ' : ''}${p.nama}${p.gelarBelakang ? ', ' + p.gelarBelakang : ''}`;
-              const isUrgent = bup.status === 'Mendesak' || bup.status === 'Sudah Pensiun';
-              const cardBg = isUrgent
-                ? 'bg-rose-50/70 border-rose-200 hover:border-rose-300'
-                : bup.status === 'Mendekati'
-                ? 'bg-amber-50/60 border-amber-200 hover:border-amber-300'
-                : 'bg-white border-slate-200 hover:border-blue-300';
-
-              return (
-                <div
-                  key={`${p.nip || p.id || 'bup'}-${idx}`}
-                  className={`p-4 rounded-xl border shadow-2xs transition-all flex flex-col justify-between ${cardBg}`}
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-slate-900 text-sm truncate" title={fullName}>
-                            {fullName}
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            p.statusKepegawaian === 'PNS' 
-                              ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                              : p.statusKepegawaian === 'PPPK' 
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                              : 'bg-slate-100 text-slate-700'
-                          }`}>
-                            {p.statusKepegawaian} {p.golongan ? `• ${p.golongan}` : ''}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-600 mt-0.5">
-                          NIP: <span className="font-mono">{p.nip || '-'}</span> • {p.jabatan}
-                        </div>
-                      </div>
-
-                      <span className={`text-[11px] px-2.5 py-1 rounded-lg shrink-0 font-bold ${bup.badgeClass}`}>
-                        {bup.statusLabel}
-                      </span>
-                    </div>
-
-                    {/* Timeline Data */}
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] bg-white/80 p-2.5 rounded-lg border border-slate-200/60">
-                      <div>
-                        <div className="text-slate-500 font-medium">Tanggal Lahir & Usia:</div>
-                        <div className="font-semibold text-slate-800">
-                          {formatIndoDate(p.tanggalLahir)} ({bup.usiaSaatIniTahun} th {bup.usiaSaatIniBulan} bln)
-                        </div>
-                        <div className="text-[10px] text-slate-500">Regulasi BUP: {bup.usiaBupTahun} Tahun</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-500 font-medium">TMT Pensiun Resmi BKN:</div>
-                        <div className="font-bold text-rose-700">
-                          {bup.tmtPensiunFormatted}
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          {bup.sisaBulan <= 0 
-                            ? 'Telah memasuki masa pensiun' 
-                            : `Hitung mundur: ${bup.sisaBulan} bulan`}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Rekomendasi Tindakan Administrasi */}
-                    <div className="mt-2 text-[11px] text-slate-600 flex items-start gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                      <span>
-                        {isUrgent
-                          ? 'Perhatian: Berkas usulan pensiun (DPCP, SKCK, SK Pangkat terakhir) harus segera dikirimkan ke BKD/Disdik.'
-                          : bup.status === 'Mendekati'
-                          ? 'Pemberitahuan: Siapkan berkas usulan pemberhentian dengan hormat paling lambat 6 bulan sebelum TMT Pensiun.'
-                          : 'Informasi: Pegawai memasuki masa persiapan pensiun (MPP), pastikan kelengkapan berkas SIASN/MyASN.'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-slate-200/50 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500">Unit Kerja: {p.unitKerja || profil.nama}</span>
-                    <button
-                      onClick={() => setActiveTab('kepegawaian')}
-                      className="font-semibold text-emerald-700 hover:text-emerald-900 inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Lihat DUK</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Toggle Expand / Collapse */}
-          {filteredBupList.length > 4 && (
-            <div className="mt-3 text-center">
-              <button
-                onClick={() => setShowAllBup(!showAllBup)}
-                className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 inline-flex items-center gap-1 cursor-pointer px-3 py-1 rounded-md bg-white border border-slate-200 shadow-2xs"
-              >
-                <span>{showAllBup ? 'Perkecil Tampilan Alert' : `Tampilkan Semua (${filteredBupList.length} Pegawai)`}</span>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Siswa Card */}
+        {/* 1. Total Students Card */}
         <div 
           onClick={() => setActiveTab('kesiswaan')}
-          className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer group"
+          className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
               <GraduationCap className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-              6 Tingkat Kelas
+            <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+              {isSiswa ? `Rombel Kelas ${siswaRombelKelas}` : 'Total Students'}
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900">{totalSiswa}</div>
-            <div className="text-xs font-medium text-slate-500">Total Siswa Terdaftar</div>
+            <div className="text-2xl font-bold text-slate-900">
+              {isSiswa ? classmates.length : totalSiswa}
+            </div>
+            <div className="text-xs font-medium text-slate-500">
+              {isSiswa ? `Siswa Kelas ${siswaRombelKelas} (Rombel Anda)` : 'Total Students / Siswa Terdaftar'}
+            </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-700">
-            <span>L: <strong className="text-slate-800">{lakiCount}</strong></span>
-            <span>P: <strong className="text-slate-800">{perempuanCount}</strong></span>
+            <span>L: <strong className="text-slate-800">{isSiswa ? classmatesL : lakiCount}</strong> | P: <strong className="text-slate-800">{isSiswa ? classmatesP : perempuanCount}</strong></span>
             <span className="text-blue-600 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
               Rincian <ArrowRight className="w-3 h-3" />
             </span>
           </div>
         </div>
 
-        {/* Pegawai Card */}
+        {/* 2. Active Staff Card */}
         <div 
           onClick={() => setActiveTab('kepegawaian')}
-          className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer group"
+          className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
               <Users className="w-5 h-5" />
             </div>
-            <div className="flex items-center gap-1.5">
-              {bupSummary.totalAlert > 0 && (
-                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
-                  BUP: {bupSummary.totalAlert}
-                </span>
-              )}
-              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                PNS / PPPK / Honorer
-              </span>
-            </div>
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Active Staff
+            </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900">{totalPegawai}</div>
-            <div className="text-xs font-medium text-slate-500">Total Pendidik & Tendik</div>
+            <div className="text-2xl font-bold text-slate-900">
+              {totalPegawai}
+            </div>
+            <div className="text-xs font-medium text-slate-500">
+              Pendidik & Tenaga Kependidikan Aktif
+            </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-700">
-            <span>PNS: <strong className="text-slate-800">{pnsCount}</strong></span>
-            <span>PPPK: <strong className="text-slate-800">{pppkCount}</strong></span>
-            <span>Honorer: <strong className="text-slate-800">{honorerCount}</strong></span>
+            <span><strong>{pnsCount}</strong> PNS • <strong>{pppkCount}</strong> PPPK • <strong>{honorerCount}</strong> Non-ASN</span>
+            <span className="text-emerald-600 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+              Direktori <ArrowRight className="w-3 h-3" />
+            </span>
           </div>
         </div>
 
-        {/* BTQ Card */}
+        {/* 3. Pending Letters Card */}
         <div 
-          onClick={() => setActiveTab('kesiswaan')}
-          className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer group"
+          onClick={() => setActiveTab('keadministrasian')}
+          className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-amber-400 hover:shadow-md transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Award className="w-5 h-5" />
+              <FileCheck2 className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-              Kelulusan {btqRate}%
+            <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              Pending Letters
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900">{btq.length}</div>
-            <div className="text-xs font-medium text-slate-500">Ijazah / Sertifikat BTQ</div>
+            <div className="text-2xl font-bold text-slate-900">
+              {pendingLetters}
+            </div>
+            <div className="text-xs font-medium text-slate-500">
+              Surat Menunggu Tindak Lanjut / Disposisi
+            </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-700">
-            <span>Lulus: <strong className="text-emerald-700">{btqLulus}</strong></span>
-            <span>Remedial: <strong className="text-amber-700">{btq.length - btqLulus}</strong></span>
-            <span className="text-amber-600 font-medium flex items-center gap-0.5">
-              Input <ArrowRight className="w-3 h-3" />
+            <span>Total: <strong>{totalLetters}</strong> Arsip Surat</span>
+            <span className="text-amber-600 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+              Agenda <ArrowRight className="w-3 h-3" />
             </span>
           </div>
         </div>
 
-        {/* Sarpras Card */}
+        {/* 4. Sarana Prasarana / School Facilities Card */}
         <div 
           onClick={() => setActiveTab('sarpras')}
-          className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer group"
+          className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs hover:border-purple-400 hover:shadow-md transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
             <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform">
               <Building2 className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
-              {sarprasBaik} Laik Pakai
+            <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+              {isSiswa ? `${classSarprasBaik} Laik Pakai` : 'Fasilitas & Aset'}
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900">{sarpras.length}</div>
-            <div className="text-xs font-medium text-slate-500">Unit Sarana Prasarana</div>
+            <div className="text-2xl font-bold text-slate-900">
+              {isSiswa ? classSarpras.length : sarpras.length}
+            </div>
+            <div className="text-xs font-medium text-slate-500">
+              {isSiswa ? `Sarpras Ruang Kelas ${siswaRombelKelas}` : 'Unit Sarana & Prasarana'}
+            </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-700">
-            <span className="text-emerald-700 font-medium">Baik: {sarprasBaik}</span>
-            <span className="text-amber-700 font-medium">R. Ringan: {sarprasRusakRingan}</span>
-            <span className="text-red-700 font-medium">R. Berat: {sarprasRusakBerat}</span>
+            <span className="text-emerald-700 font-medium">Kondisi Baik: {isSiswa ? classSarprasBaik : sarprasBaik} Unit</span>
+            <span className="text-purple-600 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+              Sarpras <ArrowRight className="w-3 h-3" />
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 3D Visualizer: Prosentase Rekap Kepegawaian & Kesiswaan */}
+      {/* 3D Visualizer Kesiswaan (Sesuai Rombel untuk Siswa) */}
       <DashboardCharts3D
         pegawai={pegawai}
         siswa={siswa}
         btq={btq}
+        currentUser={currentUser}
       />
-
-      {/* Grid: AI Insight Widget & Distribusi Siswa */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2 Cols): Gemini AI Insight Widget */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Widget AI Insight Manajemen Sekolah
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Analisis pintar profil siswa, rapor, BTQ, dan sarpras oleh Gemini 3.8 Flash
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={handleGenerateAiInsight}
-                disabled={loadingAi}
-                className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 text-white text-xs font-medium transition-all shadow-xs cursor-pointer"
-              >
-                {loadingAi ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Menganalisis Data...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
-                    <span>{aiInsight ? 'Perbarui Analisis AI' : 'Jalankan AI Insight'}</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {aiError && (
-              <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-xs text-red-700">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{aiError}</span>
-              </div>
-            )}
-
-            {/* AI Insight Content */}
-            {aiInsight ? (
-              <div className="mt-5 space-y-4">
-                <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/60 text-slate-800 text-xs leading-relaxed">
-                  <div className="font-semibold text-emerald-950 mb-1 flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                    Executive Summary:
-                  </div>
-                  {aiInsight.executiveSummary}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-1.5">
-                      <GraduationCap className="w-4 h-4 text-blue-600" />
-                      Sorotan Akademik & Rapor:
-                    </h4>
-                    <ul className="space-y-1.5 text-slate-600">
-                      {aiInsight.academicHighlights.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
-                          <span className="text-blue-500 font-bold">•</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-1.5">
-                      <Award className="w-4 h-4 text-amber-600" />
-                      Sorotan Capaian BTQ:
-                    </h4>
-                    <ul className="space-y-1.5 text-slate-600">
-                      {aiInsight.btqHighlights.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
-                          <span className="text-amber-500 font-bold">•</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/60 text-xs">
-                  <h4 className="font-semibold text-amber-900 mb-1.5">
-                    Rekomendasi Tindak Lanjut untuk Kepala Sekolah:
-                  </h4>
-                  <ul className="space-y-1 text-slate-700">
-                    {aiInsight.actionableRecommendations.map((rec, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="inline-block w-4 h-4 rounded-full bg-amber-200 text-amber-900 text-center font-bold text-[10px] shrink-0">
-                          {idx + 1}
-                        </span>
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-8 py-8 px-4 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-3">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <h4 className="text-sm font-semibold text-slate-800">
-                  AI Insight Belum Dijalankan
-                </h4>
-                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-4">
-                  Klik tombol di atas untuk menganalisis data terpadu SDN Kedungringin 1 Beji secara menyeluruh
-                  menggunakan model Gemini 3.8 Flash.
-                </p>
-                <button
-                  onClick={handleGenerateAiInsight}
-                  disabled={loadingAi}
-                  className="px-4 py-2 rounded-lg bg-emerald-700 text-white font-medium text-xs hover:bg-emerald-800 transition-colors shadow-xs"
-                >
-                  Generate Insight Sekarang
-                </button>
-              </div>
-            )}
-          </div>
-
-          {aiInsight && (
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-700">
-              <span>Status: <strong className="text-emerald-700">Diperbarui</strong></span>
-              <span>Terakhir digenerate: {aiInsight.lastGenerated} WIB</span>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column (1 Col): Distribusi Siswa per Kelas */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Users className="w-4 h-4 text-emerald-600" />
-                Distribusi Rombel Kelas
-              </h3>
-              <span className="text-[11px] text-slate-500">TP {profil.tahunPelajaranAktif}</span>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {perKelasCount.map((item, idx) => {
-                const max = Math.max(...perKelasCount.map((p) => p.total), 1);
-                const percent = Math.round((item.total / max) * 100);
-                return (
-                  <div key={`kelas-${item.kelas}-${idx}`} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-700">Kelas {item.kelas}</span>
-                      <div className="text-[11px] text-slate-500 space-x-2">
-                        <span>{item.total} Siswa</span>
-                        <span className="text-slate-300">|</span>
-                        <span className="text-blue-600">{item.laki} L</span>
-                        <span className="text-pink-600">{item.perempuan} P</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
-                      <div 
-                        className="bg-emerald-600 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-slate-100">
-              <h4 className="text-xs font-semibold text-slate-800 mb-2">Sebaran Agama Siswa</h4>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="p-2 rounded bg-slate-50 border border-slate-100 flex justify-between">
-                  <span className="text-slate-600">Islam:</span>
-                  <strong className="text-slate-900">{siswa.filter(s => s.agama === 'Islam').length}</strong>
-                </div>
-                <div className="p-2 rounded bg-slate-50 border border-slate-100 flex justify-between">
-                  <span className="text-slate-600">Kristen:</span>
-                  <strong className="text-slate-900">{siswa.filter(s => s.agama === 'Kristen').length}</strong>
-                </div>
-                <div className="p-2 rounded bg-slate-50 border border-slate-100 flex justify-between">
-                  <span className="text-slate-600">Katolik:</span>
-                  <strong className="text-slate-900">{siswa.filter(s => s.agama === 'Katolik').length}</strong>
-                </div>
-                <div className="p-2 rounded bg-slate-50 border border-slate-100 flex justify-between">
-                  <span className="text-slate-600">Hindu:</span>
-                  <strong className="text-slate-900">{siswa.filter(s => s.agama === 'Hindu').length}</strong>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setActiveTab('kesiswaan')}
-            className="mt-6 w-full py-2 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <span>Buka Modul Kesiswaan Penuh</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
 
       {/* Administrator Audit Log Feed (LocalStorage Monitoring) */}
       {currentUser?.role === 'admin' && (

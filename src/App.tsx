@@ -292,6 +292,21 @@ export default function App() {
           const cleaned = sanitizeEntityList<Siswa>(live.siswa);
           setSiswa(cleaned);
           saveStored('siswa', cleaned);
+
+          if (user.role === 'siswa') {
+            const freshSiswa = cleaned.find(
+              (s) => s.nisn === user.nisn || s.nama.toLowerCase() === user.name.toLowerCase()
+            );
+            if (freshSiswa) {
+              user = {
+                ...user,
+                name: freshSiswa.nama,
+                nisn: freshSiswa.nisn,
+                kelas: freshSiswa.kelas,
+                rombel: `Kelas ${freshSiswa.kelas} (${freshSiswa.rombel || 'A'})`,
+              };
+            }
+          }
         }
         if (live.rapor && live.rapor.length > 0) {
           const cleaned = sanitizeEntityList<RekapRaporSiswa>(live.rapor);
@@ -1219,6 +1234,8 @@ export default function App() {
               sarpras={sarpras}
               rapor={rapor}
               btq={btq}
+              suratMasuk={suratMasuk}
+              suratKeluar={suratKeluar}
               currentUser={currentUser}
               setActiveTab={setActiveTab}
               onUpdateProfil={setProfil}

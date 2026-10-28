@@ -13,7 +13,9 @@ import {
   BookOpen,
   LogOut,
   UserCheck,
-  LogIn
+  LogIn,
+  Search,
+  RefreshCw
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -22,7 +24,7 @@ interface LoginModalProps {
   siswaList: Siswa[];
   pegawaiList: Pegawai[];
   onClose: () => void;
-  onLogin: (user: AuthUser) => void;
+  onLogin: (user: AuthUser) => Promise<void> | void;
   onLogout: () => void;
 }
 
@@ -53,7 +55,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   // Siswa credentials state
   const [siswaKelas, setSiswaKelas] = useState<number>(6);
   const [selectedSiswaId, setSelectedSiswaId] = useState<string>('');
+  const [siswaSearchText, setSiswaSearchText] = useState('');
   const [siswaPassword, setSiswaPassword] = useState('');
+
+  // Dual-function login & sync loading state
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Error & Feedback state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -163,8 +169,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     onClose();
   };
 
-  // 4. Siswa Login
-  const handleSiswaSubmit = (e: React.FormEvent) => {
+  // 4. Siswa Login: Tombol login berfungsi ganda (tarik data spreadsheet & proses login)
+  const handleSiswaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSiswaId) {
       setErrorMessage('Silakan pilih nama siswa atau NISN.');
@@ -183,20 +189,39 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    onLogin({
-      role: 'siswa',
-      name: foundSiswa.nama,
-      nisn: foundSiswa.nisn,
-      kelas: foundSiswa.kelas,
-      rombel: `Kelas ${foundSiswa.kelas} (${foundSiswa.rombel || 'A'})`,
-    });
-
+    setIsLoggingIn(true);
     setErrorMessage(null);
-    setSiswaPassword('');
-    onClose();
+    try {
+      await onLogin({
+        role: 'siswa',
+        name: foundSiswa.nama,
+        nisn: foundSiswa.nisn,
+        kelas: foundSiswa.kelas,
+        rombel: `Kelas ${foundSiswa.kelas} (${foundSiswa.rombel || 'A'})`,
+      });
+      setSiswaPassword('');
+      onClose();
+    } catch (err: any) {
+      setErrorMessage('Terjadi kendala saat menarik data dari spreadsheet: ' + (err?.message || 'Silakan ulangi'));
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const filteredSiswaByKelas = siswaList.filter((s) => s.kelas === siswaKelas);
+
+  // Pencarian Cepat Siswa (Nama / NISN)
+  const matchingSiswaSearchResults = siswaSearchText.trim()
+    ? siswaList
+        .filter((s) => {
+          const q = siswaSearchText.toLowerCase().trim();
+          return (
+            s.nama.toLowerCase().includes(q) ||
+            (s.nisn && s.nisn.toLowerCase().includes(q))
+          );
+        })
+        .slice(0, 6)
+    : [];
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -383,40 +408,110 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <strong>Akses Portal Siswa Mandiri:</strong> Memantau riwayat transaksi buku tabungan siswa, rekapitulasi presensi kehadiran (Sakit, Izin, Tanpa Keterangan, Jumlah), capaian rapor semester per mata pelajaran (Semester 7–12), dan inventaris fasilitas rombel kelas Anda.
               </div>
 
+              {/* Pencarian Teks Siswa / NISN */}
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Tingkat Kelas / Rombel</label>
-                <select
-                  value={siswaKelas}
-                  onChange={(e) => {
-                    setSiswaKelas(Number(e.target.value));
-                    setSelectedSiswaId('');
-                  }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
-                >
-                  <option value={1}>Kelas 1</option>
-                  <option value={2}>Kelas 2</option>
-                  <option value={3}>Kelas 3</option>
-                  <option value={4}>Kelas 4</option>
-                  <option value={5}>Kelas 5</option>
-                  <option value={6}>Kelas 6</option>
-                </select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-slate-700 font-semibold flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Cari Siswa Cepat (Nama / NISN)</span>
+                  </label>
+                  {siswaSearchText && (
+                    <button
+                      type="button"
+                      onClick={() => setSiswaSearchText('')}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-0.5 font-normal cursor-pointer"
+                    >
+                      <X className="w-3 h-3" /> Bersihkan
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={siswaSearchText}
+                    onChange={(e) => setSiswaSearchText(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-400"
+                    placeholder="Ketik nama lengkap atau NISN..."
+                  />
+                </div>
+
+                {/* Suggestion Dropdown List */}
+                {siswaSearchText.trim() && (
+                  <div className="mt-1.5 bg-white border border-blue-200 rounded-xl shadow-lg max-h-40 overflow-y-auto divide-y divide-slate-100 z-20">
+                    {matchingSiswaSearchResults.length > 0 ? (
+                      matchingSiswaSearchResults.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSiswaId(s.id);
+                            setSiswaKelas(s.kelas);
+                            setSiswaSearchText(s.nama);
+                          }}
+                          className={`w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center justify-between gap-2 text-xs cursor-pointer ${
+                            selectedSiswaId === s.id ? 'bg-blue-100/70 font-semibold text-blue-900' : 'text-slate-800'
+                          }`}
+                        >
+                          <div className="truncate">
+                            <span className="font-bold text-slate-900">{s.nama}</span>
+                            <span className="text-[10px] text-slate-500 ml-1.5">NISN: {s.nisn}</span>
+                          </div>
+                          <span className="shrink-0 px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-bold text-[10px]">
+                            Kls {s.kelas}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-2.5 text-center text-slate-500 text-xs">
+                        Tidak ditemukan siswa "{siswaSearchText}".
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Nama Siswa</label>
-                <select
-                  value={selectedSiswaId}
-                  onChange={(e) => setSelectedSiswaId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
-                  required
-                >
-                  <option value="">-- Pilih Nama Siswa / NISN --</option>
-                  {filteredSiswaByKelas.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nama} (NISN: {s.nisn})
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Rombel / Kelas</label>
+                  <select
+                    value={siswaKelas}
+                    onChange={(e) => {
+                      setSiswaKelas(Number(e.target.value));
+                      setSelectedSiswaId('');
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value={1}>Kelas 1</option>
+                    <option value={2}>Kelas 2</option>
+                    <option value={3}>Kelas 3</option>
+                    <option value={4}>Kelas 4</option>
+                    <option value={5}>Kelas 5</option>
+                    <option value={6}>Kelas 6</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">Pilih Siswa</label>
+                  <select
+                    value={selectedSiswaId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedSiswaId(id);
+                      const s = siswaList.find((x) => x.id === id);
+                      if (s) setSiswaSearchText(s.nama);
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
+                    required
+                  >
+                    <option value="">-- Pilih Siswa --</option>
+                    {filteredSiswaByKelas.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nama} ({s.nisn})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -437,10 +532,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-2.5 px-4 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                  disabled={isLoggingIn}
+                  className="w-full py-2.5 px-4 bg-blue-700 hover:bg-blue-800 disabled:opacity-75 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span>Login</span>
+                  {isLoggingIn ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Tarik Data & Login...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4" />
+                      <span>Login</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
