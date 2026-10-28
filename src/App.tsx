@@ -278,8 +278,47 @@ export default function App() {
     }, 3500);
   };
 
-  // Auth Handlers
-  const handleLogin = (user: AuthUser) => {
+  // Auth Handlers: Tombol login memiliki fungsi selain login sendiri, juga sebagai cara awal melakukan tarik data dari spreadsheet
+  const handleLogin = async (user: AuthUser) => {
+    try {
+      const live = await fetchAllLiveMasterData(dataRef.current.profil);
+      if (live) {
+        if (live.pegawai && live.pegawai.length > 0) {
+          const cleaned = sanitizeEntityList<Pegawai>(live.pegawai);
+          setPegawai(cleaned);
+          saveStored('pegawai', cleaned);
+        }
+        if (live.siswa && live.siswa.length > 0) {
+          const cleaned = sanitizeEntityList<Siswa>(live.siswa);
+          setSiswa(cleaned);
+          saveStored('siswa', cleaned);
+        }
+        if (live.rapor && live.rapor.length > 0) {
+          const cleaned = sanitizeEntityList<RekapRaporSiswa>(live.rapor);
+          setRapor(cleaned);
+          saveStored('rapor', cleaned);
+        }
+        if (live.btq && live.btq.length > 0) {
+          const cleaned = sanitizeEntityList<NilaiIjazahBTQ>(live.btq);
+          setBtq(cleaned);
+          saveStored('btq', cleaned);
+        }
+        if (live.sarpras && live.sarpras.length > 0) {
+          const cleaned = sanitizeEntityList<SarprasItem>(live.sarpras);
+          setSarpras(cleaned);
+          saveStored('sarpras', cleaned);
+        }
+        if (live.profil && live.profil.nama) {
+          setProfil(live.profil);
+          saveStored('profil', live.profil);
+        }
+        const syncTimestamp = live.timestamp || new Date().toLocaleTimeString('id-ID');
+        setLastSyncTime(syncTimestamp);
+      }
+    } catch (pullErr) {
+      console.warn('Tarik data saat login notice:', pullErr);
+    }
+
     setCurrentUser(user);
     setIsLoggedIn(true);
     try {
@@ -294,7 +333,7 @@ export default function App() {
       action: 'LOGIN',
       category: 'AUTENTIKASI',
       description: `Pengguna berhasil login sebagai ${user.role.toUpperCase()}: ${user.name}${user.rombel ? ` (${user.rombel})` : ''}`,
-      details: `Waktu login: ${new Date().toLocaleTimeString('id-ID')} | Peran: ${user.role}`
+      details: `Waktu login: ${new Date().toLocaleTimeString('id-ID')} | Tarik data dari spreadsheet berhasil`
     });
 
     if (user.role === 'guru') {
@@ -308,7 +347,7 @@ export default function App() {
     else if (user.role === 'guru') roleTitle = `Guru: ${user.name} (${user.rombel || user.jabatan || 'Guru Kelas'})`;
     else if (user.role === 'siswa') roleTitle = `Siswa: ${user.name} (${user.rombel || 'Kelas ' + user.kelas})`;
     addToast(
-      `Berhasil masuk sebagai ${roleTitle}!`,
+      `Data berhasil ditarik & masuk sebagai ${roleTitle}!`,
       'success'
     );
   };
@@ -1068,95 +1107,11 @@ export default function App() {
     };
   }, []);
 
-  // 2. Real-time periodic synchronization heartbeat (every 5 seconds) + window focus listener
-  // Whenever anyone edits directly in Google Spreadsheet, the web SIM automatically reads and displays changes
-  useEffect(() => {
-    const checkSpreadsheetUpdates = async (isFocusTrigger = false) => {
-      try {
-        // Prioritize fast, direct Apps Script live fetch
-        let res: any = await fetchAllLiveMasterData(dataRef.current.profil).catch(() => null);
-
-        // Fallback to GViz if spreadsheet ID is manually configured
-        if (!res) {
-          const sheetId = getSavedMasterSheetId();
-          if (sheetId) {
-            res = await fetchMasterDatabaseRealtime(sheetId, null, dataRef.current.profil).catch(() => null);
-          }
-        }
-
-        if (!res) return;
-
-        let hasChanges = false;
-        if (res.pegawai && res.pegawai.length > 0) {
-          const cleaned = sanitizeEntityList<Pegawai>(res.pegawai);
-          if (hasDataDifference(dataRef.current.pegawai, cleaned)) {
-            setPegawai(cleaned);
-            saveStored('pegawai', cleaned);
-            hasChanges = true;
-          }
-        }
-        if (res.siswa && res.siswa.length > 0) {
-          const cleaned = sanitizeEntityList<Siswa>(res.siswa);
-          if (hasDataDifference(dataRef.current.siswa, cleaned)) {
-            setSiswa(cleaned);
-            saveStored('siswa', cleaned);
-            hasChanges = true;
-          }
-        }
-        if (res.rapor && res.rapor.length > 0) {
-          const cleaned = sanitizeEntityList<RekapRaporSiswa>(res.rapor);
-          if (hasDataDifference(dataRef.current.rapor, cleaned)) {
-            setRapor(cleaned);
-            saveStored('rapor', cleaned);
-            hasChanges = true;
-          }
-        }
-        if (res.btq && res.btq.length > 0) {
-          const cleaned = sanitizeEntityList<NilaiIjazahBTQ>(res.btq);
-          if (hasDataDifference(dataRef.current.btq, cleaned)) {
-            setBtq(cleaned);
-            saveStored('btq', cleaned);
-            hasChanges = true;
-          }
-        }
-        if (res.sarpras && res.sarpras.length > 0) {
-          const cleaned = sanitizeEntityList<SarprasItem>(res.sarpras);
-          if (hasDataDifference(dataRef.current.sarpras, cleaned)) {
-            setSarpras(cleaned);
-            saveStored('sarpras', cleaned);
-            hasChanges = true;
-          }
-        }
-        if (res.profil && res.profil.nama && hasDataDifference(dataRef.current.profil, res.profil)) {
-          setProfil(res.profil);
-          saveStored('profil', res.profil);
-          hasChanges = true;
-        }
-
-        if (hasChanges) {
-          const syncTime = new Date().toLocaleTimeString('id-ID');
-          setLastSyncTime(syncTime);
-          // Notifikasi pembaruan otomatis dimatikan sesuai permintaan user agar tidak mengganggu UI
-        } else if (res.timestamp && !isFocusTrigger) {
-          setLastSyncTime(res.timestamp);
-        }
-      } catch (err) {
-        // Silent background check
-      }
-    };
-
-    // Fast heartbeat every 5 seconds for responsive live sync
-    const interval = setInterval(() => checkSpreadsheetUpdates(false), 5000);
-
-    // Immediate check when user switches back to this browser tab (e.g. after editing spreadsheet)
-    const handleWindowFocus = () => checkSpreadsheetUpdates(true);
-    window.addEventListener('focus', handleWindowFocus);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleWindowFocus);
-    };
-  }, []);
+  // Tidak ada auto kirim atau auto tarik data berkala.
+  // Seluruh sinkronisasi dilakukan melalui tombol resmi:
+  // - Login (tarik data dan login)
+  // - Simpan Data / Simpan Perubahan (mengirim data ke spreadsheet secara realtime)
+  // - Tombol Sinkronisasi Manual (jika pengguna ingin memperbarui data saat sedang login)
 
   // Manual / Immediate Realtime Synchronization Handler
   const handleManualRealtimeSync = async () => {

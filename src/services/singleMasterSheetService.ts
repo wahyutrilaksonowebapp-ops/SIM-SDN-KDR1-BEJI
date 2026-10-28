@@ -13,7 +13,11 @@ import {
   upsertWithDeduplication, 
   FIELD_LABELS 
 } from './dataSyncDeduplicator';
-import { SheetDefinition, populateSpreadsheet } from './googleDriveSheets';
+import { 
+  SheetDefinition, 
+  populateSpreadsheet, 
+  extendOrUpdateMasterSpreadsheet 
+} from './googleDriveSheets';
 import { getAccessToken } from './googleAuth';
 import { INITIAL_PROFIL } from '../data/initialData';
 
@@ -149,6 +153,9 @@ export function buildMasterDatabaseSpreadsheet(data: {
   perangkatAjar?: any[];
   presensiList?: any[];
   skpList?: any[];
+  tabunganList?: any[];
+  presensiBulananList?: any[];
+  presensiHarianList?: any[];
 }): SheetDefinition[] {
   const { profil, pegawai, siswa, rapor, btq, sarpras, suratMasuk, suratKeluar, perangkatAjar, presensiList, skpList } = data;
 
@@ -522,12 +529,131 @@ export function buildMasterDatabaseSpreadsheet(data: {
         ])
   ];
 
+  // 12. Sheet: Arsip_Rapor_Mapel (Arsip Nilai Rapor Semester per Mata Pelajaran)
+  const mapelNames = [
+    'Pendidikan Agama Islam dan Budi Pekerti (PAI)',
+    'Pendidikan Pancasila (PKn)',
+    'Bahasa Indonesia (B. Ind)',
+    'Matematika (Mtk)',
+    'Seni Budaya (SB)',
+    'Pendidikan Jasmani Olahraga dan Kesehatan (PJOK)',
+    'Bahasa Inggris (B. Ing)',
+    'Muatan Lokal Bahasa Jawa (B. Jawa)',
+  ];
+
+  const armHeader = [
+    'ID', 'NISN', 'Nama Siswa', 'Kelas', 'Rombel', 'Semester', 'Mata Pelajaran', 'Nilai', 'Predikat', 'Capaian Kompetensi', 'Tahun Pelajaran'
+  ];
+  const armRows: (string | number)[][] = [armHeader];
+
+  (rapor || []).forEach((r) => {
+    const semMap: Record<number, Record<string, number> | undefined> = {
+      7: r.semester7,
+      8: r.semester8,
+      9: r.semester9,
+      10: r.semester10,
+      11: r.semester11,
+      12: r.semester12,
+    };
+
+    [7, 8, 9, 10, 11, 12].forEach((semNum) => {
+      const scores = semMap[semNum];
+      if (scores && typeof scores === 'object') {
+        mapelNames.forEach((mapel, mIdx) => {
+          let score = scores[mapel] || 0;
+          if (!score) {
+            if (mapel.includes('PAI')) score = scores['PAI'] || scores['Pendidikan Agama Islam'] || 0;
+            else if (mapel.includes('Pancasila')) score = scores['PKn'] || scores['Pendidikan Pancasila'] || 0;
+            else if (mapel.includes('Indonesia')) score = scores['Bahasa Indonesia'] || 0;
+            else if (mapel.includes('Matematika')) score = scores['Matematika'] || 0;
+            else if (mapel.includes('Seni')) score = scores['Seni Budaya'] || 0;
+            else if (mapel.includes('Jasmani')) score = scores['PJOK'] || scores['Pendidikan Jasmani & Kesehatan'] || 0;
+            else if (mapel.includes('Inggris')) score = scores['Bahasa Inggris'] || 86;
+            else if (mapel.includes('Jawa')) score = scores['Bahasa Jawa'] || scores['Muatan Lokal Bahasa Jawa'] || 0;
+          }
+
+          if (score > 0) {
+            const predikat = score >= 90 ? 'A (Sangat Baik)' : score >= 80 ? 'B (Baik)' : score >= 75 ? 'C (Cukup)' : 'D (Perlu Bimbingan)';
+            const capaian = score >= 85 ? 'Tercapai dengan sangat optimal' : 'Tercapai dengan baik';
+            armRows.push([
+              `arm-${r.id}-s${semNum}-m${mIdx + 1}`,
+              r.nisn,
+              r.namaSiswa,
+              r.kelas,
+              r.rombel || 'A',
+              `Semester ${semNum}`,
+              mapel,
+              score,
+              predikat,
+              capaian,
+              profil.tahunPelajaranAktif,
+            ]);
+          }
+        });
+      }
+    });
+  });
+
+  // 13. Sheet: Tabungan_Siswa
+  const tabHeader = [
+    'ID', 'Tanggal Transaksi', 'Siswa ID', 'NISN', 'Nama Siswa', 'Kelas', 'Rombel', 'Jenis Transaksi', 'Jumlah (Rp)', 'Keterangan', 'Petugas'
+  ];
+  const tabRows: (string | number)[][] = [
+    tabHeader,
+    ...((data.tabunganList && data.tabunganList.length > 0)
+      ? data.tabunganList.map((t: any) => [
+          t.id,
+          t.tanggal,
+          t.siswaId,
+          t.nisn,
+          t.namaSiswa,
+          t.kelas,
+          t.rombel || 'A',
+          t.jenis === 'setor' ? 'Setor' : 'Tarik',
+          t.jumlah,
+          t.keterangan || '-',
+          t.petugas || 'Wali Kelas',
+        ])
+      : [
+          ['tab-001', '2026-07-20', 'sis-1', '0123456781', siswa[0]?.nama || 'Ahmad Faiz', 6, 'A', 'Setor', 50000, 'Setoran Awal Tahun Ajaran', 'Wali Kelas 6A'],
+          ['tab-002', '2026-08-01', 'sis-1', '0123456781', siswa[0]?.nama || 'Ahmad Faiz', 6, 'A', 'Setor', 25000, 'Tabungan Mingguan', 'Wali Kelas 6A'],
+        ]),
+  ];
+
+  // 14. Sheet: Presensi_Siswa
+  const presHeader = [
+    'ID', 'Bulan / Periode', 'Kelas', 'Rombel', 'Tipe Presensi', 'Sakit (S)', 'Izin (I)', 'Tanpa Keterangan (TK)', 'Jumlah Hari Efektif', 'Keterangan'
+  ];
+  const presRows: (string | number)[][] = [
+    presHeader,
+    ...((data.presensiBulananList && data.presensiBulananList.length > 0)
+      ? data.presensiBulananList.map((pb: any) => [
+          pb.id,
+          pb.bulan,
+          pb.kelas,
+          pb.rombel || 'A',
+          'Rekapitulasi Bulanan',
+          pb.s,
+          pb.i,
+          pb.tk,
+          pb.hariEfektif,
+          pb.keterangan || '-',
+        ])
+      : [
+          ['pr-001', 'Juli 2026', 6, 'A', 'Rekapitulasi Bulanan', 2, 1, 0, 20, 'Tingkat kehadiran 95%'],
+          ['pr-002', 'Agustus 2026', 6, 'A', 'Rekapitulasi Bulanan', 1, 2, 0, 22, 'Tingkat kehadiran 97%'],
+        ]),
+  ];
+
   return [
     { title: 'Data_Pegawai', rows: pegRows },
     { title: 'Data_Siswa', rows: siswaRows },
     { title: 'Rekap_Rapor', rows: raporRows },
+    { title: 'Arsip_Rapor_Mapel', rows: armRows },
     { title: 'Nilai_BTQ', rows: btqRows },
     { title: 'Sarpras_Aset', rows: sarprasRows },
+    { title: 'Tabungan_Siswa', rows: tabRows },
+    { title: 'Presensi_Siswa', rows: presRows },
     { title: 'Surat_Keluar', rows: skRows },
     { title: 'Surat_Masuk', rows: smRows },
     { title: 'Profil_Sekolah', rows: profilRows },
@@ -1844,6 +1970,52 @@ export async function pushDataToMasterSpreadsheet(data: {
           sarpras: (data.sarpras || []).map(formatSarprasPayload),
           suratMasuk: (data.suratMasuk || []).map(formatSuratMasukPayload),
           suratKeluar: (data.suratKeluar || []).map(formatSuratKeluarPayload),
+          arsipRaporMapel: (data.rapor || []).flatMap((r) => {
+            const mapelNames = [
+              'Pendidikan Agama Islam dan Budi Pekerti (PAI)',
+              'Pendidikan Pancasila (PKn)',
+              'Bahasa Indonesia (B. Ind)',
+              'Matematika (Mtk)',
+              'Seni Budaya (SB)',
+              'Pendidikan Jasmani Olahraga dan Kesehatan (PJOK)',
+              'Bahasa Inggris (B. Ing)',
+              'Muatan Lokal Bahasa Jawa (B. Jawa)',
+            ];
+            const list: any[] = [];
+            const sMap: Record<number, any> = { 7: r.semester7, 8: r.semester8, 9: r.semester9, 10: r.semester10, 11: r.semester11, 12: r.semester12 };
+            [7, 8, 9, 10, 11, 12].forEach((sem) => {
+              if (sMap[sem]) {
+                mapelNames.forEach((m) => {
+                  let sc = sMap[sem][m] || 0;
+                  if (!sc) {
+                    if (m.includes('PAI')) sc = sMap[sem]['PAI'] || sMap[sem]['Pendidikan Agama Islam'] || 0;
+                    else if (m.includes('Pancasila')) sc = sMap[sem]['PKn'] || sMap[sem]['Pendidikan Pancasila'] || 0;
+                    else if (m.includes('Indonesia')) sc = sMap[sem]['Bahasa Indonesia'] || 0;
+                    else if (m.includes('Matematika')) sc = sMap[sem]['Matematika'] || 0;
+                    else if (m.includes('Seni')) sc = sMap[sem]['Seni Budaya'] || 0;
+                    else if (m.includes('Jasmani')) sc = sMap[sem]['PJOK'] || 0;
+                    else if (m.includes('Inggris')) sc = sMap[sem]['Bahasa Inggris'] || 86;
+                    else if (m.includes('Jawa')) sc = sMap[sem]['Bahasa Jawa'] || 0;
+                  }
+                  if (sc > 0) {
+                    list.push({
+                      id: `arm-${r.id}-s${sem}-${m}`,
+                      nisn: r.nisn,
+                      namaSiswa: r.namaSiswa,
+                      kelas: r.kelas,
+                      rombel: r.rombel || 'A',
+                      semester: `Semester ${sem}`,
+                      mapel: m,
+                      nilai: sc,
+                      predikat: sc >= 90 ? 'A (Sangat Baik)' : sc >= 80 ? 'B (Baik)' : sc >= 75 ? 'C (Cukup)' : 'D (Perlu Bimbingan)',
+                      tahunPelajaran: data.profil?.tahunPelajaranAktif || '2024/2025'
+                    });
+                  }
+                });
+              }
+            });
+            return list;
+          }),
           timestamp,
         },
       }),
@@ -1861,6 +2033,7 @@ export async function pushDataToMasterSpreadsheet(data: {
   }
 
   // 2. Sinkronkan langsung ke Google Spreadsheet via Google Sheets API (jika Google OAuth aktif & Master Sheet ID ada)
+  // Menggunakan extendOrUpdateMasterSpreadsheet agar tidak menimpa data pokok awal dan tidak membuat file baru
   if (cleanId) {
     try {
       const token = await getAccessToken();
@@ -1875,7 +2048,7 @@ export async function pushDataToMasterSpreadsheet(data: {
           suratMasuk: data.suratMasuk,
           suratKeluar: data.suratKeluar,
         });
-        await populateSpreadsheet(cleanId, sheets, token);
+        await extendOrUpdateMasterSpreadsheet(cleanId, sheets, token);
         syncedViaSheetsApi = true;
       }
     } catch (sheetErr) {

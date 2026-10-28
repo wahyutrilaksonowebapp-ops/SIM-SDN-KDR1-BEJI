@@ -223,14 +223,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-bold text-slate-900 leading-tight">
-                  SIM SDN Kedungringin 1 Beji
+                  SIM SDN Kedungringin I Beji
                 </h1>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
                   Akreditasi {profil.akreditasi.split(' ')[0]}
                 </span>
               </div>
               <p className="text-xs text-slate-700">
-                Sistem Informasi Manajemen Sekolah Terpadu Google Workspace & Gemini AI
+                Sistem Informasi Manajemen SDN Kedungringin I Beji berbasis Data
               </p>
             </div>
           </div>

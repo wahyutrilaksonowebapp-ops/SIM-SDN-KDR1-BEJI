@@ -12,7 +12,8 @@ import {
   BookOpen,
   ArrowRight,
   KeyRound,
-  UserCheck
+  UserCheck,
+  LogIn
 } from 'lucide-react';
 
 interface LoginMenuProps {
@@ -176,7 +177,7 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
 
     const cleanPass = siswaPassword.trim();
     if (cleanPass && cleanPass !== '20519482' && cleanPass !== foundSiswa.nisn) {
-      setErrorMessage('Kata sandi tidak valid. Gunakan kata sandi default 20519482 atau NISN.');
+      setErrorMessage('Kata sandi tidak valid. Silakan periksa kembali kata sandi Anda.');
       return;
     }
 
@@ -201,33 +202,13 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
       <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 bg-emerald-800/80 backdrop-blur-md px-3.5 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-700">
-              <School className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Portal Masuk Multi-Role Resmi</span>
-              <span className="text-emerald-400">•</span>
-              <span>NPSN: {profil.npsn}</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Selamat Datang di SIM {profil.nama}
-            </h1>
-
-            <p className="text-emerald-100/90 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Sistem Informasi Manajemen Sekolah Terpadu dengan hak akses berbasis peran (RBAC) untuk 
-              <strong> Guest</strong>, <strong>Siswa</strong>, <strong>Guru Rombel</strong>, dan <strong>Administrator</strong>.
-            </p>
-          </div>
-
-          <div className="shrink-0 flex md:flex-col items-center md:items-end justify-between gap-2 border-t md:border-t-0 md:border-l border-emerald-700/60 pt-4 md:pt-0 md:pl-6 text-right">
-            <span className="text-[11px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-md bg-emerald-700/70 border border-emerald-600 text-emerald-100">
-              Akreditasi {profil.akreditasi}
-            </span>
-            <div className="text-[11px] text-emerald-200">
-              Kec. {profil.kecamatan}, Kab. {profil.kabupaten}
-            </div>
-          </div>
+        <div className="relative z-10 space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            Selamat Datang di SIM SDN Kedungringin I Beji
+          </h1>
+          <p className="text-emerald-100/90 text-xs sm:text-sm leading-relaxed">
+            Sistem Informasi Manajemen SDN Kedungringin I Beji berbasis Data
+          </p>
         </div>
       </div>
 
@@ -352,23 +333,23 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
             {/* 1. Form Guest */}
             {selectedRole === 'guest' && (
               <form onSubmit={handleGuestSubmit} className="space-y-4 max-w-lg mx-auto text-xs">
-                <div className="text-center space-y-1 pb-2">
+                <div className="text-center space-y-2 pb-2">
                   <h3 className="text-base font-bold text-slate-900">Masuk Mode Guest (Pengunjung)</h3>
-                  <p className="text-slate-500 text-xs">
-                    Anda akan diarahkan ke halaman informasi umum sekolah tanpa perlu memasukkan kata sandi.
+                  <p className="text-slate-600 text-xs sm:text-[13px] leading-relaxed max-w-lg mx-auto bg-slate-100/90 border border-slate-200/80 p-3.5 rounded-xl shadow-2xs font-medium">
+                    Akses keterbukaan informasi publik: Profil resmi SDN Kedungringin I Beji, rekapitulasi kehadiran kelas agregat, direktori pendidik & tenaga kependidikan, serta informasi sarana prasarana sekolah secara transparan tanpa kata sandi.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-white border border-slate-200 text-slate-700 space-y-2">
+                <div className="p-4 rounded-xl bg-white border border-slate-200 text-slate-700 space-y-2 shadow-2xs">
                   <div className="font-semibold text-slate-900 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Hak Akses Guest:</span>
+                    <span>Rincian Hak Akses Akun Guest:</span>
                   </div>
-                  <ul className="list-disc list-inside space-y-1 text-slate-600 pl-1">
-                    <li>Melihat profil lengkap SDN Kedungringin 1 Beji</li>
-                    <li>Melihat rekapitulasi presensi kelas (agregat tingkat kelas tanpa data nama siswa)</li>
-                    <li>Melihat sarpras dan fasilitas ruang kelas</li>
-                    <li><em>Catatan: Sub menu Tabungan disembunyikan/dilarang untuk Akun Guest demi privasi.</em></li>
+                  <ul className="list-disc list-inside space-y-1.5 text-slate-600 pl-1">
+                    <li>Melihat profil lengkap dan visi misi SDN Kedungringin 1 Beji</li>
+                    <li>Melihat rekapitulasi presensi kelas (agregat tingkat rombel tanpa data identitas siswa)</li>
+                    <li>Melihat inventaris sarpras dan fasilitas ruang kelas</li>
+                    <li className="text-slate-400 italic">Sub menu Tabungan & Rapor Siswa terkunci demi privasi peserta didik</li>
                   </ul>
                 </div>
 
@@ -376,9 +357,8 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                   type="submit"
                   className="w-full py-3 px-4 bg-slate-900 hover:bg-black text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
                 >
-                  <Eye className="w-4 h-4" />
-                  <span>Masuk Sebagai Guest Sekarang (1-Klik)</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <LogIn className="w-4 h-4" />
+                  <span>Login</span>
                 </button>
               </form>
             )}
@@ -386,10 +366,10 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
             {/* 2. Form Siswa */}
             {selectedRole === 'siswa' && (
               <form onSubmit={handleSiswaSubmit} className="space-y-4 max-w-md mx-auto text-xs">
-                <div className="text-center space-y-1 pb-2">
+                <div className="text-center space-y-2 pb-2">
                   <h3 className="text-base font-bold text-slate-900">Masuk Sebagai Siswa</h3>
-                  <p className="text-slate-500 text-xs">
-                    Peran akun siswa: melihat dashboard, kesiswaan (buku tabungan & rekap presensi), dan sarpras sesuai rombel Anda.
+                  <p className="text-blue-900 text-xs sm:text-[13px] leading-relaxed max-w-lg mx-auto bg-blue-50/90 border border-blue-200/80 p-3.5 rounded-xl shadow-2xs font-medium">
+                    Akses portal belajar mandiri: Memantau riwayat transaksi buku tabungan siswa, rekapitulasi presensi kehadiran (Sakit, Izin, Tanpa Keterangan, Jumlah), capaian rapor semester per mata pelajaran (Semester 7–12), dan inventaris fasilitas rombel kelas Anda.
                   </p>
                 </div>
 
@@ -438,12 +418,10 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                       value={siswaPassword}
                       onChange={(e) => setSiswaPassword(e.target.value)}
                       className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="Masukkan kata sandi (20519482 atau NISN)"
+                      placeholder="Masukkan kata sandi"
+                      autoComplete="current-password"
                     />
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Gunakan PIN default: <strong>20519482</strong> atau <strong>NISN</strong> siswa Anda.
-                  </p>
                 </div>
 
                 <div className="pt-2">
@@ -451,9 +429,8 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                     type="submit"
                     className="w-full py-3 px-4 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
                   >
-                    <UserCheck className="w-4 h-4" />
-                    <span>Masuk Portal Akun Siswa</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <LogIn className="w-4 h-4" />
+                    <span>Login</span>
                   </button>
                 </div>
               </form>
@@ -462,10 +439,10 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
             {/* 3. Form Guru */}
             {selectedRole === 'guru' && (
               <form onSubmit={handleGuruSubmit} className="space-y-4 max-w-md mx-auto text-xs">
-                <div className="text-center space-y-1 pb-2">
+                <div className="text-center space-y-2 pb-2">
                   <h3 className="text-base font-bold text-slate-900">Masuk Sebagai Guru Kelas / Mapel</h3>
-                  <p className="text-slate-500 text-xs">
-                    Mencatat saldo awal tabungan, mutasi keluar/masuk tabungan, serta input presensi harian & bulanan siswa.
+                  <p className="text-emerald-950 text-xs sm:text-[13px] leading-relaxed max-w-lg mx-auto bg-emerald-50/90 border border-emerald-200/80 p-3.5 rounded-xl shadow-2xs font-medium">
+                    Akses administrasi kelas & pengajaran: Pencatatan presensi siswa secara harian dan rekap bulanan, pengelolaan transaksi tabungan rombel ampu (saldo awal & mutasi keluar-masuk), input evaluasi nilai rapor semester 8 mapel, dan sarpras ruang kelas.
                   </p>
                 </div>
 
@@ -493,13 +470,10 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                       value={guruPassword}
                       onChange={(e) => setGuruPassword(e.target.value)}
                       className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      placeholder="Masukkan kata sandi guru"
+                      placeholder="Masukkan kata sandi"
                       autoComplete="current-password"
                     />
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Gunakan kata sandi terdaftar (default: <strong>20519482</strong>)
-                  </p>
                 </div>
 
                 <div className="pt-2">
@@ -507,9 +481,8 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                     type="submit"
                     className="w-full py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
                   >
-                    <BookOpen className="w-4 h-4" />
-                    <span>Masuk Portal Guru</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <LogIn className="w-4 h-4" />
+                    <span>Login</span>
                   </button>
                 </div>
               </form>
@@ -518,10 +491,10 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
             {/* 4. Form Admin */}
             {selectedRole === 'admin' && (
               <form onSubmit={handleAdminSubmit} className="space-y-4 max-w-md mx-auto text-xs">
-                <div className="text-center space-y-1 pb-2">
+                <div className="text-center space-y-2 pb-2">
                   <h3 className="text-base font-bold text-slate-900">Masuk Sebagai Administrator</h3>
-                  <p className="text-slate-500 text-xs">
-                    Hak akses penuh untuk mengelola dan memperbarui keseluruhan data SIM.
+                  <p className="text-purple-950 text-xs sm:text-[13px] leading-relaxed max-w-lg mx-auto bg-purple-50/90 border border-purple-200/80 p-3.5 rounded-xl shadow-2xs font-medium">
+                    Akses kendali penuh sistem (Full Access): Tata kelola data induk kepegawaian GTK & peserta didik, manajemen sarpras dan persuratan dinas, kontrol validasi database sekolah, serta sinkronisasi realtime Master Database Google Spreadsheet.
                   </p>
                 </div>
 
@@ -560,9 +533,8 @@ export const LoginMenu: React.FC<LoginMenuProps> = ({
                     type="submit"
                     className="w-full py-3 px-4 bg-purple-800 hover:bg-purple-900 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs"
                   >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Masuk Portal Administrator</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <LogIn className="w-4 h-4" />
+                    <span>Login</span>
                   </button>
                 </div>
               </form>

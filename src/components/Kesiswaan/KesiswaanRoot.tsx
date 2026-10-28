@@ -87,15 +87,15 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
   const subNavItems: { id: KesiswaanSubTab; label: string; icon: React.ReactNode; count?: number; badge?: string }[] = [
     {
       id: 'siswa',
-      label: 'Data Siswa & Rekap Demografi',
+      label: userRole === 'siswa' ? 'Profil & Rombel Saya' : 'Data Siswa & Rekap Demografi',
       icon: <Users className="w-4 h-4" />,
-      count: siswa.length,
+      count: userRole === 'siswa' ? undefined : siswa.length,
     },
     {
       id: 'penilaian',
-      label: 'Penilaian',
+      label: userRole === 'siswa' ? 'Rapor Semester Saya' : 'Penilaian',
       icon: <GraduationCap className="w-4 h-4 text-emerald-300" />,
-      badge: 'Rapor, TKA & BTQ',
+      badge: userRole === 'siswa' ? '8 Mapel & TKA' : 'Rapor, TKA & BTQ',
     },
   ];
 

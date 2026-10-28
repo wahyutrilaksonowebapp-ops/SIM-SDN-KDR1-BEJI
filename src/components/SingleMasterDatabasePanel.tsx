@@ -32,6 +32,7 @@ import {
 import { 
   createSpreadsheetInFolder, 
   populateSpreadsheet,
+  extendOrUpdateMasterSpreadsheet,
   listFilesInFolder
 } from '../services/googleDriveSheets';
 import { 
@@ -439,25 +440,27 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
   };
 
   // =========================================================================
-  // ACTION: CREATE 1 MASTER SPREADSHEET IN GOOGLE DRIVE FOLDER
+  // ACTION: PERBARUI / LENGKAPI STRUKTUR MASTER SPREADSHEET DI GOOGLE DRIVE
+  // Mencegah pembuatan file baru agar ID spreadsheet dan Web App GAS tetap paten
+  // Menambahkan sheet & kolom baru tanpa merubah data pokok awal
   // =========================================================================
   const handleCreateMasterSpreadsheet = async () => {
     setIsPushing(true);
-    setStatusMessage('Menghubungkan ke Google Drive untuk membuat Master Database Tunggal...');
+    setStatusMessage('Menghubungkan ke Google Drive untuk melengkapi struktur Master Database...');
 
     try {
       let token = await getAccessToken();
       if (!token) {
         const loginRes = await googleSignIn();
         if (!loginRes?.accessToken) {
-          onNotify('Login Google diperlukan untuk membuat berkas di Google Drive.', 'error');
+          onNotify('Login Google diperlukan untuk mengakses Google Drive.', 'error');
           setIsPushing(false);
           return;
         }
         token = loginRes.accessToken;
       }
 
-      // Build 1 Unified Database Spreadsheet
+      // Build 1 Unified Database Spreadsheet structure (including Arsip_Rapor_Mapel, Tabungan, Presensi)
       const sheets = buildMasterDatabaseSpreadsheet({
         profil,
         pegawai,
@@ -469,30 +472,63 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
         suratKeluar,
       });
 
-      // Create in target folder
-      const created = await createSpreadsheetInFolder(
-        TARGET_GDRIVE_FOLDER_ID,
-        `${MASTER_SPREADSHEET_TITLE}_${profil.tahunPelajaranAktif.replace('/', '_')}`,
-        token
+      const currentMasterId = extractSpreadsheetId(activeSheetId || getSavedMasterSheetId() || sheetInput);
+
+      let targetId = currentMasterId;
+      let targetUrl = sheetUrl;
+
+      // 1. Jika sudah ada Spreadsheet yang terhubung, PERBARUI TANPA MEMBUAT FILE BARU
+      if (targetId) {
+        setStatusMessage('Melengkapi tab sheet baru (Arsip Rapor Mapel, Tabungan, Presensi) dan isian kolom tanpa merubah data pokok awal...');
+        const result = await extendOrUpdateMasterSpreadsheet(targetId, sheets, token);
+
+        setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
+        setSyncStatus('success');
+        setShowCreateMasterConfirm(false);
+
+        const addedMsg = result.addedSheets.length > 0 ? ` (${result.addedSheets.join(', ')} ditambahkan)` : '';
+        onNotify(`Struktur Master Spreadsheet berhasil dilengkapi! Data pokok awal tetap paten, link Spreadsheet & Web App tetap terjaga.${addedMsg}`, 'success');
+        return;
+      }
+
+      // 2. Jika belum ada yang terhubung, cari file master yang sudah ada di folder agar tidak buat file ganda
+      setStatusMessage('Memeriksa berkas master di folder Google Drive...');
+      const existingDriveFiles = await listFilesInFolder(TARGET_GDRIVE_FOLDER_ID, token);
+      const matchedMaster = existingDriveFiles.find((f) =>
+        f.name.includes(MASTER_SPREADSHEET_TITLE) || f.name.includes('SIM_SDN_Kedungringin1')
       );
 
-      // Populate all 8 sheets in the single spreadsheet
-      setStatusMessage('Mengisi struktur seluruh sheet (Pegawai, Siswa, Sarpras, Rapor, Persuratan)...');
-      await populateSpreadsheet(created.id, sheets, token);
+      if (matchedMaster) {
+        targetId = matchedMaster.id;
+        targetUrl = matchedMaster.webViewLink || `https://docs.google.com/spreadsheets/d/${targetId}/edit`;
+        setStatusMessage('Ditemukan Master Spreadsheet di Drive. Memperbarui tab dan kolom...');
+        await extendOrUpdateMasterSpreadsheet(targetId, sheets, token);
+      } else {
+        // Hanya jika sama sekali belum ada berkas di Google Drive, buat 1 master baru
+        setStatusMessage('Membuat Master Spreadsheet baru di folder Google Drive...');
+        const created = await createSpreadsheetInFolder(
+          TARGET_GDRIVE_FOLDER_ID,
+          `${MASTER_SPREADSHEET_TITLE}_${profil.tahunPelajaranAktif.replace('/', '_')}`,
+          token
+        );
+        targetId = created.id;
+        targetUrl = created.webViewLink;
+        await populateSpreadsheet(created.id, sheets, token);
+      }
 
       // Save ID and connect
-      saveMasterSheetId(created.id, created.webViewLink);
-      setSheetInput(created.id);
-      setActiveSheetId(created.id);
-      setSheetUrl(created.webViewLink);
+      saveMasterSheetId(targetId, targetUrl);
+      setSheetInput(targetId);
+      setActiveSheetId(targetId);
+      if (targetUrl) setSheetUrl(targetUrl);
 
       setLastSyncTime(new Date().toLocaleTimeString('id-ID'));
       setSyncStatus('success');
       setShowCreateMasterConfirm(false);
-      onNotify('1 Master Database Tunggal berhasil dibuat dan dihubungkan secara real-time!', 'success');
+      onNotify('Master Database Tunggal berhasil dihubungkan dan disinkronkan secara real-time!', 'success');
     } catch (err: any) {
-      console.error('Create master spreadsheet error:', err);
-      onNotify(err.message || 'Gagal membuat Master Spreadsheet di Google Drive.', 'error');
+      console.error('Update master spreadsheet error:', err);
+      onNotify(err.message || 'Gagal memperbarui Master Spreadsheet di Google Drive.', 'error');
       setSyncStatus('error');
     } finally {
       setIsPushing(false);
@@ -902,9 +938,10 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
                 <button
                   onClick={() => setShowCreateMasterConfirm(true)}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors cursor-pointer border border-slate-300"
+                  title="Menambahkan sheet dan kolom baru ke spreadsheet master yang terhubung tanpa membuat berkas baru (link tetap paten)"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                  <span>Buat 1 Master Baru di Drive</span>
+                  <span>Perbarui / Lengkapi Master di Drive</span>
                 </button>
 
                 <button
@@ -1496,9 +1533,9 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
 
   <ConfirmModal
     isOpen={showCreateMasterConfirm}
-    title="Buat 1 Master Spreadsheet di Google Drive"
-    message={`Sistem akan membuat 1 file Google Spreadsheet tunggal (${MASTER_SPREADSHEET_TITLE}) berisi seluruh sheet data (Pegawai, Siswa, Sarpras, Rapor, Persuratan) langsung di Google Drive folder ID: ${TARGET_GDRIVE_FOLDER_ID}. Apakah Anda setuju?`}
-    confirmText="Buat Master Spreadsheet"
+    title="Lengkapi & Perbarui Struktur Master di Drive"
+    message={`Sistem akan memeriksa berkas Spreadsheet Master yang terhubung (${activeSheetId || 'SDN Kedungringin 1 Master'}), lalu menambahkan sheet baru (termasuk Arsip Rapor per Mapel, Tabungan, Presensi) serta melengkapi kolom baru TANPA MEMBUAT BERKAS BARU di Google Drive. Data pokok awal (GTK, Siswa, dll) tetap dipatenkan dan tidak akan tertimpa atau tergandakan. Tautan Spreadsheet dan Web App tetap paten.`}
+    confirmText="Perbarui Struktur Master"
     cancelText="Batal"
     variant="info"
     onConfirm={handleCreateMasterSpreadsheet}

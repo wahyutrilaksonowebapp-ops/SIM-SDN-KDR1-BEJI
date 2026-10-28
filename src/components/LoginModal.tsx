@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   BookOpen,
   LogOut,
-  UserCheck
+  UserCheck,
+  LogIn
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -177,9 +178,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
 
     const cleanPass = siswaPassword.trim();
-    // Default password can be 20519482 or student's NISN
     if (cleanPass && cleanPass !== '20519482' && cleanPass !== foundSiswa.nisn) {
-      setErrorMessage('Kata sandi tidak valid. Gunakan kata sandi default 20519482 atau NISN.');
+      setErrorMessage('Kata sandi tidak valid. Silakan periksa kembali kata sandi Anda.');
       return;
     }
 
@@ -358,7 +358,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <span>Karakteristik & Hak Akses Guest</span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-600">
-                  Melihat informasi yang bersifat umum pada SDN Kedungringin 1 Beji (profil sekolah, rekap presensi kelas agregat, fasilitas sarpras, dan direktori umum) tanpa memerlukan kata sandi.
+                  Akses keterbukaan informasi publik: Profil resmi SDN Kedungringin I Beji, rekapitulasi kehadiran kelas agregat, direktori pendidik & tenaga kependidikan, serta informasi sarana prasarana sekolah secara transparan tanpa kata sandi.
                 </p>
                 <div className="pt-1 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -370,8 +370,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 type="submit"
                 className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
               >
-                <Eye className="w-4 h-4" />
-                <span>Masuk Sebagai Guest</span>
+                <LogIn className="w-4 h-4" />
+                <span>Login</span>
               </button>
             </form>
           )}
@@ -379,8 +379,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* 2. SISWA MODE */}
           {selectedRole === 'siswa' && (
             <form onSubmit={handleSiswaSubmit} className="space-y-3.5 text-xs">
-              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-blue-950 text-[11px] leading-relaxed">
-                <strong>Peran Akun Siswa:</strong> Melihat dashboard siswa, kesiswaan (buku tabungan personal & rekap presensi S/I/TK/J), dan sarpras sesuai dengan rombel kelas Anda.
+              <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 text-[11.5px] leading-relaxed">
+                <strong>Akses Portal Siswa Mandiri:</strong> Memantau riwayat transaksi buku tabungan siswa, rekapitulasi presensi kehadiran (Sakit, Izin, Tanpa Keterangan, Jumlah), capaian rapor semester per mata pelajaran (Semester 7–12), dan inventaris fasilitas rombel kelas Anda.
               </div>
 
               <div>
@@ -428,12 +428,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     value={siswaPassword}
                     onChange={(e) => setSiswaPassword(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    placeholder="Masukkan NISN atau kata sandi (20519482)"
+                    placeholder="Masukkan kata sandi"
+                    autoComplete="current-password"
                   />
                 </div>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Default: <strong>20519482</strong> atau masukkan <strong>NISN</strong> siswa yang bersangkutan.
-                </p>
               </div>
 
               <div className="pt-2">
@@ -441,8 +439,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   type="submit"
                   className="w-full py-2.5 px-4 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
-                  <UserCheck className="w-4 h-4" />
-                  <span>Masuk Sebagai Siswa</span>
+                  <LogIn className="w-4 h-4" />
+                  <span>Login</span>
                 </button>
               </div>
             </form>
@@ -451,8 +449,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* 3. GURU MODE */}
           {selectedRole === 'guru' && (
             <form onSubmit={handleGuruSubmit} className="space-y-3.5 text-xs">
-              <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100 text-emerald-950 text-[11px] leading-relaxed">
-                <strong>Tugas & Hak Akses Guru:</strong> Memiliki akses sesuai dengan rombongan belajar / tingkat kelas yang diampu (mencatat presensi harian/bulanan, mencatat kas tabungan keluar-masuk, nilai rapor, dan sarpras kelas).
+              <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 text-[11.5px] leading-relaxed">
+                <strong>Akses Administrasi Kelas & Pengajaran:</strong> Pencatatan presensi siswa secara harian dan rekap bulanan, pengelolaan transaksi tabungan rombel ampu (saldo awal & mutasi keluar-masuk), input evaluasi nilai rapor semester 8 mapel, dan sarpras ruang kelas.
               </div>
 
               <div>
@@ -479,7 +477,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     value={guruPassword}
                     onChange={(e) => setGuruPassword(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                    placeholder="Masukkan kata sandi (20519482)"
+                    placeholder="Masukkan kata sandi"
                     autoComplete="current-password"
                   />
                 </div>
@@ -490,8 +488,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   type="submit"
                   className="w-full py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Masuk Sebagai Guru</span>
+                  <LogIn className="w-4 h-4" />
+                  <span>Login</span>
                 </button>
               </div>
             </form>
@@ -500,8 +498,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* 4. ADMIN MODE */}
           {selectedRole === 'admin' && (
             <form onSubmit={handleAdminSubmit} className="space-y-3.5 text-xs">
-              <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-100 text-purple-950 text-[11px] leading-relaxed">
-                <strong>Tugas & Hak Akses Admin:</strong> Memiliki akses penuh merubah dan memperbarui seluruh modul SIM sekolah (semua rombel/kelas, kepegawaian, kesiswaan, tabungan, presensi, sarpras, persuratan, serta Google Drive & Sheets).
+              <div className="p-3.5 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-950 text-[11.5px] leading-relaxed">
+                <strong>Akses Kendali Penuh Sistem (Full Access):</strong> Tata kelola data induk kepegawaian GTK & peserta didik, manajemen sarpras dan persuratan dinas, kontrol validasi database sekolah, serta sinkronisasi realtime Master Database Google Spreadsheet.
               </div>
 
               <div>
@@ -513,7 +511,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     value={adminUsername}
                     onChange={(e) => setAdminUsername(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                    placeholder="Masukkan username (Admin)"
+                    placeholder="Masukkan username"
                     autoComplete="username"
                   />
                 </div>
@@ -528,7 +526,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                    placeholder="Masukkan kata sandi (20519482)"
+                    placeholder="Masukkan kata sandi"
                     autoComplete="current-password"
                   />
                 </div>
@@ -539,8 +537,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   type="submit"
                   className="w-full py-2.5 px-4 bg-purple-800 hover:bg-purple-900 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Masuk Sebagai Administrator</span>
+                  <LogIn className="w-4 h-4" />
+                  <span>Login</span>
                 </button>
               </div>
             </form>

@@ -171,6 +171,7 @@ export interface Siswa {
 export type UserRole = 'guest' | 'admin' | 'guru' | 'siswa';
 
 export interface AuthUser {
+  id?: string;
   role: UserRole;
   name: string;
   nip?: string;

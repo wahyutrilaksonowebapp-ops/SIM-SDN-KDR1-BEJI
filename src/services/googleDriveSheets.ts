@@ -191,9 +191,201 @@ export async function populateSpreadsheet(
   return true;
 }
 
-// =========================================================================
-// DATA GENERATORS FOR SIM SDN KEDUNGRINGIN 1 BEJI SPREADSHEETS
-// =========================================================================
+/**
+ * Memperbarui / melengkapi struktur spreadsheet tanpa membuat file baru:
+ * - Menambahkan tab sheet baru jika belum ada (misal: Arsip_Rapor_Mapel, Tabungan_Siswa, Presensi_Siswa)
+ * - Menambahkan isian kolom baru pada baris header jika ada kolom baru
+ * - TIDAK merubah atau menimpa data pokok awal / sebelumnya (data GTK, Siswa, dll tetap paten)
+ * - Mencegah pengulangan data master dan tidak mengubah ID Spreadsheet maupun link Apps Script
+ */
+export async function extendOrUpdateMasterSpreadsheet(
+  spreadsheetId: string,
+  sheets: SheetDefinition[],
+  accessToken: string
+): Promise<{ addedSheets: string[]; updatedSheets: string[] }> {
+  // 1. Dapatkan daftar sheet yang sudah ada saat ini
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(sheetId,title))`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (!metaRes.ok) {
+    const errorData = await metaRes.json().catch(() => ({}));
+    throw new Error(errorData.error?.message || 'Gagal memeriksa struktur Google Spreadsheet Master.');
+  }
+
+  const metaData = await metaRes.json();
+  const existingSheets: { sheetId: number; title: string }[] =
+    metaData.sheets?.map((s: any) => ({
+      sheetId: s.properties.sheetId,
+      title: s.properties.title,
+    })) || [];
+  const existingTitles = new Set(existingSheets.map((s) => s.title));
+
+  const addSheetRequests: any[] = [];
+  const newSheetsToPopulate: SheetDefinition[] = [];
+  const existingSheetsToInspect: SheetDefinition[] = [];
+
+  const addedSheetNames: string[] = [];
+  const updatedSheetNames: string[] = [];
+
+  for (const sheet of sheets) {
+    if (!existingTitles.has(sheet.title)) {
+      addSheetRequests.push({
+        addSheet: {
+          properties: {
+            title: sheet.title,
+          },
+        },
+      });
+      newSheetsToPopulate.push(sheet);
+      addedSheetNames.push(sheet.title);
+    } else {
+      existingSheetsToInspect.push(sheet);
+    }
+  }
+
+  // 2. Tambahkan tab sheet yang belum ada
+  if (addSheetRequests.length > 0) {
+    const batchRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ requests: addSheetRequests }),
+      }
+    );
+
+    if (!batchRes.ok) {
+      console.warn('Peringatan saat menambahkan tab sheet baru:', await batchRes.text());
+    }
+  }
+
+  // 3. Untuk sheet yang baru ditambahkan, isi seluruh baris & header
+  if (newSheetsToPopulate.length > 0) {
+    const dataPayload = newSheetsToPopulate.map((sheet) => ({
+      range: `'${sheet.title}'!A1`,
+      values: sheet.rows,
+    }));
+
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          valueInputOption: 'USER_ENTERED',
+          data: dataPayload,
+        }),
+      }
+    );
+  }
+
+  // 4. Untuk sheet yang SUDAH ADA sebelumnya:
+  // - Periksa baris header (row 1). Jika ada nama kolom baru yang belum ada, tambahkan di ujung kanan kolom.
+  // - JANGAN timpa baris data pokok awal (patenkan data sebelumnya, perubahan berlaku manual via web/sheet).
+  // - Untuk sheet arsip relasional baru seperti Arsip_Rapor_Mapel, perbarui ledger arsipnya.
+  for (const sheet of existingSheetsToInspect) {
+    if (!sheet.rows || sheet.rows.length === 0) continue;
+    const targetHeaderRow = sheet.rows[0];
+
+    try {
+      const headRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${encodeURIComponent(
+          sheet.title
+        )}'!1:1`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      if (headRes.ok) {
+        const headData = await headRes.json();
+        const currentHeaders: string[] = (headData.values && headData.values[0]) || [];
+
+        if (currentHeaders.length === 0) {
+          // Sheet kosong, tulis struktur data
+          await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${encodeURIComponent(
+              sheet.title
+            )}'!A1?valueInputOption=USER_ENTERED`,
+            {
+              method: 'PUT',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ values: sheet.rows }),
+            }
+          );
+          updatedSheetNames.push(`${sheet.title} (Inisialisasi Data)`);
+        } else {
+          // Cari kolom baru yang belum terdaftar di sheet lama
+          const missingColumns: (string | number | boolean)[] = [];
+          for (const th of targetHeaderRow) {
+            const strTh = String(th).trim();
+            if (strTh && !currentHeaders.some((ch) => String(ch).trim().toLowerCase() === strTh.toLowerCase())) {
+              missingColumns.push(th);
+            }
+          }
+
+          if (missingColumns.length > 0) {
+            // Gabungkan header lama dengan kolom-kolom baru tanpa merusak urutan lama
+            const mergedHeader = [...currentHeaders, ...missingColumns];
+            await fetch(
+              `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${encodeURIComponent(
+                sheet.title
+              )}'!A1?valueInputOption=USER_ENTERED`,
+              {
+                method: 'PUT',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ values: [mergedHeader] }),
+              }
+            );
+            updatedSheetNames.push(`${sheet.title} (+${missingColumns.length} Kolom Baru)`);
+          }
+
+          // Untuk tab Arsip_Rapor_Mapel (arsip rekap rapot semester per mata pelajaran),
+          // selalu perbarui arsip agar sinkron dengan nilai terbaru dari inputan web
+          if (sheet.title === 'Arsip_Rapor_Mapel') {
+            await fetch(
+              `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${encodeURIComponent(
+                sheet.title
+              )}'!A1?valueInputOption=USER_ENTERED`,
+              {
+                method: 'PUT',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ values: sheet.rows }),
+              }
+            );
+            if (!updatedSheetNames.some((n) => n.startsWith('Arsip_Rapor_Mapel'))) {
+              updatedSheetNames.push('Arsip_Rapor_Mapel (Sinkronisasi Rekap)');
+            }
+          }
+        }
+      }
+    } catch (sheetCheckErr) {
+      console.warn(`Pemeriksaan sheet "${sheet.title}" dilewati:`, sheetCheckErr);
+    }
+  }
+
+  return { addedSheets: addedSheetNames, updatedSheets: updatedSheetNames };
+}
+
 
 export function buildDataIndukSiswaSheets(siswaList: Siswa[], profil: ProfilSekolah): SheetDefinition[] {
   const header = [
