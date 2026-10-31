@@ -10,18 +10,25 @@ import {
   TabunganTransaksi,
   SaldoAwalTabungan,
   PresensiHarianSiswa,
-  PresensiRekapBulan
+  PresensiRekapBulan,
+  PenilaianHarian,
+  HasilPenilaianSiswa,
+  ProgramRemedialPengayaan
 } from '../../types';
 import { DataSiswa } from './DataSiswa';
 import { PenilaianTerpadu } from './PenilaianTerpadu';
 import { TabunganSiswa } from './TabunganSiswa';
 import { PresensiSiswa } from './PresensiSiswa';
+import { PenilaianHarianRoot } from './PenilaianHarian/PenilaianHarianRoot';
+import { RemedialPengayaanRoot } from './RemedialPengayaan/RemedialPengayaanRoot';
 import { ProcessedRapor } from './RekapRapor';
 import { 
   Users, 
   GraduationCap,
   Wallet,
-  CalendarCheck
+  CalendarCheck,
+  FileCheck2,
+  Sparkles
 } from 'lucide-react';
 
 interface KesiswaanRootProps {
@@ -51,6 +58,17 @@ interface KesiswaanRootProps {
   onSavePresensiHarian?: (p: PresensiHarianSiswa) => void;
   onSavePresensiBulanan?: (p: PresensiRekapBulan) => void;
   onDeletePresensiHarian?: (id: string) => void;
+  // Penilaian Harian (CBT & AI Generator) Props
+  penilaianList?: PenilaianHarian[];
+  hasilList?: HasilPenilaianSiswa[];
+  onSavePenilaian?: (item: PenilaianHarian) => void;
+  onDeletePenilaian?: (id: string) => void;
+  onSaveHasil?: (item: HasilPenilaianSiswa) => void;
+  // Remedial & Pengayaan (AI-Powered) Props
+  remedialList?: ProgramRemedialPengayaan[];
+  onSaveProgramRemedial?: (p: ProgramRemedialPengayaan) => void;
+  onDeleteProgramRemedial?: (id: string) => void;
+  onSaveRemedialSubmission?: (programId: string, siswaId: string, answers: Record<number, string>, calculatedScore: number) => void;
 }
 
 export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
@@ -78,9 +96,18 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
   onSavePresensiHarian = () => {},
   onSavePresensiBulanan = () => {},
   onDeletePresensiHarian,
+  penilaianList = [],
+  hasilList = [],
+  onSavePenilaian = () => {},
+  onDeletePenilaian = () => {},
+  onSaveHasil = () => {},
+  remedialList = [],
+  onSaveProgramRemedial = () => {},
+  onDeleteProgramRemedial = () => {},
+  onSaveRemedialSubmission = () => {},
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<KesiswaanSubTab>(() => {
-    if (userRole === 'siswa') return 'tabungan';
+    if (userRole === 'siswa') return 'penilaian_harian';
     return 'siswa';
   });
 
@@ -92,8 +119,20 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
       count: userRole === 'siswa' ? undefined : siswa.length,
     },
     {
+      id: 'penilaian_harian',
+      label: userRole === 'siswa' ? 'Penilaian Harian Saya' : 'Penilaian Harian',
+      icon: <FileCheck2 className="w-4 h-4 text-emerald-400" />,
+      badge: userRole === 'siswa' ? 'CBT Mandiri' : 'CBT & AI',
+    },
+    {
+      id: 'remedial_pengayaan',
+      label: userRole === 'siswa' ? 'Tugas Remedial & Pengayaan' : 'Remedial & Pengayaan',
+      icon: <Sparkles className="w-4 h-4 text-amber-400" />,
+      badge: userRole === 'siswa' ? 'Perbaikan' : 'AI Penugasan',
+    },
+    {
       id: 'penilaian',
-      label: userRole === 'siswa' ? 'Rapor Semester Saya' : 'Penilaian',
+      label: userRole === 'siswa' ? 'Rapor Semester Saya' : 'Penilaian Rapor',
       icon: <GraduationCap className="w-4 h-4 text-emerald-300" />,
       badge: userRole === 'siswa' ? '8 Mapel & TKA' : 'Rapor, TKA & BTQ',
     },
@@ -168,6 +207,35 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
           currentUser={currentUser}
           onSaveSiswa={onSaveSiswa}
           onDeleteSiswa={onDeleteSiswa}
+        />
+      )}
+
+      {activeSubTab === 'penilaian_harian' && (
+        <PenilaianHarianRoot
+          profil={profil}
+          currentUser={currentUser || { role: userRole, name: 'Pengguna SDN Kedungringin 1' }}
+          userRole={userRole}
+          siswaList={siswa}
+          penilaianList={penilaianList}
+          hasilList={hasilList}
+          onSavePenilaian={onSavePenilaian}
+          onDeletePenilaian={onDeletePenilaian}
+          onSaveHasil={onSaveHasil}
+        />
+      )}
+
+      {activeSubTab === 'remedial_pengayaan' && (
+        <RemedialPengayaanRoot
+          profil={profil}
+          currentUser={currentUser || { role: userRole, name: 'Pengguna SDN Kedungringin 1' }}
+          userRole={userRole}
+          siswaList={siswa}
+          penilaianList={penilaianList}
+          hasilList={hasilList}
+          remedialList={remedialList}
+          onSaveProgram={onSaveProgramRemedial}
+          onDeleteProgram={onDeleteProgramRemedial}
+          onSaveSubmission={onSaveRemedialSubmission}
         />
       )}
 

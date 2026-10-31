@@ -22,9 +22,10 @@ import { getAccessToken } from './googleAuth';
 import { INITIAL_PROFIL } from '../data/initialData';
 
 export const TARGET_GDRIVE_FOLDER_ID = '1cry49dLyjsyXfkGJIARR_PLwUV67t7ur';
-export const MASTER_SPREADSHEET_TITLE = 'SIM_SDN_Kedungringin1_Master_Database_2026_2027';
+export const MASTER_SPREADSHEET_TITLE = 'SIM_SDN_Kedungringin1_Master_Database_2026_2027_2026_2027';
+export const ATTACHED_MASTER_DATABASE_FILE = '/assets/aistudio/SIM_SDN_Kedungringin1_Master_Database_2026_2027_2026_2027_2561a160';
 
-export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyGKR4TKbaL38H4R_pNvEzej9CwOogP9pAE7YKtlDYgm9fawAZPrewDWYATplrhbRr84w/exec';
+export const LOCKED_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyRnNib3IVPunbwCWaz9HW1Kc8N5jmG77mLfslNWdvMI43KjhjvrWMye3Dhkv4Ypi5hBg/exec';
 
 export const STORAGE_KEYS = {
   MASTER_SHEET_ID: 'sim_kdr1_master_sheet_id',
@@ -115,8 +116,8 @@ export function saveMasterSheetId(id: string, url?: string) {
 export function getSavedWebAppUrl(): string {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS.WEB_APP_URL);
-    // If not found or if user had the previous script URL cached, migrate to the locked URL
-    if (!saved || saved.includes('AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew')) {
+    // If not found or if user had any old script URL cached, migrate to the locked URL
+    if (!saved || !saved.includes('AKfycbyRnNib3IVPunbwCWaz9HW1Kc8N5jmG77mLfslNWdvMI43KjhjvrWMye3Dhkv4Ypi5hBg')) {
       localStorage.setItem(STORAGE_KEYS.WEB_APP_URL, LOCKED_WEB_APP_URL);
       return LOCKED_WEB_APP_URL;
     }
@@ -370,7 +371,7 @@ export function buildMasterDatabaseSpreadsheet(data: {
     ['NIP Kepala Sekolah', profil.nipKepalaSekolah],
     ['Pangkat Kepala Sekolah', profil.pangkatKepalaSekolah],
     ['Tahun Pelajaran Aktif', profil.tahunPelajaranAktif],
-    ['Tanggal Acuan Usia', profil.tanggalAcuanUsia || '2024-07-01']
+    ['Tanggal Acuan Usia', profil.tanggalAcuanUsia || '2026-07-01']
   ];
 
   // 9. Sheet: Perangkat_Ajar (Arsip Modul & Perangkat Pembelajaran AI)
@@ -709,7 +710,7 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
         const tanggalLahir = normalizeDateString(item['Tanggal Lahir'] || item['tanggalLahir'] || '1985-01-01');
         const kontak = String(item['Kontak / WA'] || item['kontak'] || '-');
         const email = String(item['Email'] || item['email'] || '-');
-        const unitKerja = String(item['Unit Kerja'] || item['unitKerja'] || 'SDN Kedungringin 1 Beji');
+        const unitKerja = String(item['Unit Kerja'] || item['unitKerja'] || 'SDN Kedungringin I  Beji');
         const karpeg = String(item['No Karpeg'] || item['karpeg'] || '-');
         const nomorTaspen = String(item['No Taspen'] || item['nomorTaspen'] || '-');
         const npwp = String(item['NPWP'] || item['npwp'] || '-');
@@ -804,7 +805,7 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
       const tanggalLahir = normalizeDateString(r[13] || '1985-01-01');
       const kontak = String(r[14] || '-');
       const email = String(r[15] || '-');
-      const unitKerja = String(r[16] || 'SDN Kedungringin 1 Beji');
+      const unitKerja = String(r[16] || 'SDN Kedungringin I  Beji');
       const karpeg = String(r[17] || '-');
       const nomorTaspen = String(r[18] || '-');
       const npwp = String(r[19] || '-');
@@ -1698,8 +1699,8 @@ export function formatPegawaiPayload(p: Pegawai): any {
     kontak: p.kontak || '-',
     Email: p.email || '-',
     email: p.email || '-',
-    'Unit Kerja': p.unitKerja || 'SDN Kedungringin 1 Beji',
-    unitKerja: p.unitKerja || 'SDN Kedungringin 1 Beji',
+    'Unit Kerja': p.unitKerja || 'SDN Kedungringin I  Beji',
+    unitKerja: p.unitKerja || 'SDN Kedungringin I  Beji',
     'No Karpeg': p.karpeg || '-',
     'No Taspen': p.nomorTaspen || '-',
     NPWP: p.npwp || '-',

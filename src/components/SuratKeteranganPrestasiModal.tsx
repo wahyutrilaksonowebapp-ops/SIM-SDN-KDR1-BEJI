@@ -142,7 +142,7 @@ NIP: ${profil.nipKepalaSekolah}
                   Wilayah Kerja Satuan Pendidikan Kecamatan Beji
                 </h4>
                 <h1 className="text-lg font-black uppercase text-emerald-900 mt-0.5">
-                  UPT Satuan Pendidikan SDN Kedungringin 1 Beji
+                  SDN Kedungringin I Beji
                 </h1>
                 <p className="text-[10px] text-slate-600 font-normal mt-0.5 font-sans">
                   NPSN: {profil.npsn} | NSS: 101051908001 | Status Akreditasi: {profil.akreditasi}
@@ -173,7 +173,7 @@ NIP: ${profil.nipKepalaSekolah}
           {/* PEMBUKA SURAT */}
           <div className="text-xs sm:text-[13px] leading-relaxed text-slate-800 space-y-4 font-serif">
             <p>
-              Yang bertanda tangan di bawah ini, Kepala UPT Satuan Pendidikan Sekolah Dasar Negeri (SDN) Kedungringin 1 Beji, Kecamatan Beji, Kabupaten Pasuruan, Provinsi Jawa Timur, dengan ini menerangkan dengan sebenarnya bahwa:
+              Yang bertanda tangan di bawah ini, Kepala SDN Kedungringin I Beji, Kecamatan Beji, Kabupaten Pasuruan, Provinsi Jawa Timur, dengan ini menerangkan dengan sebenarnya bahwa:
             </p>
 
             {/* IDENTITAS SISWA */}
@@ -389,9 +389,9 @@ NIP: ${profil.nipKepalaSekolah}
             <div className="text-right w-64 space-y-1">
               <p>Beji, Pasuruan, {todayStr}</p>
               <p className="font-semibold text-slate-800">
-                Kepala UPT Satuan Pendidikan
+                Kepala Sekolah
                 <br />
-                SDN Kedungringin 1 Beji
+                SDN Kedungringin I Beji
               </p>
 
               {/* Stempel & Ruang TTD */}

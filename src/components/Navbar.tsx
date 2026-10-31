@@ -14,7 +14,9 @@ import {
   LogIn, 
   ChevronDown, 
   RefreshCw,
-  Eye 
+  Eye,
+  Download,
+  Upload
 } from 'lucide-react';
 import { TabType, ProfilSekolah, AuthUser } from '../types';
 import { ConfirmModal } from './ConfirmModal';
@@ -30,7 +32,11 @@ interface NavbarProps {
   onOpenLoginModal?: () => void;
   onLogout?: () => void;
   onSyncRealtime?: () => Promise<void>;
+  onTarikData?: () => Promise<void>;
+  onSyncronData?: () => Promise<void>;
   isSyncingRealtime?: boolean;
+  isTarikLoading?: boolean;
+  isSyncronLoading?: boolean;
   lastSyncTime?: string;
 }
 
@@ -45,7 +51,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLoginModal,
   onLogout,
   onSyncRealtime,
+  onTarikData,
+  onSyncronData,
   isSyncingRealtime = false,
+  isTarikLoading = false,
+  isSyncronLoading = false,
   lastSyncTime,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
@@ -109,7 +119,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         { id: 'kesiswaan', label: 'Kesiswaan', icon: <GraduationCap className="w-4 h-4" /> },
         { id: 'sarpras', label: 'Sarpras', icon: <Building2 className="w-4 h-4" /> },
         { id: 'keadministrasian', label: 'Keadministrasian', icon: <FileText className="w-4 h-4" /> },
-        { id: 'google_integration', label: 'Setting (Google Drive & Sheet)', icon: <Database className="w-4 h-4" /> },
+        { id: 'google_integration', label: 'Setting', icon: <Database className="w-4 h-4" /> },
       ];
     }
   }
@@ -152,29 +162,33 @@ export const Navbar: React.FC<NavbarProps> = ({
               </select>
             </div>
 
-            {/* Realtime Single Master Database Lock Badge */}
-            <div 
-              onClick={() => {
-                if (onSyncRealtime) {
-                  onSyncRealtime();
-                } else if (currentUser.role === 'admin') {
-                  setActiveTab('google_integration');
-                }
-              }}
-              title="Database Terkunci ke Master Spreadsheet: SIM_SDN_Kedungringin1_Master_Database_2026_2027 (Klik untuk Sinkronisasi Real-time)"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/90 hover:bg-emerald-800 text-[11px] font-semibold text-emerald-300 border border-emerald-600/70 shadow-xs cursor-pointer transition-all"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            {/* Manual Database Operation Group: Tarik Data & Syncron */}
+            <div className="flex items-center gap-1.5 bg-emerald-950/90 p-1 rounded-lg border border-emerald-700/70 shadow-xs">
+              {/* Tombol Tarik Data (Pengambilan data dari database) */}
+              <button
+                onClick={onTarikData || onSyncRealtime}
+                disabled={isTarikLoading || isSyncingRealtime}
+                title="Tarik Data: Mengambil data terbaru dari database & spreadsheet ke sistem web"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[11px] shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Download className={`w-3.5 h-3.5 text-emerald-200 ${isTarikLoading || isSyncingRealtime ? 'animate-bounce' : ''}`} />
+                <span>{isTarikLoading || isSyncingRealtime ? 'Menarik...' : 'Tarik Data'}</span>
+              </button>
+
+              {/* Tombol Syncron (Pengiriman database) */}
+              <button
+                onClick={onSyncronData}
+                disabled={isSyncronLoading}
+                title="Syncron: Mengirimkan seluruh data web secara langsung ke database & spreadsheet"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Upload className={`w-3.5 h-3.5 text-teal-100 ${isSyncronLoading ? 'animate-spin' : ''}`} />
+                <span>{isSyncronLoading ? 'Mengirim...' : 'Syncron'}</span>
+              </button>
+
+              <span className="text-[10px] text-emerald-300/80 px-1 hidden xl:inline" title="Waktu update terakhir">
+                {lastSyncTime || 'Manual'}
               </span>
-              <span className="hidden sm:inline">DB Real-time:</span>
-              <span className="font-bold text-white tracking-wide">1 Data Master</span>
-              {isSyncingRealtime ? (
-                <RefreshCw className="w-3 h-3 animate-spin text-emerald-300 ml-0.5" />
-              ) : (
-                <span className="text-[10px] text-emerald-300/80 hidden md:inline ml-0.5">({lastSyncTime || 'Aktif'})</span>
-              )}
             </div>
 
             {currentUser.role === 'admin' && (
@@ -368,7 +382,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       <ConfirmModal
         isOpen={showResetConfirm}
-        title="Reset Data SIM SDN Kedungringin 1 Beji"
+        title="Reset Data SIM SDN Kedungringin I Beji"
         message="Apakah Anda yakin ingin mereset seluruh data sistem (kepegawaian, kesiswaan, rapor, BTQ, sarpras, persuratan) kembali ke data default?"
         confirmText="Ya, Reset Data"
         cancelText="Batal"

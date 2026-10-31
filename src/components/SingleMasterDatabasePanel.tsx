@@ -137,12 +137,12 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
   const [webAppInput, setWebAppInput] = useState(() => getSavedWebAppUrl());
   const [isTestingSync, setIsTestingSync] = useState(false);
 
-  // Real-time synchronization state
+  // Real-time synchronization state (Manual sync by default)
   const [isRealtimeActive, setIsRealtimeActive] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(STORAGE_KEYS.REALTIME_ACTIVE) !== 'false';
+      return localStorage.getItem(STORAGE_KEYS.REALTIME_ACTIVE) === 'true';
     } catch {
-      return true;
+      return false;
     }
   });
 
@@ -195,17 +195,10 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
   const [showCreateMasterConfirm, setShowCreateMasterConfirm] = useState(false);
   const [showPushConfirm, setShowPushConfirm] = useState(false);
 
-  // Auto-sync polling interval (every 15 seconds if real-time active)
+  // Auto-sync polling interval dimatikan total sesuai permintaan (Mencegah kesalahan data, hanya manual sync)
   useEffect(() => {
-    if (!isRealtimeActive || !activeSheetId) return;
-
-    const intervalId = setInterval(() => {
-      // Trigger silent background poll
-      handlePullRealtime(true);
-    }, 15000);
-
-    return () => clearInterval(intervalId);
-  }, [isRealtimeActive, activeSheetId]);
+    // Mode auto-tarik dimatikan untuk menjaga keutuhan data
+  }, []);
 
   // Save changes to activeSheetId
   const handleSaveConnection = () => {
@@ -907,15 +900,15 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
                     2
                   </span>
                   <h4 className="text-xs font-bold text-emerald-200">
-                    Web SIM ➔ Spreadsheet (Auto-Kirim)
+                    Web SIM ➔ Spreadsheet (Manual Syncron)
                   </h4>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  Ketika Anda mengedit di web (klik <strong>Ubah</strong> lalu <strong>Simpan</strong> pada form Pegawai, Siswa, Sarpras, Nilai Rapor, BTQ, Surat), data <strong>secara otomatis terkirim ke Google Spreadsheet</strong> dan menyimpan perubahan tanpa perlu ekspor manual.
+                  Ketika Anda mengedit data di web (Pegawai, Siswa, Sarpras, Nilai Rapor, BTQ, Surat), perubahan <strong>disimpan aman di sistem lokal</strong> terlebih dahulu. Untuk menghindari kesalahan data, pengiriman ke Spreadsheet dilakukan secara manual melalui tombol resmi <strong>Syncron</strong>.
                 </p>
                 <div className="flex items-center gap-2 text-[10px] text-emerald-300 font-mono">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Backend Proxy /api/sync-spreadsheet Bebas CORS</span>
+                  <span>Aman dari Auto-Overwrite • Terkunci Tombol Resmi Syncron</span>
                 </div>
               </div>
             </div>
@@ -987,14 +980,21 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
               )}
             </div>
 
-            {/* Google Apps Script Web App Endpoint Input */}
-            <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-xs">
+            {/* Google Apps Script Web App Endpoint Input (Terkunci) */}
+            <div className="p-4 bg-emerald-50/80 border border-emerald-300 rounded-xl space-y-3 text-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span className="font-bold text-emerald-950">
-                    Endpoint Google Apps Script Web App (Jalur Eksekusi Simpan Data):
+                  <span className="p-1 rounded-md bg-emerald-700 text-white font-bold flex items-center justify-center">
+                    <Lock className="w-3.5 h-3.5" />
                   </span>
+                  <div>
+                    <span className="font-extrabold text-emerald-950">
+                      Endpoint Google Apps Script Web App (Terkunci Resmi):
+                    </span>
+                    <p className="text-[11px] text-emerald-800">
+                      Terhubung langsung ke Master Spreadsheet: <strong>SIM_SDN_Kedungringin1_Master_Database_2026_2027_2026_2027</strong>
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -1005,17 +1005,17 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
                     className="px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-900 font-bold text-[11px] hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>Salin</span>
+                    <span>Salin URL</span>
                   </button>
                   <button
                     onClick={() => {
                       setWebAppInput(LOCKED_WEB_APP_URL);
                       saveWebAppUrl(LOCKED_WEB_APP_URL);
-                      onNotify('URL Web App dikembalikan ke default terkunci!', 'info');
+                      onNotify('URL Web App dikembalikan ke default resmi terkunci!', 'info');
                     }}
                     className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 font-bold text-[11px] hover:bg-slate-200 transition-colors cursor-pointer"
                   >
-                    Reset Default
+                    Reset Resmi
                   </button>
                 </div>
               </div>
@@ -1026,14 +1026,25 @@ export const SingleMasterDatabasePanel: React.FC<SingleMasterDatabasePanelProps>
                   value={webAppInput}
                   onChange={(e) => setWebAppInput(e.target.value)}
                   placeholder="https://script.google.com/macros/s/.../exec"
-                  className="flex-1 px-3 py-2 text-xs font-mono border border-emerald-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="flex-1 px-3 py-2 text-xs font-mono border border-emerald-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 font-semibold text-slate-800"
                 />
                 <button
                   onClick={handleSaveWebAppConnection}
-                  className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-colors cursor-pointer whitespace-nowrap"
+                  className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-colors cursor-pointer whitespace-nowrap shadow-xs"
                 >
-                  Simpan URL Web App
+                  Kunci Web App
                 </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-emerald-900 font-medium">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                  Database: SIM_SDN_Kedungringin1_Master_Database_2026_2027_2026_2027
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 border border-blue-300">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-blue-700" />
+                  Lampiran Master: 11 GTK Resmi SDN Kedungringin 1 Beji
+                </span>
               </div>
             </div>
 

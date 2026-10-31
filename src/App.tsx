@@ -15,7 +15,10 @@ import {
   TabunganTransaksi,
   SaldoAwalTabungan,
   PresensiHarianSiswa,
-  PresensiRekapBulan
+  PresensiRekapBulan,
+  PenilaianHarian,
+  HasilPenilaianSiswa,
+  ProgramRemedialPengayaan
 } from './types';
 import { 
   INITIAL_PROFIL, 
@@ -35,6 +38,13 @@ import {
   INITIAL_PRESENSI_HARIAN,
   INITIAL_PRESENSI_BULANAN
 } from './data/tabunganPresensiData';
+import {
+  INITIAL_PENILAIAN_HARIAN,
+  INITIAL_HASIL_PENILAIAN
+} from './data/penilaianHarianData';
+import {
+  INITIAL_REMEDIAL_PENGAYAAN
+} from './data/remedialPengayaanData';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { Kepegawaian } from './components/Kepegawaian';
@@ -61,7 +71,7 @@ import {
 } from './services/singleMasterSheetService';
 import { Lock, ShieldCheck, RefreshCw } from 'lucide-react';
 
-const CURRENT_DB_VERSION = '2026_2027_v3';
+const CURRENT_DB_VERSION = '2026_2027_v5';
 
 // Enforce locking database to the exact master spreadsheet data & purge any old dummy data
 const initializeAndLockDatabase = () => {
@@ -69,6 +79,7 @@ const initializeAndLockDatabase = () => {
     const version = localStorage.getItem('sim_kdr1_db_lock_version');
     const storedPegawai = localStorage.getItem('sim_kdr1_pegawai');
     const storedProfil = localStorage.getItem('sim_kdr1_profil');
+    const currentGasUrl = localStorage.getItem('sim_kdr1_web_app_url');
     const hasDummyPegawai = storedPegawai && (
       storedPegawai.includes('Siti Fatimah') || 
       storedPegawai.includes('Suhartono') || 
@@ -78,19 +89,16 @@ const initializeAndLockDatabase = () => {
       storedPegawai.includes('Dewi Lestari')
     );
     const hasDummyProfil = storedProfil && (storedProfil.includes('Siti Fatimah') || !storedProfil.includes('Fuad Fahrudin'));
+    const isOldScriptUrl = !currentGasUrl || !currentGasUrl.includes('AKfycbyRnNib3IVPunbwCWaz9HW1Kc8N5jmG77mLfslNWdvMI43KjhjvrWMye3Dhkv4Ypi5hBg');
 
-    if (version !== CURRENT_DB_VERSION || hasDummyPegawai || hasDummyProfil) {
+    if (version !== CURRENT_DB_VERSION || hasDummyPegawai || hasDummyProfil || isOldScriptUrl) {
       localStorage.setItem('sim_kdr1_pegawai', JSON.stringify(INITIAL_PEGAWAI));
       localStorage.setItem('sim_kdr1_profil', JSON.stringify(INITIAL_PROFIL));
       localStorage.setItem('sim_kdr1_presensi', JSON.stringify(INITIAL_PRESENSI_FACEPRINT));
       localStorage.setItem('sim_kdr1_skp_ekinerja', JSON.stringify(INITIAL_SKP_EKINERJA));
       localStorage.setItem('sim_kdr1_web_app_url', LOCKED_WEB_APP_URL);
+      localStorage.setItem('sim_kdr1_master_realtime_active', 'false'); // Manual sync only
       localStorage.setItem('sim_kdr1_db_lock_version', CURRENT_DB_VERSION);
-    } else {
-      const currentGasUrl = localStorage.getItem('sim_kdr1_web_app_url');
-      if (!currentGasUrl || currentGasUrl.includes('AKfycbxQKrCfjYPLT0Eol82ooEsfVOtOWJwcQn4rx-axJNcQ9TrVxc7Rm8YJ6y7uSd54hJC8ew')) {
-        localStorage.setItem('sim_kdr1_web_app_url', LOCKED_WEB_APP_URL);
-      }
     }
   } catch (e) {
     console.warn('DB lock check error:', e);
@@ -140,7 +148,7 @@ export default function App() {
         }
       }
       if (key === 'profil') {
-        if (item.includes('Siti Fatimah')) {
+        if (item.includes('Siti Fatimah') || !item.includes('20519482') || !item.includes('Ngampel')) {
           return INITIAL_PROFIL as unknown as T;
         }
       }
@@ -215,6 +223,19 @@ export default function App() {
     sanitizeEntityList(loadStored('presensi_bulanan_siswa', INITIAL_PRESENSI_BULANAN))
   );
 
+  // Penilaian Harian (CBT & AI Soal) State
+  const [penilaianList, setPenilaianList] = useState<PenilaianHarian[]>(() => 
+    sanitizeEntityList(loadStored('penilaian_harian', INITIAL_PENILAIAN_HARIAN))
+  );
+  const [hasilPenilaianList, setHasilPenilaianList] = useState<HasilPenilaianSiswa[]>(() => 
+    sanitizeEntityList(loadStored('hasil_penilaian', INITIAL_HASIL_PENILAIAN))
+  );
+
+  // Remedial & Pengayaan (AI-Powered) State
+  const [remedialList, setRemedialList] = useState<ProgramRemedialPengayaan[]>(() =>
+    sanitizeEntityList(loadStored('remedial_pengayaan', INITIAL_REMEDIAL_PENGAYAAN))
+  );
+
   // Sync to localStorage
   useEffect(() => saveStored('auth_user', currentUser), [currentUser]);
   useEffect(() => saveStored('profil', profil), [profil]);
@@ -231,6 +252,9 @@ export default function App() {
   useEffect(() => saveStored('tabungan_saldo_awal', saldoAwalList), [saldoAwalList]);
   useEffect(() => saveStored('presensi_harian_siswa', presensiHarianList), [presensiHarianList]);
   useEffect(() => saveStored('presensi_bulanan_siswa', presensiBulananList), [presensiBulananList]);
+  useEffect(() => saveStored('penilaian_harian', penilaianList), [penilaianList]);
+  useEffect(() => saveStored('hasil_penilaian', hasilPenilaianList), [hasilPenilaianList]);
+  useEffect(() => saveStored('remedial_pengayaan', remedialList), [remedialList]);
 
   // Modal Viewers
   const [activeCertificate, setActiveCertificate] = useState<NilaiIjazahBTQ | null>(null);
@@ -414,6 +438,9 @@ export default function App() {
     setSuratMasuk(INITIAL_SURAT_MASUK);
     setPresensiList(INITIAL_PRESENSI_FACEPRINT);
     setSkpList(INITIAL_SKP_EKINERJA);
+    setPenilaianList(INITIAL_PENILAIAN_HARIAN);
+    setHasilPenilaianList(INITIAL_HASIL_PENILAIAN);
+    setRemedialList(INITIAL_REMEDIAL_PENGAYAAN);
     setCurrentUser({ role: 'admin', name: 'Administrator SIM SDN Kedungringin 1' });
     setIsLoggedIn(true);
     addToast('Data sistem berhasil direset ke pengaturan awal SDN Kedungringin 1 Beji!', 'success');
@@ -521,7 +548,132 @@ export default function App() {
     addToast('Catatan presensi harian berhasil dihapus.', 'info');
   };
 
-  // Entity Handlers
+  // Penilaian Harian Handlers (Manual Sync: disimpan di lokal, pengiriman melalui tombol Syncron)
+  const handleSavePenilaianHarian = (item: PenilaianHarian) => {
+    const isExisting = penilaianList.some((p) => p.id === item.id);
+    const updated = isExisting
+      ? penilaianList.map((p) => (p.id === item.id ? item : p))
+      : [item, ...penilaianList];
+    setPenilaianList(updated);
+    saveStored('penilaianList', updated);
+    logUserActivity({
+      role: currentUser.role,
+      userName: currentUser.name,
+      userNip: currentUser.nip,
+      action: isExisting ? 'UBAH' : 'TAMBAH',
+      category: 'SISWA',
+      description: `${isExisting ? 'Memperbarui' : 'Membuat'} paket Penilaian Harian: ${item.judul} (Kelas ${item.kelas})`,
+      details: `Mapel: ${item.mataPelajaran} | Total Butir: ${item.soalList?.length || 0}`
+    });
+
+    addToast(`Paket Penilaian Harian "${item.judul}" tersimpan aman di aplikasi (Gunakan tombol "Syncron" untuk mengirim ke Spreadsheet).`, 'success');
+  };
+
+  const handleDeletePenilaianHarian = (id: string) => {
+    const target = penilaianList.find((p) => p.id === id);
+    const updated = penilaianList.filter((p) => p.id !== id);
+    setPenilaianList(updated);
+    saveStored('penilaianList', updated);
+    logUserActivity({
+      role: currentUser.role,
+      userName: currentUser.name,
+      userNip: currentUser.nip,
+      action: 'HAPUS',
+      category: 'SISWA',
+      description: `Menghapus paket Penilaian Harian: ${target?.judul || id}`,
+    });
+
+    addToast('Paket Penilaian Harian berhasil dihapus dari aplikasi.', 'info');
+  };
+
+  const handleSaveHasilPenilaian = (item: HasilPenilaianSiswa) => {
+    const isExisting = hasilPenilaianList.some((h) => h.id === item.id);
+    const updated = isExisting
+      ? hasilPenilaianList.map((h) => (h.id === item.id ? item : h))
+      : [item, ...hasilPenilaianList];
+    setHasilPenilaianList(updated);
+    saveStored('hasilPenilaianList', updated);
+    logUserActivity({
+      role: currentUser.role,
+      userName: currentUser.name,
+      userNip: currentUser.nip,
+      action: isExisting ? 'UBAH' : 'TAMBAH',
+      category: 'SISWA',
+      description: `Menyimpan lembar jawaban CBT Penilaian Harian: ${item.namaSiswa} (Skor: ${item.totalSkorPerolehan}/${item.totalSkorMaksimal} - Nilai: ${item.nilaiAkhir})`,
+    });
+
+    addToast(`Jawaban CBT ${item.namaSiswa} berhasil tersimpan di sistem analisis guru!`, 'success');
+  };
+
+  // Remedial & Pengayaan Handlers (Manual Sync: tersimpan aman di lokal)
+  const handleSaveProgramRemedial = (item: ProgramRemedialPengayaan) => {
+    const isExisting = remedialList.some((r) => r.id === item.id);
+    const updated = isExisting
+      ? remedialList.map((r) => (r.id === item.id ? item : r))
+      : [item, ...remedialList];
+    setRemedialList(updated);
+    saveStored('remedialList', updated);
+    logUserActivity({
+      role: currentUser.role,
+      userName: currentUser.name,
+      userNip: currentUser.nip,
+      action: isExisting ? 'UBAH' : 'TAMBAH',
+      category: 'SISWA',
+      description: `${isExisting ? 'Memperbarui' : 'Menerbitkan'} paket ${item.jenis.toUpperCase()}: ${item.judul} (Kelas ${item.kelas})`,
+      details: `Mapel: ${item.mataPelajaran} | Peserta: ${item.daftarSiswa.length} siswa`
+    });
+
+    addToast(`Program ${item.jenis === 'remedial' ? 'Remedial' : 'Pengayaan'} "${item.judul}" tersimpan aman di aplikasi.`, 'success');
+  };
+
+  const handleDeleteProgramRemedial = (id: string) => {
+    const target = remedialList.find((r) => r.id === id);
+    const updated = remedialList.filter((r) => r.id !== id);
+    setRemedialList(updated);
+    saveStored('remedialList', updated);
+    logUserActivity({
+      role: currentUser.role,
+      userName: currentUser.name,
+      userNip: currentUser.nip,
+      action: 'HAPUS',
+      category: 'SISWA',
+      description: `Menghapus paket Remedial/Pengayaan: ${target?.judul || id}`,
+    });
+
+    addToast('Paket Remedial/Pengayaan berhasil dihapus dari aplikasi.', 'info');
+  };
+
+  const handleSaveRemedialSubmission = (
+    programId: string,
+    siswaId: string,
+    answers: Record<number, string>,
+    calculatedScore: number
+  ) => {
+    setRemedialList((prev) =>
+      prev.map((prog) => {
+        if (prog.id !== programId) return prog;
+        const updatedSiswa = prog.daftarSiswa.map((sis) => {
+          if (sis.siswaId !== siswaId) return sis;
+          return {
+            ...sis,
+            jawabanSiswa: answers,
+            nilaiPerbaikan: calculatedScore,
+            status: 'Tuntas Perbaikan' as const,
+            tanggalSelesai: new Date().toISOString().split('T')[0],
+          };
+        });
+        return {
+          ...prog,
+          daftarSiswa: updatedSiswa,
+          status: updatedSiswa.every((s) => s.status === 'Tuntas Perbaikan') ? ('selesai' as const) : prog.status,
+        };
+      })
+    );
+
+    addToast(`Tugas perbaikan berhasil dikirim dengan estimasi nilai perbaikan: ${calculatedScore}!`, 'success');
+  };
+
+  // Entity Handlers (Manual Sync: tersimpan aman di lokal untuk mencegah kesalahan data)
   const handleSavePegawai = (item: Pegawai) => {
     const isExisting = pegawai.some((p) => p.id === item.id);
     const updatedPegawai = isExisting
@@ -529,6 +681,7 @@ export default function App() {
       : [item, ...pegawai];
 
     setPegawai(updatedPegawai);
+    saveStored('pegawai', updatedPegawai);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -541,29 +694,14 @@ export default function App() {
       details: `Status: ${item.statusKepegawaian} | Golongan: ${item.golongan}`
     });
 
-    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai: updatedPegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'savePegawai',
-      item,
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data pegawai ${item.nama} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
+    addToast(`Data GTK "${item.nama}" berhasil disimpan di aplikasi (Gunakan tombol "Syncron" untuk mengirim ke Spreadsheet).`, 'success');
   };
 
   const handleDeletePegawai = (id: string) => {
     const target = pegawai.find((p) => p.id === id);
     const updatedPegawai = pegawai.filter((p) => p.id !== id);
     setPegawai(updatedPegawai);
+    saveStored('pegawai', updatedPegawai);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -574,21 +712,7 @@ export default function App() {
       details: `Jabatan: ${target?.jabatan || '-'} | Status: ${target?.statusKepegawaian || '-'}`
     });
 
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai: updatedPegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'deletePegawai',
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data pegawai ${target?.nama || id} berhasil dihapus & disinkronkan ke Spreadsheet.`, 'info');
+    addToast(`Data pegawai ${target?.nama || id} berhasil dihapus dari aplikasi.`, 'info');
   };
 
   const handleSaveSiswa = (item: Siswa) => {
@@ -598,6 +722,7 @@ export default function App() {
       : [item, ...siswa];
 
     setSiswa(updatedSiswa);
+    saveStored('siswa', updatedSiswa);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -610,29 +735,14 @@ export default function App() {
       details: `Jenis Kelamin: ${item.jenisKelamin} | Rombel: ${item.rombel}`
     });
 
-    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa: updatedSiswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'saveSiswa',
-      item,
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data siswa ${item.nama} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
+    addToast(`Data siswa "${item.nama}" berhasil disimpan di aplikasi (Gunakan tombol "Syncron" untuk mengirim ke Spreadsheet).`, 'success');
   };
 
   const handleDeleteSiswa = (id: string) => {
     const target = siswa.find((s) => s.id === id);
     const updatedSiswa = siswa.filter((s) => s.id !== id);
     setSiswa(updatedSiswa);
+    saveStored('siswa', updatedSiswa);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -643,21 +753,7 @@ export default function App() {
       details: `Rombel: ${target?.rombel || '-'} | Agama: ${target?.agama || '-'}`
     });
 
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa: updatedSiswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'deleteSiswa',
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data siswa ${target?.nama || id} berhasil dihapus & disinkronkan ke Spreadsheet.`, 'info');
+    addToast(`Data siswa ${target?.nama || id} berhasil dihapus dari aplikasi.`, 'info');
   };
 
   const handleSaveRapor = (item: RekapRaporSiswa) => {
@@ -667,6 +763,7 @@ export default function App() {
       : [item, ...rapor];
 
     setRapor(updatedRapor);
+    saveStored('rapor', updatedRapor);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -677,23 +774,7 @@ export default function App() {
       details: `Rata-rata TKA: ${item.tka?.rataRata || '-'} | Predikat: ${item.tka?.predikat || '-'}`
     });
 
-    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor: updatedRapor,
-      btq,
-      sarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'saveRapor',
-      item,
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data nilai rapor ${item.namaSiswa} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
+    addToast(`Data nilai rapor "${item.namaSiswa}" berhasil disimpan di aplikasi.`, 'success');
   };
 
   const handleSaveBTQ = (item: NilaiIjazahBTQ) => {
@@ -703,6 +784,7 @@ export default function App() {
       : [item, ...btq];
 
     setBtq(updatedBtq);
+    saveStored('btq', updatedBtq);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -715,29 +797,14 @@ export default function App() {
       details: `Rata-rata: ${item.rataRata} | Predikat: ${item.predikat}`
     });
 
-    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor,
-      btq: updatedBtq,
-      sarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'saveNilaiBTQ',
-      item,
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data nilai BTQ ${item.namaSiswa} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
+    addToast(`Data nilai BTQ "${item.namaSiswa}" berhasil disimpan di aplikasi.`, 'success');
   };
 
   const handleDeleteBTQ = (id: string) => {
     const target = btq.find((b) => b.id === id);
     const updatedBtq = btq.filter((b) => b.id !== id);
     setBtq(updatedBtq);
+    saveStored('btq', updatedBtq);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -748,21 +815,7 @@ export default function App() {
       details: `NISN: ${target?.nisn || '-'}`
     });
 
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor,
-      btq: updatedBtq,
-      sarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'deleteNilaiBTQ',
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data nilai BTQ ${target?.namaSiswa || id} berhasil dihapus & disinkronkan ke Spreadsheet.`, 'info');
+    addToast(`Data nilai BTQ ${target?.namaSiswa || id} berhasil dihapus dari aplikasi.`, 'info');
   };
 
   const handleSaveSarpras = (item: SarprasItem) => {
@@ -784,29 +837,15 @@ export default function App() {
       details: `Kategori: ${item.kategori} | Lokasi: ${item.lokasi}`
     });
 
-    // Otomatis sinkronkan & kirim data ke Master Google Spreadsheet
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras: updatedSarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'saveSarpras',
-      item,
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data sarpras ${item.namaSarpras} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
+    saveStored('sarpras', updatedSarpras);
+    addToast(`Data sarpras "${item.namaSarpras}" berhasil disimpan di aplikasi.`, 'success');
   };
 
   const handleDeleteSarpras = (id: string) => {
     const target = sarpras.find((s) => s.id === id);
     const updatedSarpras = sarpras.filter((s) => s.id !== id);
     setSarpras(updatedSarpras);
+    saveStored('sarpras', updatedSarpras);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -817,27 +856,14 @@ export default function App() {
       details: `Lokasi: ${target?.lokasi || '-'} | Kondisi: ${target?.kondisi || '-'}`
     });
 
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras: updatedSarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'deleteSarpras',
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Data sarpras ${target?.namaSarpras || id} berhasil dihapus & disinkronkan ke Spreadsheet.`, 'info');
+    addToast(`Data sarpras ${target?.namaSarpras || id} berhasil dihapus dari aplikasi.`, 'info');
   };
 
   const handleSaveSuratKeluar = (item: SuratKeluar) => {
     const isExisting = suratKeluar.some((s) => s.id === item.id);
     const updatedSuratKeluar = [item, ...suratKeluar.filter((s) => s.id !== item.id)];
     setSuratKeluar(updatedSuratKeluar);
+    saveStored('suratKeluar', updatedSuratKeluar);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -850,28 +876,14 @@ export default function App() {
       details: `Jenis: ${item.jenisSurat} | Tanggal: ${item.tanggalSurat}`
     });
 
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk,
-      suratKeluar: updatedSuratKeluar,
-      actionName: 'saveSuratKeluar',
-      item,
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Surat Keluar ${item.nomorSurat} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
+    addToast(`Surat Keluar ${item.nomorSurat} berhasil disimpan di arsip aplikasi.`, 'success');
   };
 
   const handleDeleteSuratKeluar = (id: string) => {
     const target = suratKeluar.find((s) => s.id === id);
     const updatedSuratKeluar = suratKeluar.filter((s) => s.id !== id);
     setSuratKeluar(updatedSuratKeluar);
+    saveStored('suratKeluar', updatedSuratKeluar);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -882,21 +894,7 @@ export default function App() {
       details: `Tujuan: ${target?.tujuan || '-'}`
     });
 
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk,
-      suratKeluar: updatedSuratKeluar,
-      actionName: 'deleteSuratKeluar',
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast('Arsip Surat Keluar berhasil dihapus & disinkronkan ke Spreadsheet.', 'info');
+    addToast('Arsip Surat Keluar berhasil dihapus dari aplikasi.', 'info');
   };
 
   const handleSaveSuratMasuk = (item: SuratMasuk) => {
@@ -906,6 +904,7 @@ export default function App() {
       : [item, ...suratMasuk];
 
     setSuratMasuk(updatedSuratMasuk);
+    saveStored('suratMasuk', updatedSuratMasuk);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -918,28 +917,14 @@ export default function App() {
       details: `Diterima: ${item.tanggalDiterima} | Disposisi: ${item.disposisiKepsek || '-'}`
     });
 
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk: updatedSuratMasuk,
-      suratKeluar,
-      actionName: 'saveSuratMasuk',
-      item,
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast(`Surat Masuk ${item.nomorSuratMasuk} berhasil disimpan & dikirim ke Master Spreadsheet!`, 'success');
+    addToast(`Surat Masuk ${item.nomorSuratMasuk} berhasil disimpan di arsip aplikasi.`, 'success');
   };
 
   const handleDeleteSuratMasuk = (id: string) => {
     const target = suratMasuk.find((s) => s.id === id);
     const updatedSuratMasuk = suratMasuk.filter((s) => s.id !== id);
     setSuratMasuk(updatedSuratMasuk);
+    saveStored('suratMasuk', updatedSuratMasuk);
     logUserActivity({
       role: currentUser.role,
       userName: currentUser.name,
@@ -950,21 +935,7 @@ export default function App() {
       details: `Perihal: ${target?.perihal || '-'}`
     });
 
-    pushDataToMasterSpreadsheet({
-      profil,
-      pegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk: updatedSuratMasuk,
-      suratKeluar,
-      actionName: 'deleteSuratMasuk',
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-
-    addToast('Arsip Surat Masuk berhasil dihapus & disinkronkan ke Spreadsheet.', 'info');
+    addToast('Arsip Surat Masuk berhasil dihapus dari aplikasi.', 'info');
   };
 
   const handleBatchUpdateData = (newData: {
@@ -988,20 +959,7 @@ export default function App() {
   const handleUpdateProfil = (newProfil: ProfilSekolah) => {
     setProfil(newProfil);
     saveStored('profil', newProfil);
-    pushDataToMasterSpreadsheet({
-      profil: newProfil,
-      pegawai,
-      siswa,
-      rapor,
-      btq,
-      sarpras,
-      suratMasuk,
-      suratKeluar,
-      actionName: 'saveProfil',
-    }).then((res) => {
-      setLastSyncTime(res.timestamp);
-    });
-    addToast('Identitas Sekolah berhasil disimpan & disinkronkan ke Master Spreadsheet!', 'success');
+    addToast('Identitas Sekolah berhasil disimpan di aplikasi (Gunakan tombol "Syncron" untuk mengirim ke Spreadsheet).', 'success');
   };
 
   const handlePurgeDummyData = () => {
@@ -1064,75 +1022,20 @@ export default function App() {
     return JSON.stringify(prev) !== JSON.stringify(next);
   };
 
-  // 1. Initial Mount: Immediately load the latest real data updated by admin from Google Apps Script / Spreadsheet
-  useEffect(() => {
-    let isMounted = true;
-    const loadInitialLiveMasterData = async () => {
-      try {
-        const live = await fetchAllLiveMasterData(profil);
-        if (!isMounted || !live) return;
+  // State loading untuk operasi database manual
+  const [isTarikLoading, setIsTarikLoading] = useState(false);
+  const [isSyncronLoading, setIsSyncronLoading] = useState(false);
 
-        let hasUpdated = false;
-        if (live.pegawai && live.pegawai.length > 0) {
-          const cleaned = sanitizeEntityList<Pegawai>(live.pegawai);
-          setPegawai(cleaned);
-          saveStored('pegawai', cleaned);
-          hasUpdated = true;
-        }
-        if (live.siswa && live.siswa.length > 0) {
-          const cleaned = sanitizeEntityList<Siswa>(live.siswa);
-          setSiswa(cleaned);
-          saveStored('siswa', cleaned);
-          hasUpdated = true;
-        }
-        if (live.rapor && live.rapor.length > 0) {
-          const cleaned = sanitizeEntityList<RekapRaporSiswa>(live.rapor);
-          setRapor(cleaned);
-          saveStored('rapor', cleaned);
-          hasUpdated = true;
-        }
-        if (live.btq && live.btq.length > 0) {
-          const cleaned = sanitizeEntityList<NilaiIjazahBTQ>(live.btq);
-          setBtq(cleaned);
-          saveStored('btq', cleaned);
-          hasUpdated = true;
-        }
-        if (live.sarpras && live.sarpras.length > 0) {
-          const cleaned = sanitizeEntityList<SarprasItem>(live.sarpras);
-          setSarpras(cleaned);
-          saveStored('sarpras', cleaned);
-          hasUpdated = true;
-        }
-        if (live.profil && live.profil.nama) {
-          setProfil(live.profil);
-          saveStored('profil', live.profil);
-          hasUpdated = true;
-        }
-        if (hasUpdated) {
-          // Notifikasi pembaruan otomatis dimatikan sesuai permintaan user
-        }
-      } catch (err) {
-        console.warn('Gagal memuat data awal live spreadsheet:', err);
-      }
-    };
+  // Penarikan, simpan, dan sinkronisasi otomatis DIMATIKAN sesuai permintaan pengguna.
+  // Seluruh penarikan data dan pengiriman data dilakukan secara manual melalui:
+  // 1. Tombol "Login" (tarik data awal dan otentikasi)
+  // 2. Tombol "Tarik Data" (pengambilan data dari database/spreadsheet secara manual)
+  // 3. Tombol "Syncron" (pengiriman data ke database/spreadsheet secara manual)
 
-    loadInitialLiveMasterData();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // Tidak ada auto kirim atau auto tarik data berkala.
-  // Seluruh sinkronisasi dilakukan melalui tombol resmi:
-  // - Login (tarik data dan login)
-  // - Simpan Data / Simpan Perubahan (mengirim data ke spreadsheet secara realtime)
-  // - Tombol Sinkronisasi Manual (jika pengguna ingin memperbarui data saat sedang login)
-
-  // Manual / Immediate Realtime Synchronization Handler
-  const handleManualRealtimeSync = async () => {
-    setIsSyncingRealtime(true);
+  // Manual Operation 1: "Tarik Data" (Pengambilan data dari database & master spreadsheet)
+  const handleTarikData = async () => {
+    setIsTarikLoading(true);
     try {
-      // Prioritize fast, direct Apps Script live fetch
       let res: any = await fetchAllLiveMasterData(profil).catch(() => null);
 
       if (!res) {
@@ -1182,14 +1085,47 @@ export default function App() {
           setProfil(res.profil);
           saveStored('profil', res.profil);
         }
-        addToast(`Sinkronisasi real-time berhasil (${nowTime})! Membaca ${countPeg || pegawai.length} Pegawai, ${countSis || siswa.length} Siswa langsung dari Spreadsheet.`, 'success');
+        addToast(`Tarik Data Berhasil (${nowTime})! Mengambil ${countPeg || pegawai.length} GTK & ${countSis || siswa.length} Siswa dari Database/Spreadsheet.`, 'success');
       } else {
-        addToast(`Sistem SIM SDN Kedungringin 1 terhubung ke Master Spreadsheet (${nowTime}).`, 'success');
+        addToast(`Tarik Data Selesai (${nowTime}): Data web telah sesuai dengan database.`, 'info');
       }
     } catch (err: any) {
-      addToast('Pemeriksaan real-time database selesai.', 'info');
+      addToast('Gagal menarik data dari database: ' + (err.message || 'Koneksi terputus'), 'error');
     } finally {
-      setIsSyncingRealtime(false);
+      setIsTarikLoading(false);
+    }
+  };
+
+  // Manual Operation 2: "Syncron" (Pengiriman seluruh data dari web ke database & master spreadsheet)
+  const handleSyncronData = async () => {
+    setIsSyncronLoading(true);
+    try {
+      const res = await pushDataToMasterSpreadsheet({
+        profil,
+        pegawai,
+        siswa,
+        rapor,
+        btq,
+        sarpras,
+        suratMasuk,
+        suratKeluar,
+        actionName: 'manualSyncronFullData',
+      });
+
+      const nowTime = res.timestamp || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastSyncTime(nowTime);
+      try {
+        localStorage.setItem('sim_kdr1_master_last_sync_time', nowTime);
+      } catch {}
+
+      addToast(
+        `Syncron Berhasil (${nowTime})! Data Profil Sekolah, ${siswa.length} Siswa, ${pegawai.length} GTK, ${sarpras.length} Sarpras, ${rapor.length} Rapor telah dikirimkan ke Database.`,
+        'success'
+      );
+    } catch (err: any) {
+      addToast('Gagal mengirim data syncron: ' + (err.message || 'Error pengiriman'), 'error');
+    } finally {
+      setIsSyncronLoading(false);
     }
   };
 
@@ -1207,8 +1143,12 @@ export default function App() {
           onResetData={handleResetData}
           onOpenLoginModal={() => setLoginModalOpen(true)}
           onLogout={handleLogout}
-          onSyncRealtime={handleManualRealtimeSync}
-          isSyncingRealtime={isSyncingRealtime}
+          onSyncRealtime={handleTarikData}
+          onTarikData={handleTarikData}
+          onSyncronData={handleSyncronData}
+          isSyncingRealtime={isTarikLoading}
+          isTarikLoading={isTarikLoading}
+          isSyncronLoading={isSyncronLoading}
           lastSyncTime={lastSyncTime}
         />
 
@@ -1240,8 +1180,10 @@ export default function App() {
               setActiveTab={setActiveTab}
               onUpdateProfil={setProfil}
               onNotify={addToast}
-              onSyncRealtime={handleManualRealtimeSync}
-              isSyncingRealtime={isSyncingRealtime}
+              onSyncRealtime={handleTarikData}
+              onTarikData={handleTarikData}
+              onSyncronData={handleSyncronData}
+              isSyncingRealtime={isTarikLoading || isSyncronLoading}
               lastSyncTime={lastSyncTime}
             />
           )}
@@ -1287,6 +1229,15 @@ export default function App() {
               onSavePresensiHarian={handleSavePresensiHarian}
               onSavePresensiBulanan={handleSavePresensiBulanan}
               onDeletePresensiHarian={handleDeletePresensiHarian}
+              penilaianList={penilaianList}
+              hasilList={hasilPenilaianList}
+              onSavePenilaian={handleSavePenilaianHarian}
+              onDeletePenilaian={handleDeletePenilaianHarian}
+              onSaveHasil={handleSaveHasilPenilaian}
+              remedialList={remedialList}
+              onSaveProgramRemedial={handleSaveProgramRemedial}
+              onDeleteProgramRemedial={handleDeleteProgramRemedial}
+              onSaveRemedialSubmission={handleSaveRemedialSubmission}
             />
           )}
 
@@ -1372,6 +1323,8 @@ export default function App() {
                 suratKeluar={suratKeluar}
                 presensiList={presensiList}
                 skpList={skpList}
+                remedialList={remedialList}
+                penilaianList={penilaianList}
                 userRole={currentUser.role}
                 onUpdateProfil={handleUpdateProfil}
                 onUpdateData={handleBatchUpdateData}

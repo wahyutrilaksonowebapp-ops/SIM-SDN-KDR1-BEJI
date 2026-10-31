@@ -199,7 +199,7 @@ export const TranscriptModal: React.FC<TranscriptModalProps> = ({
 
             <div className="space-y-1">
               <div>Pasuruan, 15 Juni 2026</div>
-              <div className="font-semibold text-slate-800">Kepala SDN Kedungringin 1 Beji</div>
+              <div className="font-semibold text-slate-800">Kepala SDN Kedungringin I Beji</div>
               <div className="h-16 flex items-center justify-center text-slate-300 italic text-[10px]">
                 [Stempel & Tanda Tangan]
               </div>

@@ -11,7 +11,9 @@ import {
   Lock,
   ExternalLink,
   ShieldCheck,
-  Server
+  Server,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import { 
   GOOGLE_DOCS_SURAT_TEMPLATE, 
@@ -19,6 +21,7 @@ import {
 } from '../data/initialData';
 import { syncWithGoogleAppsScript, LOCKED_WEB_APP_URL } from '../services/api';
 import { SingleMasterDatabasePanel } from './SingleMasterDatabasePanel';
+import { MultiDatabasePanel } from './MultiDatabasePanel';
 import { 
   ProfilSekolah, 
   Siswa, 
@@ -30,7 +33,9 @@ import {
   SuratKeluar,
   FaceprintPresensi,
   SkpEKinerja,
-  UserRole
+  UserRole,
+  ProgramRemedialPengayaan,
+  PenilaianHarian
 } from '../types';
 
 interface DocsAndGasProps {
@@ -44,6 +49,8 @@ interface DocsAndGasProps {
   suratKeluar?: SuratKeluar[];
   presensiList?: FaceprintPresensi[];
   skpList?: SkpEKinerja[];
+  remedialList?: ProgramRemedialPengayaan[];
+  penilaianList?: PenilaianHarian[];
   userRole?: UserRole;
   onUpdateProfil?: (updated: ProfilSekolah) => void;
   onUpdateData?: (newData: {
@@ -62,13 +69,13 @@ interface DocsAndGasProps {
 export const DocsAndGas: React.FC<DocsAndGasProps> = ({
   profil = {
     nama: 'SDN Kedungringin 1 Beji',
-    npsn: '20519312',
+    npsn: '20519482',
     bentukPendidikan: 'SD',
     status: 'Negeri',
-    akreditasi: 'A',
+    akreditasi: 'B (Baik)',
     skPendirian: '421.2/012/424.072/1982',
     tanggalSk: '1982-01-10',
-    alamat: 'Jl. Raya Beji No. 12',
+    alamat: 'Jl. Dusun Ngampel Desa Kedungringin Rt/Rw 035/010 Kode Pos 67154',
     kelurahan: 'Kedungringin',
     kecamatan: 'Beji',
     kabupaten: 'Kabupaten Pasuruan',
@@ -89,13 +96,17 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
   sarpras = [],
   suratMasuk = [],
   suratKeluar = [],
+  presensiList = [],
+  skpList = [],
+  remedialList = [],
+  penilaianList = [],
   userRole = 'admin',
   onUpdateProfil,
   onUpdateData,
   onNotify,
   onPurgeDummyData,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'master_database' | 'sync' | 'templates'>('master_database');
+  const [activeSubTab, setActiveSubTab] = useState<'master_database' | 'multi_database' | 'sync' | 'templates'>('master_database');
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   // Locked Web App State
@@ -149,7 +160,7 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
               </h2>
             </div>
             <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-              Sistem database terpadu SDN Kedungringin 1 Beji. Seluruh data dipusatkan pada <strong>1 Google Spreadsheet Master</strong> dan terhubung langsung dengan <strong>Google Apps Script Web App</strong> resmi yang telah terkunci permanen.
+              Sistem database terpadu SDN Kedungringin I  Beji. Seluruh data dipusatkan pada <strong>1 Google Spreadsheet Master</strong> dan terhubung langsung dengan <strong>Google Apps Script Web App</strong> resmi yang telah terkunci permanen.
             </p>
           </div>
 
@@ -175,6 +186,21 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
             <span>⚡ 1 Master Spreadsheet (Database Terpusat & Sinkronisasi)</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-emerald-400 text-slate-950">
               Utama
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('multi_database')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'multi_database'
+                ? 'bg-emerald-800 text-white shadow-sm ring-2 ring-emerald-600/20'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-blue-400" />
+            <span>🌐 Multi-Database (Supabase, Firebase & Spreadsheet)</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-blue-400 text-blue-950">
+              Analisis & Skema
             </span>
           </button>
 
@@ -226,6 +252,27 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
         />
       )}
 
+      {/* SubTab 2: Multi-Database Comparison & Schema Adapter */}
+      {activeSubTab === 'multi_database' && (
+        <MultiDatabasePanel
+          profil={profil}
+          siswa={siswa}
+          pegawai={pegawai}
+          rapor={rapor}
+          btq={btq}
+          sarpras={sarpras}
+          suratMasuk={suratMasuk}
+          suratKeluar={suratKeluar}
+          presensiList={presensiList}
+          skpList={skpList}
+          remedialList={remedialList}
+          penilaianList={penilaianList}
+          onNotify={onNotify || (() => {})}
+          onUpdateData={onUpdateData}
+          onUpdateProfil={onUpdateProfil}
+        />
+      )}
+
       {/* SubTab 2: Locked Web App Live Connection & Diagnostic */}
       {activeSubTab === 'sync' && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
@@ -236,7 +283,7 @@ export const DocsAndGas: React.FC<DocsAndGasProps> = ({
                 <span>Konektivitas Google Apps Script Web App (Terkunci Resmi)</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                URL Web App ini telah dikunci secara otomatis ke backend Google Apps Script resmi SIM SDN Kedungringin 1 Beji.
+                URL Web App ini telah dikunci secara otomatis ke backend Google Apps Script resmi SIM SDN Kedungringin I  Beji.
               </p>
             </div>
 

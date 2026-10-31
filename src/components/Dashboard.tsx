@@ -65,6 +65,8 @@ interface DashboardProps {
   onUpdateProfil?: (updated: ProfilSekolah) => void;
   onNotify?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onSyncRealtime?: () => Promise<void>;
+  onTarikData?: () => Promise<void>;
+  onSyncronData?: () => Promise<void>;
   isSyncingRealtime?: boolean;
   lastSyncTime?: string;
 }
@@ -83,6 +85,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onUpdateProfil,
   onNotify,
   onSyncRealtime,
+  onTarikData,
+  onSyncronData,
   isSyncingRealtime = false,
   lastSyncTime,
 }) => {
@@ -286,7 +290,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </span>
               <h2 className="text-2xl font-black">Halo, {currentUser.name}! 👋</h2>
               <p className="text-xs text-blue-200">
-                NISN: <strong>{currentUser.nisn || '-'}</strong> | Rombongan Belajar: <strong>Kelas {siswaRombelKelas}</strong> | SDN Kedungringin 1 Beji
+                NISN: <strong>{currentUser.nisn || '-'}</strong> | Rombongan Belajar: <strong>Kelas {siswaRombelKelas}</strong> | SDN Kedungringin I Beji
               </p>
             </div>
 
@@ -332,7 +336,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-emerald-700/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2 max-w-3xl">
             <div className="inline-flex items-center gap-2 bg-emerald-700/60 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-semibold text-emerald-200 border border-emerald-600/40">
               <School className="w-3.5 h-3.5" />
@@ -341,6 +345,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
               Selamat Datang di SIM {profil.nama}
             </h2>
+          </div>
+
+          {/* Quick Manual Tarik Data & Syncron Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            {onTarikData && (
+              <button
+                onClick={onTarikData}
+                disabled={isSyncingRealtime}
+                title="Tarik Data: Mengambil data terbaru dari database/spreadsheet secara manual"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold text-xs border border-emerald-500/40 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                <DownloadCloud className={`w-4 h-4 text-emerald-200 ${isSyncingRealtime ? 'animate-bounce' : ''}`} />
+                <span>Tarik Data</span>
+              </button>
+            )}
+            {onSyncronData && (
+              <button
+                onClick={onSyncronData}
+                disabled={isSyncingRealtime}
+                title="Syncron: Mengirimkan seluruh data web secara langsung ke database"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs border border-teal-400/40 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className="w-4 h-4 text-teal-100" />
+                <span>Syncron</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -374,65 +404,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
         </div>
-
-      {/* ========================================================================= */}
-      {/* SINGLE MASTER DATABASE TERKUNCI & REALTIME STATUS BANNER                  */}
-      {/* Kunci ke spreadsheet SIM_SDN_Kedungringin1_Master_Database_2026_2027      */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-2xl border-2 border-emerald-500/80 p-4 sm:p-5 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs shrink-0">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-slate-900 text-sm sm:text-base">
-                  Database Terkunci Real-time (Single Data Utama)
-                </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Realtime Aktif
-                </span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                  11 Pegawai GTK Resmi
-                </span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Data Dummy Dibersihkan
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                Sumber Master: <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono font-bold text-slate-800 text-[11px]">SIM_SDN_Kedungringin1_Master_Database_2026_2027</code>. Seluruh data GTK, Profil, Kesiswaan, dan Sarpras disinkronkan secara real-time untuk Guest, Guru, dan Admin tanpa data dummy.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-            {lastSyncTime && (
-              <span className="text-[11px] text-slate-500 hidden sm:inline">
-                Update: <strong className="text-slate-700 font-mono">{lastSyncTime}</strong>
-              </span>
-            )}
-            <button
-              onClick={() => onSyncRealtime ? onSyncRealtime() : handleAmbilProfilDariSpreadsheet()}
-              disabled={isSyncingRealtime}
-              title="Sinkronkan data real-time terbaru dari Google Spreadsheet"
-              className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingRealtime ? 'animate-spin' : ''}`} />
-              <span>{isSyncingRealtime ? 'Menyinkronkan...' : 'Sinkronkan Real-time'}</span>
-            </button>
-            {currentUser?.role === 'admin' && (
-              <button
-                onClick={() => setActiveTab('google_integration')}
-                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-300 transition-colors cursor-pointer"
-              >
-                Pusat Master Sheet
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* SUMMARY STATISTIC CARDS (Total Students, Active Staff, Pending Letters, Facilities) */}
@@ -642,7 +613,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     Ambil Profil dari Master Spreadsheet
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Sinkronisasi sheet <strong>Profil_Sekolah</strong> ke identitas SIM SDN Kedungringin 1
+                    Sinkronisasi sheet <strong>Profil_Sekolah</strong> ke identitas SIM SDN Kedungringin I
                   </p>
                 </div>
               </div>

@@ -7,7 +7,7 @@ export type TabType =
   | 'keadministrasian' 
   | 'google_integration';
 
-export type KesiswaanSubTab = 'siswa' | 'penilaian' | 'tabungan' | 'presensi';
+export type KesiswaanSubTab = 'siswa' | 'penilaian_harian' | 'penilaian' | 'remedial_pengayaan' | 'tabungan' | 'presensi';
 export type KeadministrasianSubTab = 'surat_keluar' | 'surat_masuk' | 'perangkat_pembelajaran';
 export type SarprasSubTab = 'inventaris' | 'perpustakaan' | 'ruang_kelas';
 
@@ -76,7 +76,7 @@ export interface Pegawai {
   kontak: string;
   email: string;
   tmt: string;      // YYYY-MM-DD
-  statusKepegawaian: 'PNS' | 'PPPK' | 'GTT' | 'PTT';
+  statusKepegawaian: 'PNS' | 'PPPK' | 'GTT' | 'PTT' | 'Non ASN';
   pendidikanTerakhir: string;
   tempatLahir: string;
   tanggalLahir: string;
@@ -89,7 +89,7 @@ export interface Pegawai {
   karpeg?: string;    // Kartu Pegawai
   nomorTaspen?: string;
   npwp?: string;
-  unitKerja?: string; // SDN Kedungringin 1 Beji
+  unitKerja?: string; // SDN Kedungringin I  Beji
 }
 
 export interface FaceprintPresensi {
@@ -514,4 +514,127 @@ export interface PresensiRekapBulan {
   guruPencatat: string;
   updatedAt?: string;
 }
+
+// ==================== PENILAIAN HARIAN (CBT & KURIKULUM MERDEKA) ====================
+export type TipeSoal = 'pg' | 'pgk' | 'isian' | 'uraian';
+
+export interface SoalItem {
+  id: string;
+  nomor: number;
+  tipe: TipeSoal;
+  pertanyaan: string;
+  opsi?: string[]; // Untuk PG (1 jawaban benar) & PGK (beberapa jawaban benar), e.g. ["A. ...", "B. ..."]
+  kunciJawaban: string | string[]; // PG: "A", PGK: ["A", "C"], Isian: "fotosintesis", Uraian: "kriteria..."
+  bobotPoin: number; // PG: 1, PGK: 1, Isian: 2, Uraian: 3
+  indikatorSoal?: string;
+  levelKognitif?: 'C1' | 'C2' | 'C3' | 'C4';
+  pembahasan?: string;
+}
+
+export interface PenilaianHarian {
+  id: string;
+  kodeUjian: string;
+  judul: string;
+  mataPelajaran: string;
+  kelas: number;
+  rombel: string;
+  materiPokok: string;
+  tujuanPembelajaran: string;
+  durasiMenit: number;
+  tahunPelajaran: string;
+  semester: number;
+  soalList: SoalItem[];
+  kkm: number; // KKTP (Kriteria Ketercapaian Tujuan Pembelajaran, default 75)
+  guruPengampu: string;
+  guruNip?: string;
+  tanggalDibuat: string;
+  status: 'aktif' | 'selesai' | 'draf';
+}
+
+export interface JawabanSiswaItem {
+  soalId: string;
+  nomor: number;
+  tipe: TipeSoal;
+  jawabanSiswa: string | string[]; // PG: "A", PGK: ["A", "B"], Isian: "teks", Uraian: "teks"
+  kunciJawaban: string | string[];
+  isCorrectAuto?: boolean;
+  skorOtomatis: number;
+  skorManual?: number; // Kebijakan Guru: Isian (0-2), Uraian (0-3)
+  skorFinal: number;
+  skorMaksimal: number;
+  catatanGuru?: string;
+}
+
+export interface HasilPenilaianSiswa {
+  id: string;
+  penilaianId: string;
+  siswaId: string;
+  nisn: string;
+  namaSiswa: string;
+  kelas: number;
+  rombel: string;
+  mataPelajaran: string;
+  waktuMulai?: string;
+  waktuSelesai: string;
+  jawaban: JawabanSiswaItem[];
+  totalSkorPerolehan: number;
+  totalSkorMaksimal: number;
+  nilaiAkhir: number; // Skala 100
+  statusKoreksi: 'menunggu_koreksi_manual' | 'sudah_dikoreksi';
+  statusKelulusan: 'Tuntas' | 'Belum Tuntas' | 'Perlu Bimbingan';
+  catatanEvaluasi?: string;
+  dikoreksiOleh?: string;
+  tanggalKoreksi?: string;
+}
+
+// ==================== REMEDIAL & PENGAYAAN (AI-POWERED) ====================
+export interface ButirSoalRemedial {
+  nomor: number;
+  tipe: 'pg' | 'isian' | 'uraian';
+  pertanyaan: string;
+  opsi?: string[];
+  kunciJawaban: string;
+  petunjukPengerjaan?: string;
+  indikatorMateri?: string;
+}
+
+export interface SiswaRemedialPengayaanItem {
+  siswaId: string;
+  nisn: string;
+  namaSiswa: string;
+  kelas: number;
+  rombel: string;
+  nilaiAwal: number;
+  kkm: number;
+  materiBelumDikuasai: string[]; // Materi / TP yang perlu penguatan
+  nilaiPerbaikan?: number; // Skor perbaikan (Maksimal KKTP/KKM atau nilai aktual baru)
+  status: 'Belum Mengumpulkan' | 'Sedang Dikerjakan' | 'Tuntas Perbaikan';
+  tanggalSelesai?: string;
+  catatanGuru?: string;
+  jawabanSiswa?: Record<number, string>; // Jawaban pengerjaan siswa jika dikerjakan di web
+}
+
+export interface ProgramRemedialPengayaan {
+  id: string;
+  kodeProgram: string;
+  judul: string;
+  jenis: 'remedial' | 'pengayaan'; // Remedial (< KKM) vs Pengayaan (>= KKM)
+  mataPelajaran: string;
+  kelas: number;
+  rombel: string;
+  materiPokok: string;
+  tujuanPembelajaran: string;
+  penilaianHarianId?: string; // Tautan ke ID Penilaian Harian terkait
+  kkm: number; // Standar KKTP (default 75)
+  tanggalDibuat: string;
+  batasWaktu: string;
+  guruPengampu: string;
+  guruNip?: string;
+  ringkasanMateriScaffolding: string; // Materi penjelasan konsep terarah yang digenerate AI
+  daftarSiswa: SiswaRemedialPengayaanItem[];
+  soalList: ButirSoalRemedial[];
+  status: 'aktif' | 'selesai' | 'arsip';
+  rekomendasiMetodeGuru?: string;
+}
+
 

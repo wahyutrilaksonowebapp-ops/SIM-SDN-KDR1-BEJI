@@ -15,16 +15,16 @@ import {
 
 export const INITIAL_PROFIL: ProfilSekolah = {
   nama: 'SDN Kedungringin 1 Beji',
-  npsn: '20519183',
-  bentukPendidikan: 'Sekolah Dasar (SD)',
+  npsn: '20519482',
+  bentukPendidikan: 'SD',
   status: 'Negeri',
-  akreditasi: 'A (Unggul)',
+  akreditasi: 'B (Baik)',
   skPendirian: '421.2/012/424.072/1982',
   tanggalSk: '1982-01-05',
-  alamat: 'Dusun Kedungringin RT.02 / RW.03, Desa Kedungringin',
+  alamat: 'Jl. Dusun Ngampel Desa Kedungringin Rt/Rw 035/010 Kode Pos 67154',
   kelurahan: 'Kedungringin',
   kecamatan: 'Beji',
-  kabupaten: 'Pasuruan',
+  kabupaten: 'Kabupaten Pasuruan',
   provinsi: 'Jawa Timur',
   kodePos: '67154',
   telepon: '(0343) 658210',
@@ -49,11 +49,11 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     jabatan: 'Kepala Sekolah',
     kontak: '0812-3456-7890',
     email: 'fuadfahrudin.kepsek@gmail.com',
-    tmt: '1998-03-01',
+    tmt: '1998-02-27',
     statusKepegawaian: 'PNS',
     pendidikanTerakhir: 'S2 Magister Manajemen Pendidikan',
-    tempatLahir: 'Pasuruan',
-    tanggalLahir: '1974-05-12',
+    tempatLahir: 'Bojonegoro',
+    tanggalLahir: '1980-06-17',
     mkgTahun: 26,
     mkgBulan: 0,
     karpeg: 'G 049821',
@@ -82,7 +82,7 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     skAngkatan: {
       nomor: '813.2/045/424.072/1998',
       tanggal: '1998-02-12',
-      tmt: '1998-03-01',
+      tmt: '1998-02-27',
       pejabatPenetap: 'Bupati Pasuruan',
       golonganAwal: 'II/a',
     },
@@ -103,7 +103,7 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     statusKepegawaian: 'PPPK',
     pendidikanTerakhir: 'S1 Pendidikan Agama Islam',
     tempatLahir: 'Pasuruan',
-    tanggalLahir: '1980-08-15',
+    tanggalLahir: '1986-07-28',
     mkgTahun: 1,
     mkgBulan: 0,
     karpeg: 'PPPK-860628',
@@ -148,11 +148,11 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     pangkat: 'Penata Tingkat I',
     jabatan: 'Guru Kelas 6',
     kontak: '0857-3312-9844',
-    email: 'pudjiati.sdn@gmail.com',
+    email: 'sriwahyuni.kdr1@gmail.com',
     tmt: '2007-02-01',
     statusKepegawaian: 'PNS',
     pendidikanTerakhir: 'S1 PGSD',
-    tempatLahir: 'Malang',
+    tempatLahir: 'Ngawi',
     tanggalLahir: '1983-02-19',
     mkgTahun: 17,
     mkgBulan: 0,
@@ -198,11 +198,11 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     pangkat: 'Ahli Pertama (PPPK)',
     jabatan: 'Guru Kelas 5',
     kontak: '0812-7721-3901',
-    email: 'gadis.yunita@gmail.com',
+    email: 'bambangkusuma.sdn@gmail.com',
     tmt: '2014-03-01',
     statusKepegawaian: 'PPPK',
     pendidikanTerakhir: 'S1 PGSD',
-    tempatLahir: 'Sidoarjo',
+    tempatLahir: 'Banyuwangi',
     tanggalLahir: '1986-11-03',
     mkgTahun: 10,
     mkgBulan: 0,
@@ -248,11 +248,11 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     pangkat: 'Penata Muda Tingkat I',
     jabatan: 'Guru Kelas 4',
     kontak: '0822-4567-8910',
-    email: 'isfaul.mukarromah@gmail.com',
+    email: 'dewilestari.pgsd@gmail.com',
     tmt: '2019-03-01',
     statusKepegawaian: 'PNS',
     pendidikanTerakhir: 'S1 PGSD',
-    tempatLahir: 'Pasuruan',
+    tempatLahir: 'Sidoarjo',
     tanggalLahir: '1991-04-18',
     mkgTahun: 5,
     mkgBulan: 0,
@@ -294,15 +294,15 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     gelarDepan: '',
     gelarBelakang: 'S.Pd.',
     jenisKelamin: 'L',
-    golongan: 'III/b (Penata Muda Tk. I)',
-    pangkat: 'Penata Muda Tingkat I',
+    golongan: 'Gol. IX (Ahli Pertama)',
+    pangkat: 'Ahli Pertama (PPPK)',
     jabatan: 'Guru Kelas 3',
     kontak: '0858-9012-3456',
-    email: 'arif.diantoro@gmail.com',
+    email: 'nurul.hidayati@gmail.com',
     tmt: '2022-03-01',
     statusKepegawaian: 'PPPK',
     pendidikanTerakhir: 'S1 PGSD',
-    tempatLahir: 'Probolinggo',
+    tempatLahir: 'Pasuruan',
     tanggalLahir: '1994-07-22',
     mkgTahun: 2,
     mkgBulan: 0,
@@ -348,11 +348,11 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     pangkat: 'Ahli Pertama (PPPK)',
     jabatan: 'Guru PJOK',
     kontak: '0813-4455-6677',
-    email: 'mochammad.syafii@gmail.com',
+    email: 'fajar.pjok@gmail.com',
     tmt: '2023-04-01',
     statusKepegawaian: 'PPPK',
     pendidikanTerakhir: 'S1 Pendidikan Jasmani & Kesehatan',
-    tempatLahir: 'Pasuruan',
+    tempatLahir: 'Tuban',
     tanggalLahir: '1995-12-05',
     mkgTahun: 1,
     mkgBulan: 6,
@@ -398,9 +398,9 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     pangkat: '-',
     jabatan: 'Guru Kelas 2',
     kontak: '0877-1234-9087',
-    email: 'putri.azzahra@gmail.com',
+    email: 'rina.rahmawati@gmail.com',
     tmt: '2024-03-01',
-    statusKepegawaian: 'PTT',
+    statusKepegawaian: 'Non ASN',
     pendidikanTerakhir: 'S1 PGSD',
     tempatLahir: 'Pasuruan',
     tanggalLahir: '1996-03-10',
@@ -417,7 +417,7 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       masaKerjaTahun: 0,
       masaKerjaBulan: 0,
       gajiPokok: 2100000,
-      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin I',
     },
     skBerkalaTerakhir: {
       nomor: '822/011/424.072.24/2025',
@@ -427,13 +427,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       masaKerjaBulan: 0,
       gajiPokok: 2200000,
       tmtBerikutnya: '2027-03-01',
-      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin I',
     },
     skAngkatan: {
       nomor: '800/012/424.072.24/2024',
       tanggal: '2024-02-20',
       tmt: '2024-03-01',
-      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin I',
       golonganAwal: 'PTT Daerah',
     },
   },
@@ -448,11 +448,11 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     pangkat: '-',
     jabatan: 'Guru Kelas 1',
     kontak: '0896-5544-3322',
-    email: 'dina.fitriyah@gmail.com',
-    tmt: '2021-07-12',
-    statusKepegawaian: 'PTT',
+    email: 'trihandayani.guru@gmail.com',
+    tmt: '2024-07-12',
+    statusKepegawaian: 'Non ASN',
     pendidikanTerakhir: 'S1 PGSD',
-    tempatLahir: 'Bangil',
+    tempatLahir: 'Sidoarjo',
     tanggalLahir: '1997-09-14',
     mkgTahun: 3,
     mkgBulan: 0,
@@ -467,7 +467,7 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       masaKerjaTahun: 2,
       masaKerjaBulan: 0,
       gajiPokok: 2150000,
-      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin I',
     },
     skBerkalaTerakhir: {
       nomor: '822/018/424.072.24/2023',
@@ -477,7 +477,7 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       masaKerjaBulan: 0,
       gajiPokok: 2250000,
       tmtBerikutnya: '2025-07-12',
-      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin I',
     },
     skAngkatan: {
       nomor: '800/021/424.072.24/2021',
@@ -489,20 +489,20 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
   },
   {
     id: 'peg-10',
-    nip: '-',
+    nip: '19970914 202107 2 001',
     nama: 'Mochammad Dzulkifli Bachtiar',
     gelarDepan: '',
-    gelarBelakang: 'S.Kom.',
+    gelarBelakang: '',
     jenisKelamin: 'L',
     golongan: 'PTT',
     pangkat: '-',
     jabatan: 'Operator Sekolah & Administrasi',
     kontak: '0812-9988-7766',
-    email: 'dzulkifli.ops@gmail.com',
-    tmt: '2020-01-02',
-    statusKepegawaian: 'PTT',
-    pendidikanTerakhir: 'S1 Teknik Informatika',
-    tempatLahir: 'Pasuruan',
+    email: 'rizky.ops.kdr1@gmail.com',
+    tmt: '2025-02-01',
+    statusKepegawaian: 'Non ASN',
+    pendidikanTerakhir: 'SMA',
+    tempatLahir: 'Sidoarjo',
     tanggalLahir: '1998-06-25',
     mkgTahun: 4,
     mkgBulan: 0,
@@ -517,7 +517,7 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       masaKerjaTahun: 2,
       masaKerjaBulan: 0,
       gajiPokok: 2200000,
-      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin I',
     },
     skBerkalaTerakhir: {
       nomor: '822/002/424.072.24/2024',
@@ -527,13 +527,13 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
       masaKerjaBulan: 0,
       gajiPokok: 2350000,
       tmtBerikutnya: '2026-01-02',
-      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin I',
     },
     skAngkatan: {
       nomor: '800/001/424.072.24/2020',
       tanggal: '2020-01-02',
       tmt: '2020-01-02',
-      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin 1',
+      pejabatPenetap: 'Kepala Sekolah SDN Kedungringin I',
       golonganAwal: 'Tenaga Kependidikan PTT',
     },
   },
@@ -548,11 +548,11 @@ export const INITIAL_PEGAWAI: Pegawai[] = [
     pangkat: 'Pengatur Tingkat I',
     jabatan: 'Pramu Kebersihan',
     kontak: '0852-1122-3344',
-    email: 'malik.kebersihan@gmail.com',
-    tmt: '2016-08-01',
+    email: 'slametriyadi.kdr@gmail.com',
+    tmt: '2009-08-01',
     statusKepegawaian: 'PNS',
     pendidikanTerakhir: 'SMA',
-    tempatLahir: 'Beji, Pasuruan',
+    tempatLahir: 'Pasuruan',
     tanggalLahir: '1979-11-10',
     mkgTahun: 8,
     mkgBulan: 0,
@@ -605,7 +605,7 @@ export const INITIAL_PRESENSI_FACEPRINT: FaceprintPresensi[] = [
     pulangCepatMenit: 0,
     efektifJamKerja: 7.8,
     verifikasi: 'Face Recognition Biometrik 99.8%',
-    lokasiGps: 'SDN Kedungringin 1 Beji (Radius 5m)',
+    lokasiGps: 'SDN Kedungringin I Beji (Radius 5m)',
     catatan: 'Terverifikasi Mesin Wajah Utama Kantor Kepala Sekolah',
   },
   {
@@ -622,7 +622,7 @@ export const INITIAL_PRESENSI_FACEPRINT: FaceprintPresensi[] = [
     pulangCepatMenit: 0,
     efektifJamKerja: 7.6,
     verifikasi: 'Face Recognition Biometrik 99.8%',
-    lokasiGps: 'SDN Kedungringin 1 Beji (Radius 8m)',
+    lokasiGps: 'SDN Kedungringin I  Beji (Radius 8m)',
     catatan: 'Imam Sholat Dzuhur Berjamaah & Pembina BTQ',
   },
   {
@@ -783,7 +783,7 @@ export const INITIAL_SKP_EKINERJA: SkpEKinerja[] = [
     periodeAkhir: '2026-09-30',
     pejabatPenilaiNama: 'Fuad Fahrudin, M.Pd.',
     pejabatPenilaiNip: '19800618 200501 1 010',
-    pejabatPenilaiJabatan: 'Kepala UPT SDN Kedungringin 1 Beji',
+    pejabatPenilaiJabatan: 'Kepala UPT SDN Kedungringin I  Beji',
     targetKinerja: [
       {
         id: 'tk-1',
@@ -853,7 +853,7 @@ export const INITIAL_SKP_EKINERJA: SkpEKinerja[] = [
     predikatKinerja: 'Sangat Baik',
     ratingHasilKerja: 'Diatas Ekspektasi',
     ratingPerilaku: 'Diatas Ekspektasi',
-    catatanRekomendasi: 'Pertahankan etos kerja teladan dan dedikasi tinggi dalam pembinaan akhlak mulia siswa SDN Kedungringin 1 Beji.',
+    catatanRekomendasi: 'Pertahankan etos kerja teladan dan dedikasi tinggi dalam pembinaan akhlak mulia siswa SDN Kedungringin I  Beji.',
     tanggalPenilaian: '2026-10-02',
   },
   {
@@ -869,7 +869,7 @@ export const INITIAL_SKP_EKINERJA: SkpEKinerja[] = [
     periodeAkhir: '2026-09-30',
     pejabatPenilaiNama: 'Fuad Fahrudin, M.Pd.',
     pejabatPenilaiNip: '19800618 200501 1 010',
-    pejabatPenilaiJabatan: 'Kepala UPT SDN Kedungringin 1 Beji',
+    pejabatPenilaiJabatan: 'Kepala UPT SDN Kedungringin I  Beji',
     targetKinerja: [
       {
         id: 'tk-4',
@@ -946,7 +946,7 @@ export const INITIAL_SKP_EKINERJA: SkpEKinerja[] = [
     periodeAkhir: '2026-09-30',
     pejabatPenilaiNama: 'Fuad Fahrudin, M.Pd.',
     pejabatPenilaiNip: '19800618 200501 1 010',
-    pejabatPenilaiJabatan: 'Kepala UPT SDN Kedungringin 1 Beji',
+    pejabatPenilaiJabatan: 'Kepala UPT SDN Kedungringin I  Beji',
     targetKinerja: [
       {
         id: 'tk-6',
@@ -963,7 +963,7 @@ export const INITIAL_SKP_EKINERJA: SkpEKinerja[] = [
         indikator: 'Perolehan medali pada ajang O2SN tingkat Kecamatan Beji',
         targetKuantitas: 'Juara 1 atau 2',
         realisasi: 'Juara 1 Bulutangkis Putra & Juara 2 Futsal',
-        umpanBalik: 'Membawa nama harum SDN Kedungringin 1 Beji di tingkat Kabupaten Pasuruan',
+        umpanBalik: 'Membawa nama harum SDN Kedungringin I  Beji di tingkat Kabupaten Pasuruan',
         capaian: 'Diatas Ekspektasi',
       },
     ],
@@ -2320,8 +2320,8 @@ export const GOOGLE_DOCS_SURAT_TEMPLATE = `PEMERINTAH KABUPATEN PASURUAN
 DINAS PENDIDIKAN DAN KEBUDAYAAN
 KOORDINATOR WILAYAH PENDIDIKAN KECAMATAN BEJI
 SEKOLAH DASAR NEGERI KEDUNGRINGIN 1 BEJI
-NPSN: 20519183 | NSS: 101051507001 | Akreditasi: A
-Alamat: Dusun Kedungringin RT.02/RW.03, Desa Kedungringin, Kec. Beji, Kab. Pasuruan 67154
+NPSN: 20519482 | NSS: 101051507001 | Akreditasi: B (Baik)
+Alamat: Jl. Dusun Ngampel Desa Kedungringin Rt/Rw 035/010 Kode Pos 67154, Kec. Beji, Kab. Pasuruan
 Email: sdnkedungringin1beji@gmail.com | Website: https://sdnkedungringin1beji.sch.id
 ================================================================================
 
@@ -2332,7 +2332,7 @@ Yang bertanda tangan di bawah ini:
 Nama                  : {{pejabat_nama}}
 NIP                   : {{pejabat_nip}}
 Pangkat / Gol. Ruang  : {{pejabat_pangkat}}
-Jabatan               : Kepala SDN Kedungringin 1 Beji
+Jabatan               : Kepala SDN Kedungringin I  Beji
 
 Dengan ini menerangkan dengan sesungguhnya bahwa:
 Nama Lengkap          : {{nama_subjek}}
@@ -2349,7 +2349,7 @@ Demikian surat ini dibuat dengan sebenarnya agar dapat dipergunakan sebagaimana 
                                             Dikeluarkan di : Pasuruan
                                             Pada tanggal   : {{tanggal_surat}}
 
-                                            Kepala SDN Kedungringin 1 Beji,
+                                            Kepala SDN Kedungringin I  Beji,
                                             
                                             
                                             
@@ -2359,19 +2359,19 @@ Demikian surat ini dibuat dengan sebenarnya agar dapat dipergunakan sebagaimana 
 export const GOOGLE_DOCS_BTQ_TEMPLATE = `================================================================================
                  PEMERINTAH KABUPATEN PASURUAN
                DINAS PENDIDIKAN DAN KEBUDAYAAN
-           SEKOLAH DASAR NEGERI KEDUNGRINGIN 1 BEJI
+           SEKOLAH DASAR NEGERI Kedungringin I  BEJI
 ================================================================================
                         IJAZAH / SERTIFIKAT
                      BACA TULIS AL-QUR'AN (BTQ)
                    Nomor: {{nomor_sertifikat}}
 
-Kepala SDN Kedungringin 1 Beji menerangkan bahwa:
+Kepala SDN Kedungringin I  Beji menerangkan bahwa:
 
 Nama Lengkap          : {{nama_siswa}}
 Nomor Induk Siswa Nas.: {{nisn}}
 Kelas / Rombel        : {{kelas}}
 Tempat, Tanggal Lahir : {{ttl}}
-Sekolah Asal          : SDN Kedungringin 1 Beji
+Sekolah Asal          : SDN Kedungringin I  Beji
 
 Telah Mengikuti Ujian Standarisasi Baca Tulis Al-Qur'an (BTQ)
 dan Dinyatakan: {{status_kelulusan}}
@@ -2395,7 +2395,7 @@ Catatan Evaluasi Pembimbing:
 
                                             Pasuruan, {{tanggal_terbit}}
 Mengetahui,
-Guru PAI / Penguji BTQ                      Kepala SDN Kedungringin 1 Beji
+Guru PAI / Penguji BTQ                      Kepala SDN Kedungringin I  Beji
 
 
 {{penguji_nama}}                            {{pejabat_nama}}
@@ -2403,7 +2403,7 @@ NIP. {{penguji_nip}}                        NIP. {{pejabat_nip}}`;
 
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * ==============================================================================
- * 1 MASTER SPREADSHEET BACKEND APPS SCRIPT - SIM SDN KEDUNGRINGIN 1 BEJI
+ * 1 MASTER SPREADSHEET BACKEND APPS SCRIPT - SIM SDN Kedungringin I  BEJI
  * ==============================================================================
  * Petunjuk Penyiapan Cepat:
  * 1. Buka 1 Spreadsheet Master Anda di Google Sheets.
@@ -2411,7 +2411,7 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * 3. Hapus seluruh isi Code.gs, lalu TEMPEL seluruh kode script ini.
  * 4. Klik "Deploy" -> "Kelola Deployment" -> "Deployment Baru" -> Pilih "Aplikasi Web" (Web App).
  *    - Akses (Who has access): Pilih "Siapa Saja" (Anyone / Anyone with link).
- * 5. Salin URL Web App yang dihasilkan, lalu tempel ke SIM SDN Kedungringin 1.
+ * 5. Salin URL Web App yang dihasilkan, lalu tempel ke SIM SDN Kedungringin I .
  * ==============================================================================
  */
 
@@ -2465,7 +2465,7 @@ function doGet(e) {
     const ss = getMasterSS();
 
     if (action === 'ping') {
-      response.message = 'Backend 1 Master Spreadsheet SIM SDN Kedungringin 1 AKTIF!';
+      response.message = 'Backend 1 Master Spreadsheet SIM SDN Kedungringin I  AKTIF!';
       response.spreadsheetName = ss.getName();
       response.availableSheets = ss.getSheets().map(s => s.getName());
     } 
@@ -2639,7 +2639,7 @@ function doPost(e) {
           p.jenisKelamin || 'L', p.golongan || '-', p.pangkat || '-', p.jabatan || 'Guru',
           p.statusKepegawaian || 'PNS', p.pendidikanTerakhir || 'S1', p.tmt || '-',
           p.tempatLahir || 'Pasuruan', p.tanggalLahir || '1985-01-01', p.kontak || '-',
-          p.email || '-', p.unitKerja || 'SDN Kedungringin 1 Beji', p.karpeg || '-',
+          p.email || '-', p.unitKerja || 'SDN Kedungringin I  Beji', p.karpeg || '-',
           p.nomorTaspen || '-', p.npwp || '-',
           p.skPangkatTerakhir ? p.skPangkatTerakhir.nomor : '-',
           p.skPangkatTerakhir ? p.skPangkatTerakhir.tanggal : '-',
@@ -2746,16 +2746,16 @@ function doPost(e) {
       if (sheet && prof) {
         const rows = [
           ['Parameter', 'Nilai'],
-          ['Nama Sekolah', prof.nama || 'SDN Kedungringin 1 Beji'],
-          ['NPSN', "'" + (prof.npsn || '20519312')],
+          ['Nama Sekolah', prof.nama || 'SDN Kedungringin I  Beji'],
+          ['NPSN', "'" + (prof.npsn || '20519482')],
           ['Bentuk Pendidikan', prof.bentukPendidikan || 'SD'],
           ['Status', prof.status || 'Negeri'],
-          ['Akreditasi', prof.akreditasi || 'A'],
-          ['Alamat', prof.alamat || 'Jl. Raya Beji No. 12'],
+          ['Akreditasi', prof.akreditasi || 'B'],
+          ['Alamat', prof.alamat || 'Jl. Dusun Ngampel Desa Kedungringin Rt/Rw 035/010 Kode Pos 67154'],
           ['Kecamatan', prof.kecamatan || 'Beji'],
           ['Kabupaten', prof.kabupaten || 'Kabupaten Pasuruan'],
           ['Kepala Sekolah', prof.kepalaSekolah || 'Fuad Fahrudin, M.Pd.'],
-          ['NIP Kepala Sekolah', "'" + (prof.nipKepalaSekolah || '-')],
+          ['NIP Kepala Sekolah', "'" + (prof.nipKepalaSekolah || '19800618 200501 1 010')],
           ['Tahun Pelajaran', prof.tahunPelajaranAktif || '2026/2027']
         ];
         sheet.clear();
