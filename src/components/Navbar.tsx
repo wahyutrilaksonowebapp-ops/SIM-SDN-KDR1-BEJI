@@ -16,7 +16,10 @@ import {
   RefreshCw,
   Eye,
   Download,
-  Upload
+  Upload,
+  TrendingUp,
+  MessageSquare,
+  Bell
 } from 'lucide-react';
 import { TabType, ProfilSekolah, AuthUser } from '../types';
 import { ConfirmModal } from './ConfirmModal';
@@ -38,6 +41,9 @@ interface NavbarProps {
   isTarikLoading?: boolean;
   isSyncronLoading?: boolean;
   lastSyncTime?: string;
+  unreadFeedbackCount?: number;
+  onOpenGuestChat?: () => void;
+  onOpenAdminFeedback?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -57,11 +63,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   isTarikLoading = false,
   isSyncronLoading = false,
   lastSyncTime,
+  unreadFeedbackCount = 0,
+  onOpenGuestChat,
+  onOpenAdminFeedback,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
   // Generate nav items based on login status and role
-  let navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: string }[] = [];
+  let navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: string; badgeColor?: string }[] = [];
 
   if (!isLoggedIn) {
     // Pada awal hanya menampilkan menu login, menu yang lain tidak aktif
@@ -70,12 +79,13 @@ export const Navbar: React.FC<NavbarProps> = ({
     ];
   } else {
     if (currentUser.role === 'guest') {
-      // sebagai Guest : dashboard, kepegawaian, kesiswaan, sarpras (keadministrasian ditutup)
+      // sebagai Guest : dashboard, kepegawaian, kesiswaan, sarpras, chat kritik & saran
       navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
         { id: 'kepegawaian', label: 'Kepegawaian', icon: <Users className="w-4 h-4" /> },
         { id: 'kesiswaan', label: 'Kesiswaan', icon: <GraduationCap className="w-4 h-4" /> },
         { id: 'sarpras', label: 'Sarpras', icon: <Building2 className="w-4 h-4" /> },
+        { id: 'guest_chat', label: 'Kritik & Saran', icon: <MessageSquare className="w-4 h-4" />, badge: 'Guest' },
       ];
     } else if (currentUser.role === 'siswa') {
       // sebagai Siswa: melihat dashboard, kesiswaan, sarpras sesuai dengan rombel siswa
@@ -112,13 +122,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         },
       ];
     } else {
-      // sebagai admin : dashboard, kepegawaian, kesiswaan, sarpras, keadministrasian, setting (google drive & sheet)
+      // sebagai admin : dashboard, kepegawaian, kesiswaan, sarpras, keadministrasian, pengunjung (analisis), kritik & saran, setting
       navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
         { id: 'kepegawaian', label: 'Kepegawaian', icon: <Users className="w-4 h-4" /> },
         { id: 'kesiswaan', label: 'Kesiswaan', icon: <GraduationCap className="w-4 h-4" /> },
         { id: 'sarpras', label: 'Sarpras', icon: <Building2 className="w-4 h-4" /> },
         { id: 'keadministrasian', label: 'Keadministrasian', icon: <FileText className="w-4 h-4" /> },
+        { id: 'pengunjung', label: 'Pengunjung', icon: <TrendingUp className="w-4 h-4" /> },
+        { 
+          id: 'guest_chat', 
+          label: 'Kritik & Saran', 
+          icon: <MessageSquare className="w-4 h-4" />,
+          badge: unreadFeedbackCount > 0 ? `${unreadFeedbackCount} Masuk` : undefined,
+          badgeColor: 'bg-rose-500 text-white'
+        },
         { id: 'google_integration', label: 'Setting', icon: <Database className="w-4 h-4" /> },
       ];
     }
@@ -267,8 +285,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>{item.label}</span>
                   {item.badge && (
                     <span
-                      className={`text-[9px] px-1.5 py-0.2 rounded-full font-semibold ${
-                        isActive
+                      className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold shadow-xs ${
+                        item.badgeColor
+                          ? item.badgeColor
+                          : isActive
                           ? 'bg-emerald-500 text-white'
                           : 'bg-emerald-100 text-emerald-800'
                       }`}
@@ -279,6 +299,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               );
             })}
+
+            {/* Admin Quick Feedback Notification Action */}
+            {isLoggedIn && currentUser.role === 'admin' && (
+              <button
+                onClick={() => {
+                  if (onOpenAdminFeedback) onOpenAdminFeedback();
+                  else setActiveTab('guest_chat');
+                }}
+                className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+                  unreadFeedbackCount > 0
+                    ? 'text-rose-600 hover:bg-rose-50'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                }`}
+                title={`Kritik & Saran Tamu (${unreadFeedbackCount} belum dibaca)`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                {unreadFeedbackCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+                    {unreadFeedbackCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* User Role & Login Switcher */}
             <div className="pl-2 border-l border-slate-200 flex items-center gap-2">
@@ -363,6 +406,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 {item.icon}
                 <span>{item.label}</span>
+                {item.badge && (
+                  <span
+                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${
+                      item.badgeColor
+                        ? item.badgeColor
+                        : isActive
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}

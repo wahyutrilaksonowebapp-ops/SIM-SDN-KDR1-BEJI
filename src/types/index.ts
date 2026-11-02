@@ -5,7 +5,9 @@ export type TabType =
   | 'kesiswaan' 
   | 'sarpras' 
   | 'keadministrasian' 
-  | 'google_integration';
+  | 'google_integration'
+  | 'pengunjung'
+  | 'guest_chat';
 
 export type KesiswaanSubTab = 'siswa' | 'penilaian_harian' | 'penilaian' | 'remedial_pengayaan' | 'tabungan' | 'presensi';
 export type KeadministrasianSubTab = 'surat_keluar' | 'surat_masuk' | 'perangkat_pembelajaran';
@@ -635,6 +637,45 @@ export interface ProgramRemedialPengayaan {
   soalList: ButirSoalRemedial[];
   status: 'aktif' | 'selesai' | 'arsip';
   rekomendasiMetodeGuru?: string;
+}
+
+// ==================== ANALISIS PENGUNJUNG WEB (ADMIN) ====================
+export interface VisitorLog {
+  id: string;
+  timestamp: string; // ISO format
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm:ss
+  role: UserRole;
+  userName: string;
+  identifier?: string; // NIP / NISN / Email / Username
+  rombel?: string; // Jika Siswa / Guru Kelas
+  device: string; // Browser & OS e.g. "Chrome 122 / Windows"
+  deviceType: 'Desktop' | 'Mobile' | 'Tablet';
+  ip: string; // e.g. "192.168.1.45" / "Client Local"
+  pageVisited: string; // Dashboard, Kesiswaan, Sarpras, dll.
+  sessionMinutes?: number;
+}
+
+// ==================== CHAT KRITIK & SARAN GUEST DENGAN TINDAK LANJUT ADMIN ====================
+export interface GuestFeedbackChat {
+  id: string; // e.g. "TIK-KDR1-2026-001"
+  senderName: string;
+  senderEmail: string; // Syarat wajib: Email
+  senderWhatsApp: string; // Syarat wajib: Nomor WhatsApp
+  kategori: 'Kritik' | 'Saran' | 'Pertanyaan' | 'Pengaduan' | 'Apresiasi';
+  judul: string;
+  pesan: string;
+  createdAt: string; // ISO format
+  status: 'Baru' | 'Diproses' | 'Ditindaklanjuti';
+  isReadByAdmin: boolean;
+  tindakLanjut?: {
+    respondedAt: string;
+    respondedBy: string;
+    responseMessage: string;
+    catatanInternal?: string;
+    sentToWa?: boolean;
+    sentToEmail?: boolean;
+  };
 }
 
 

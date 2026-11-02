@@ -60,8 +60,13 @@ import { LoginModal } from './components/LoginModal';
 import { LoginMenu } from './components/LoginMenu';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { ProcessedRapor } from './components/Kesiswaan/RekapRapor';
+import { VisitorAnalyticsPanel } from './components/VisitorAnalyticsPanel';
+import { GuestChatModal } from './components/GuestChatModal';
+import { AdminFeedbackManagementModal } from './components/AdminFeedbackManagementModal';
 import { LetterGenerationResult } from './services/api';
 import { logUserActivity } from './services/logger';
+import { recordVisitorSession } from './services/visitorTracker';
+import { getUnreadFeedbackCount } from './services/guestChatService';
 import { 
   getSavedMasterSheetId, 
   fetchMasterDatabaseRealtime,
@@ -69,7 +74,7 @@ import {
   pushDataToMasterSpreadsheet,
   LOCKED_WEB_APP_URL
 } from './services/singleMasterSheetService';
-import { Lock, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Lock, ShieldCheck, RefreshCw, MessageSquare, TrendingUp } from 'lucide-react';
 
 const CURRENT_DB_VERSION = '2026_2027_v5';
 
@@ -261,6 +266,34 @@ export default function App() {
   const [activeTranscript, setActiveTranscript] = useState<ProcessedRapor | null>(null);
   const [activeLetterPrint, setActiveLetterPrint] = useState<LetterGenerationResult | null>(null);
   const [activeSKP, setActiveSKP] = useState<ProcessedRapor | null>(null);
+
+  // Guest Chat & Admin Feedback Modal States
+  const [isGuestChatModalOpen, setIsGuestChatModalOpen] = useState(false);
+  const [isAdminFeedbackModalOpen, setIsAdminFeedbackModalOpen] = useState(false);
+  const [unreadFeedbackCount, setUnreadFeedbackCount] = useState<number>(() => {
+    try {
+      return getUnreadFeedbackCount();
+    } catch {
+      return 0;
+    }
+  });
+
+  // Track visitor log on page/tab navigation or login
+  useEffect(() => {
+    if (isLoggedIn && currentUser && activeTab !== 'login') {
+      try {
+        recordVisitorSession(
+          currentUser.role,
+          currentUser.name,
+          currentUser.nip || currentUser.nisn,
+          currentUser.rombel || (currentUser.kelas ? `Kelas ${currentUser.kelas}` : undefined),
+          activeTab
+        );
+      } catch (err) {
+        console.warn('Visitor tracking error:', err);
+      }
+    }
+  }, [activeTab, isLoggedIn, currentUser]);
 
   // Toast Notifications State
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -1150,6 +1183,9 @@ export default function App() {
           isTarikLoading={isTarikLoading}
           isSyncronLoading={isSyncronLoading}
           lastSyncTime={lastSyncTime}
+          unreadFeedbackCount={unreadFeedbackCount}
+          onOpenGuestChat={() => setIsGuestChatModalOpen(true)}
+          onOpenAdminFeedback={() => setIsAdminFeedbackModalOpen(true)}
         />
 
         {/* Main Content Area */}
@@ -1185,6 +1221,8 @@ export default function App() {
               onSyncronData={handleSyncronData}
               isSyncingRealtime={isTarikLoading || isSyncronLoading}
               lastSyncTime={lastSyncTime}
+              onOpenGuestChat={() => setIsGuestChatModalOpen(true)}
+              onOpenAdminFeedback={() => setIsAdminFeedbackModalOpen(true)}
             />
           )}
 
@@ -1333,8 +1371,91 @@ export default function App() {
               />
             )
           )}
+
+          {activeTab === 'pengunjung' && (
+            currentUser.role !== 'admin' ? (
+              <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center max-w-lg mx-auto mt-12 shadow-sm animate-in fade-in">
+                <div className="w-14 h-14 bg-purple-50 text-purple-700 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-purple-200 shadow-xs">
+                  <ShieldCheck className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">Akses Analisis Pengunjung Terbatas</h3>
+                <p className="text-xs text-slate-600 mb-6 leading-relaxed">
+                  Data statistik pengunjung web harian dan pemantau log sesi hanya dapat diakses oleh akun <strong>Administrator</strong>.
+                </p>
+                <button
+                  onClick={() => setActiveTab(currentUser.role === 'guru' ? 'kepegawaian' : 'dashboard')}
+                  className="px-4 py-2 bg-emerald-800 text-white rounded-xl text-xs font-bold hover:bg-emerald-900 transition-colors shadow-xs cursor-pointer"
+                >
+                  Kembali ke Menu Utama
+                </button>
+              </div>
+            ) : (
+              <VisitorAnalyticsPanel
+                onNotify={addToast}
+                onClose={() => setActiveTab('dashboard')}
+              />
+            )
+          )}
+
+          {activeTab === 'guest_chat' && (
+            currentUser.role === 'admin' ? (
+              <AdminFeedbackManagementModal
+                isOpen={true}
+                onClose={() => setActiveTab('dashboard')}
+                onNotify={(msg, type) => {
+                  addToast(msg, type);
+                  setUnreadFeedbackCount(getUnreadFeedbackCount());
+                }}
+                adminName={currentUser.name}
+              />
+            ) : (
+              <GuestChatModal
+                isOpen={true}
+                onClose={() => setActiveTab('dashboard')}
+                onNotify={(msg, type) => {
+                  addToast(msg, type);
+                  setUnreadFeedbackCount(getUnreadFeedbackCount());
+                }}
+              />
+            )
+          )}
         </main>
       </div>
+
+      {/* Floating Action Button for Guest to give Feedback / Chat anytime */}
+      {currentUser.role === 'guest' && isLoggedIn && (
+        <aside aria-label="Aspirasi Publik" className="fixed bottom-6 right-6 z-40 print:hidden">
+          <button
+            onClick={() => setIsGuestChatModalOpen(true)}
+            className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white font-bold text-xs rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer ring-4 ring-emerald-500/20"
+            title="Kirim Kritik & Saran ke SDN Kedungringin 1 Beji"
+          >
+            <MessageSquare className="w-4 h-4 animate-bounce" />
+            <span>Kritik & Saran Guest</span>
+          </button>
+        </aside>
+      )}
+
+      {/* Standalone Guest Chat Modal (accessible from floating button or navbar) */}
+      <GuestChatModal
+        isOpen={isGuestChatModalOpen}
+        onClose={() => setIsGuestChatModalOpen(false)}
+        onNotify={(msg, type) => {
+          addToast(msg, type);
+          setUnreadFeedbackCount(getUnreadFeedbackCount());
+        }}
+      />
+
+      {/* Standalone Admin Feedback Management Modal */}
+      <AdminFeedbackManagementModal
+        isOpen={isAdminFeedbackModalOpen}
+        onClose={() => setIsAdminFeedbackModalOpen(false)}
+        onNotify={(msg, type) => {
+          addToast(msg, type);
+          setUnreadFeedbackCount(getUnreadFeedbackCount());
+        }}
+        adminName={currentUser.name}
+      />
 
       {/* Modals for Printing */}
       <CertificateModal

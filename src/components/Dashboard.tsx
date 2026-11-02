@@ -38,10 +38,14 @@ import {
   CalendarClock,
   AlertTriangle,
   Hourglass,
-  BellRing
+  BellRing,
+  MessageSquare,
+  BarChart3
 } from 'lucide-react';
 import { generateAIInsight } from '../services/api';
 import { getActivityLogs } from '../services/logger';
+import { getVisitorSummary } from '../services/visitorTracker';
+import { getAllGuestFeedback, getUnreadFeedbackCount } from '../services/guestChatService';
 import { 
   fetchProfilSekolahFromSpreadsheet, 
   getSavedMasterSheetId, 
@@ -69,6 +73,8 @@ interface DashboardProps {
   onSyncronData?: () => Promise<void>;
   isSyncingRealtime?: boolean;
   lastSyncTime?: string;
+  onOpenGuestChat?: () => void;
+  onOpenAdminFeedback?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -89,6 +95,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onSyncronData,
   isSyncingRealtime = false,
   lastSyncTime,
+  onOpenGuestChat,
+  onOpenAdminFeedback,
 }) => {
   const [aiInsight, setAiInsight] = useState<AIInsightData | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -533,6 +541,211 @@ export const Dashboard: React.FC<DashboardProps> = ({
         btq={btq}
         currentUser={currentUser}
       />
+
+      {/* Admin Quick Widget: Analisis Pengunjung Web & Kotak Masukan Guest Chat */}
+      {currentUser?.role === 'admin' && (() => {
+        const visitorStats = getVisitorSummary();
+        const unreadFeedback = getUnreadFeedbackCount();
+        const allFeedback = getAllGuestFeedback();
+        const latestFeedback = allFeedback[0];
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Widget 1: Analisis Pengunjung Harian */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition-all">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Analisis Pengunjung Web & Trafik Harian
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        Pantau siapa saja yang berkunjung dan statistik harian SIM
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Live Tracking
+                  </span>
+                </div>
+
+                {/* Visitor Quick Stats */}
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                    <div className="text-xs text-slate-500 font-medium">Hari Ini</div>
+                    <div className="text-xl font-bold text-emerald-700 mt-0.5">
+                      {visitorStats.todayVisits}
+                    </div>
+                    <div className="text-[10px] text-slate-400">Pengunjung</div>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                    <div className="text-xs text-slate-500 font-medium">Kemarin</div>
+                    <div className="text-xl font-bold text-slate-700 mt-0.5">
+                      {visitorStats.yesterdayVisits}
+                    </div>
+                    <div className="text-[10px] text-slate-400">Pengunjung</div>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                    <div className="text-xs text-slate-500 font-medium">Total Akumulasi</div>
+                    <div className="text-xl font-bold text-slate-900 mt-0.5">
+                      {visitorStats.totalVisits}
+                    </div>
+                    <div className="text-[10px] text-slate-400">Kunjungan</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-600 bg-emerald-50/70 p-3 rounded-xl border border-emerald-100">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Distribusi: <strong>{visitorStats.roleCounts.guru || 0}</strong> Guru • <strong>{visitorStats.roleCounts.siswa || 0}</strong> Siswa • <strong>{visitorStats.roleCounts.guest || 0}</strong> Tamu</span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-emerald-800">
+                    {visitorStats.uniqueUsersCount} Pengguna Unik
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">
+                  Grafik tren harian, breakdown perangkat, & log lengkap
+                </span>
+                <button
+                  onClick={() => setActiveTab('pengunjung')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>Buka Analisis Pengunjung</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Widget 2: Masukan Kritik & Saran Guest Chat */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between hover:border-purple-300 transition-all">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center">
+                      <MessageSquare className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Kotak Masukan Kritik & Saran Tamu
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        Aspirasi masyarakat & wali murid (Wajib Email & WA)
+                      </p>
+                    </div>
+                  </div>
+                  {unreadFeedback > 0 ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
+                      {unreadFeedback} Masukan Baru
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                      Semua Terbaca
+                    </span>
+                  )}
+                </div>
+
+                {latestFeedback ? (
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 mb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          latestFeedback.kategori === 'Kritik' 
+                            ? 'bg-rose-100 text-rose-800' 
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {latestFeedback.kategori}
+                        </span>
+                        <span className="text-xs font-bold text-slate-800 truncate max-w-[170px]">
+                          {latestFeedback.senderName}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-400">
+                        {new Date(latestFeedback.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-800 line-clamp-1">
+                      {latestFeedback.judul}
+                    </p>
+                    <p className="text-[11px] text-slate-600 line-clamp-2 italic">
+                      "{latestFeedback.pesan}"
+                    </p>
+                    <div className="pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
+                      <span>WA: {latestFeedback.senderWhatsApp}</span>
+                      <span className={`font-semibold ${
+                        latestFeedback.status === 'Ditindaklanjuti' 
+                          ? 'text-emerald-700' 
+                          : latestFeedback.status === 'Diproses' 
+                          ? 'text-amber-700' 
+                          : 'text-rose-700'
+                      }`}>
+                        Status: {latestFeedback.status}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-slate-100">
+                    Belum ada masukan dari tamu.
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-2 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">
+                  Total <strong>{allFeedback.length}</strong> tiket masukan tercatat
+                </span>
+                <button
+                  onClick={() => {
+                    if (onOpenAdminFeedback) onOpenAdminFeedback();
+                    else setActiveTab('guest_chat');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Menu Tindak Lanjut</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Guest Invitation Widget: Kritik & Saran */}
+      {currentUser?.role === 'guest' && (
+        <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-700/80 text-emerald-100 text-[10px] font-bold uppercase tracking-wider border border-emerald-600/40">
+                Pojok Aspirasi & Layanan Publik
+              </span>
+              <span className="text-emerald-300">•</span>
+              <span className="text-emerald-200 text-xs">SDN Kedungringin 1 Beji</span>
+            </div>
+            <h3 className="text-lg font-bold">
+              Punya Kritik atau Saran untuk SDN Kedungringin 1 Beji?
+            </h3>
+            <p className="text-xs text-emerald-100/90 max-w-2xl leading-relaxed">
+              Kami menyambut baik setiap kritik konstruktif, saran pembenahan fasilitas, dan pertanyaan demi kemajuan sekolah. Harap lampirkan <strong>Alamat Email</strong> dan <strong>Nomor WhatsApp aktif</strong> agar tim Admin dapat memberikan tanggapan resmi secara langsung.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              if (onOpenGuestChat) onOpenGuestChat();
+              else setActiveTab('guest_chat');
+            }}
+            className="px-5 py-3 rounded-xl bg-white text-emerald-900 hover:bg-emerald-50 font-bold text-xs shadow-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer hover:scale-105"
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-700" />
+            <span>Kirim Kritik & Saran Sekarang</span>
+          </button>
+        </div>
+      )}
 
       {/* Administrator Audit Log Feed (LocalStorage Monitoring) */}
       {currentUser?.role === 'admin' && (
