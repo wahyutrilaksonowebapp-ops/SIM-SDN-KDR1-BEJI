@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Siswa, ProfilSekolah, UserRole, AuthUser } from '../../types';
+import { Siswa, ProfilSekolah, UserRole, AuthUser, LaporanAsnReportType } from '../../types';
 import { 
   Users, 
   Search, 
@@ -29,6 +29,7 @@ interface DataSiswaProps {
   currentUser?: AuthUser;
   onSaveSiswa: (siswa: Siswa) => void;
   onDeleteSiswa: (id: string) => void;
+  onOpenLaporanAsnModal?: (report?: LaporanAsnReportType) => void;
 }
 
 export const DataSiswa: React.FC<DataSiswaProps> = ({
@@ -38,6 +39,7 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
   currentUser,
   onSaveSiswa,
   onDeleteSiswa,
+  onOpenLaporanAsnModal,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [jenjangFilter, setJenjangFilter] = useState<string>(() => {
@@ -382,6 +384,17 @@ export const DataSiswa: React.FC<DataSiswaProps> = ({
             >
               <Download className="w-3.5 h-3.5" />
               <span>Ekspor CSV</span>
+            </button>
+          )}
+
+          {onOpenLaporanAsnModal && (
+            <button
+              onClick={() => onOpenLaporanAsnModal('data_siswa')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-900 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              title="Cetak Format Resmi Daftar Lapor Bulan - Data Siswa & Sarpras (A4 Lanskape)"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak Lapor Bulan (A4 Lanskape)</span>
             </button>
           )}
 

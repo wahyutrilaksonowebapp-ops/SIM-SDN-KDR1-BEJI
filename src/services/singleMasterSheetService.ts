@@ -168,7 +168,11 @@ export function buildMasterDatabaseSpreadsheet(data: {
     'Unit Kerja', 'No Karpeg', 'No Taspen', 'NPWP',
     'Nomor SK Tingkat', 'Tanggal SK Tingkat', 'TMT SK Tingkat',
     'Nomor SK Berkala', 'Tanggal SK Berkala', 'TMT SK Berkala',
-    'Nomor SK Angkatan', 'Tanggal SK Angkatan', 'TMT SK Angkatan'
+    'Nomor SK Angkatan', 'Tanggal SK Angkatan', 'TMT SK Angkatan',
+    // Kolom Tambahan Laporan Bulanan ASN (Auto-add)
+    'Ijazah Tertinggi Singkat', 'Tahun Ijazah', 'Tanggal Mulai Diangkat', 'Tanggal Mulai Di SD Ini',
+    'Nomor SK Terakhir', 'Tanggal SK Terakhir', 'Masa Kerja Golongan',
+    'Sakit', 'Izin', 'Alpha', 'Cuti Hamil', 'Cuti Tahunan', 'Cuti Bersalin', 'Catatan Laporan'
   ];
   const pegRows: (string | number)[][] = [
     pegHeader,
@@ -201,7 +205,21 @@ export function buildMasterDatabaseSpreadsheet(data: {
       p.skBerkalaTerakhir?.tmt || '-',
       p.skAngkatan?.nomor || '-',
       p.skAngkatan?.tanggal || '-',
-      p.skAngkatan?.tmt || '-'
+      p.skAngkatan?.tmt || '-',
+      p.ijazahTertinggiSingkat || (p.pendidikanTerakhir?.startsWith('S2') ? 'S.2' : p.pendidikanTerakhir?.startsWith('S1') ? 'S.1' : 'SMA'),
+      p.ijazahTahun || '2023',
+      p.tanggalMulaiDiangkat || p.skAngkatan?.tmt || p.tmt || '-',
+      p.tanggalMulaiDiSdIni || p.tmt || '-',
+      p.skTerakhirNomor || p.skPangkatTerakhir?.nomor || p.skBerkalaTerakhir?.nomor || '-',
+      p.skTerakhirTanggal || p.skPangkatTerakhir?.tanggal || p.skBerkalaTerakhir?.tanggal || '-',
+      p.mkgTeks || (p.mkgTahun !== undefined ? `${p.mkgTahun} THN ${p.mkgBulan || 0} BLN` : '-'),
+      p.ketidakhadiran?.sakit ?? 0,
+      p.ketidakhadiran?.ijin ?? 0,
+      p.ketidakhadiran?.alpha ?? 0,
+      p.ketidakhadiran?.cutiHamil ?? 0,
+      p.ketidakhadiran?.cutiTahunan ?? 0,
+      p.ketidakhadiran?.cutiBesar ?? 0,
+      p.catatanLaporan || '-'
     ])
   ];
 
@@ -771,6 +789,23 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
           skPangkatTerakhir,
           skBerkalaTerakhir,
           skAngkatan,
+          // Kolom Tambahan Laporan Bulanan ASN
+          ijazahTertinggiSingkat: String(item['Ijazah Tertinggi Singkat'] || item['ijazahTertinggiSingkat'] || '').trim() || undefined,
+          ijazahTahun: String(item['Tahun Ijazah'] || item['ijazahTahun'] || '').trim() || undefined,
+          tanggalMulaiDiangkat: normalizeDateString(item['Tanggal Mulai Diangkat'] || item['tanggalMulaiDiangkat'] || '') || undefined,
+          tanggalMulaiDiSdIni: normalizeDateString(item['Tanggal Mulai Di SD Ini'] || item['tanggalMulaiDiSdIni'] || '') || undefined,
+          skTerakhirNomor: String(item['Nomor SK Terakhir'] || item['skTerakhirNomor'] || '').trim() || undefined,
+          skTerakhirTanggal: normalizeDateString(item['Tanggal SK Terakhir'] || item['skTerakhirTanggal'] || '') || undefined,
+          mkgTeks: String(item['Masa Kerja Golongan'] || item['mkgTeks'] || '').trim() || undefined,
+          ketidakhadiran: {
+            sakit: parseInt(item['Sakit'] || item['sakit'] || '0', 10) || 0,
+            ijin: parseInt(item['Izin'] || item['ijin'] || '0', 10) || 0,
+            alpha: parseInt(item['Alpha'] || item['alpha'] || '0', 10) || 0,
+            cutiHamil: parseInt(item['Cuti Hamil'] || item['cutiHamil'] || '0', 10) || 0,
+            cutiTahunan: parseInt(item['Cuti Tahunan'] || item['cutiTahunan'] || '0', 10) || 0,
+            cutiBesar: parseInt(item['Cuti Bersalin'] || item['cutiBesar'] || '0', 10) || 0,
+          },
+          catatanLaporan: String(item['Catatan Laporan'] || item['catatanLaporan'] || '').trim() || undefined,
         };
       });
   }
@@ -866,6 +901,23 @@ export function parsePegawaiFromSheetRows(rows: any[]): Pegawai[] {
         skPangkatTerakhir,
         skBerkalaTerakhir,
         skAngkatan,
+        // Kolom Tambahan Laporan Bulanan ASN
+        ijazahTertinggiSingkat: String(r[29] || '').trim() || undefined,
+        ijazahTahun: String(r[30] || '').trim() || undefined,
+        tanggalMulaiDiangkat: normalizeDateString(r[31] || '') || undefined,
+        tanggalMulaiDiSdIni: normalizeDateString(r[32] || '') || undefined,
+        skTerakhirNomor: String(r[33] || '').trim() || undefined,
+        skTerakhirTanggal: normalizeDateString(r[34] || '') || undefined,
+        mkgTeks: String(r[35] || '').trim() || undefined,
+        ketidakhadiran: {
+          sakit: parseInt(r[36] || '0', 10) || 0,
+          ijin: parseInt(r[37] || '0', 10) || 0,
+          alpha: parseInt(r[38] || '0', 10) || 0,
+          cutiHamil: parseInt(r[39] || '0', 10) || 0,
+          cutiTahunan: parseInt(r[40] || '0', 10) || 0,
+          cutiBesar: parseInt(r[41] || '0', 10) || 0,
+        },
+        catatanLaporan: String(r[42] || '').trim() || undefined,
       };
     });
 }
@@ -1712,7 +1764,22 @@ export function formatPegawaiPayload(p: Pegawai): any {
     'TMT SK Berkala': p.skBerkalaTerakhir?.tmt || '-',
     'Nomor SK Angkatan': p.skAngkatan?.nomor || '-',
     'Tanggal SK Angkatan': p.skAngkatan?.tanggal || '-',
-    'TMT SK Angkatan': p.skAngkatan?.tmt || '-'
+    'TMT SK Angkatan': p.skAngkatan?.tmt || '-',
+    // Kolom Tambahan Laporan Bulanan ASN (Auto-add)
+    'Ijazah Tertinggi Singkat': p.ijazahTertinggiSingkat || (p.pendidikanTerakhir?.startsWith('S2') ? 'S.2' : p.pendidikanTerakhir?.startsWith('S1') ? 'S.1' : 'SMA'),
+    'Tahun Ijazah': p.ijazahTahun || '2023',
+    'Tanggal Mulai Diangkat': p.tanggalMulaiDiangkat || p.skAngkatan?.tmt || p.tmt || '-',
+    'Tanggal Mulai Di SD Ini': p.tanggalMulaiDiSdIni || p.tmt || '-',
+    'Nomor SK Terakhir': p.skTerakhirNomor || p.skPangkatTerakhir?.nomor || p.skBerkalaTerakhir?.nomor || '-',
+    'Tanggal SK Terakhir': p.skTerakhirTanggal || p.skPangkatTerakhir?.tanggal || p.skBerkalaTerakhir?.tanggal || '-',
+    'Masa Kerja Golongan': p.mkgTeks || (p.mkgTahun !== undefined ? `${p.mkgTahun} THN ${p.mkgBulan || 0} BLN` : '-'),
+    'Sakit': p.ketidakhadiran?.sakit ?? 0,
+    'Izin': p.ketidakhadiran?.ijin ?? 0,
+    'Alpha': p.ketidakhadiran?.alpha ?? 0,
+    'Cuti Hamil': p.ketidakhadiran?.cutiHamil ?? 0,
+    'Cuti Tahunan': p.ketidakhadiran?.cutiTahunan ?? 0,
+    'Cuti Bersalin': p.ketidakhadiran?.cutiBesar ?? 0,
+    'Catatan Laporan': p.catatanLaporan || '-'
   };
 }
 

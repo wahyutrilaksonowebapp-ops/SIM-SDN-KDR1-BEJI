@@ -2,6 +2,7 @@ import React from 'react';
 import { NilaiIjazahBTQ, ProfilSekolah } from '../types';
 import { X, Printer, Award, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { angkaTerbilang, getBTQPredicate } from '../utils/helpers';
+import { LogoPasuruan } from './LogoPasuruan';
 
 interface CertificateModalProps {
   item: NilaiIjazahBTQ | null;
@@ -64,17 +65,20 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
 
               {/* Header */}
               <div className="text-center space-y-1">
+                <div className="flex justify-center mb-1">
+                  <LogoPasuruan className="w-14 h-18 object-contain" />
+                </div>
                 <div className="text-amber-800 font-serif text-xs tracking-widest uppercase font-semibold">
                   بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
                 </div>
-                <div className="text-xs uppercase tracking-wider text-slate-600 font-medium">
+                <div className="text-[11px] uppercase tracking-wider text-slate-700 font-bold">
                   PEMERINTAH KABUPATEN PASURUAN • DINAS PENDIDIKAN DAN KEBUDAYAAN
                 </div>
                 <div className="font-serif font-black text-lg sm:text-xl text-emerald-950 tracking-wide">
                   SEKOLAH DASAR NEGERI KEDUNGRINGIN 1 BEJI
                 </div>
-                <div className="text-[10px] text-slate-500 tracking-normal">
-                  NPSN: {profil.npsn} | Alamat: {profil.alamat}, Kec. Beji, Kab. Pasuruan 67154
+                <div className="text-[10px] text-slate-600 tracking-normal">
+                  NPSN: {profil.npsn} | NSS: {profil.nss || '101051913012'} | Alamat: {profil.alamat}, Kec. Beji, Kab. Pasuruan 67154
                 </div>
 
                 <div className="my-3 flex items-center justify-center gap-3">

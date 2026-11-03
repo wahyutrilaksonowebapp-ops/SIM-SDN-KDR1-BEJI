@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { generateLetterWithAI, LetterGenerationResult } from '../../services/api';
 import { ConfirmModal } from '../ConfirmModal';
+import { LogoPasuruan } from '../LogoPasuruan';
 
 interface SuratKeluarProps {
   suratList: SuratKeluar[];
@@ -425,21 +426,29 @@ export const SuratKeluarComponent: React.FC<SuratKeluarProps> = ({
             {generatedResult ? (
               <div className="mt-4 p-6 bg-slate-50 border border-slate-200 rounded-xl font-serif text-slate-900 text-xs space-y-4 shadow-2xs leading-relaxed">
                 {/* Official Letterhead */}
-                <div className="text-center border-b-2 border-slate-900 pb-3 leading-tight space-y-0.5">
-                  <div className="font-bold text-[11px] tracking-wider uppercase text-slate-800">
-                    PEMERINTAH KABUPATEN PASURUAN
-                  </div>
-                  <div className="font-bold text-[12px] tracking-wide uppercase text-slate-800">
-                    DINAS PENDIDIKAN DAN KEBUDAYAAN
-                  </div>
-                  <div className="font-black text-sm tracking-wide uppercase text-slate-950">
-                    {profil.nama.toUpperCase()}
-                  </div>
-                  <div className="text-[10px] text-slate-600 font-sans">
-                    NPSN: {profil.npsn} | {profil.alamat}, Kec. {profil.kecamatan}, Kab. {profil.kabupaten} 67154
-                  </div>
-                  <div className="text-[10px] text-slate-600 font-sans">
-                    Email: {profil.email} | Telepon: {profil.telepon}
+                <div className="border-b-2 border-slate-900 pb-3 leading-tight space-y-0.5">
+                  <div className="flex items-center justify-between gap-3 text-center">
+                    <div className="w-14 shrink-0 flex items-center justify-center">
+                      <LogoPasuruan className="w-12 h-16 object-contain" />
+                    </div>
+                    <div className="flex-1 space-y-0.5">
+                      <div className="font-bold text-[11px] tracking-wider uppercase text-slate-800">
+                        PEMERINTAH KABUPATEN PASURUAN
+                      </div>
+                      <div className="font-bold text-[12px] tracking-wide uppercase text-slate-800">
+                        DINAS PENDIDIKAN DAN KEBUDAYAAN
+                      </div>
+                      <div className="font-black text-sm tracking-wide uppercase text-slate-950">
+                        {profil.nama.toUpperCase()}
+                      </div>
+                      <div className="text-[10px] text-slate-600 font-sans">
+                        NPSN: {profil.npsn} | NSS: {profil.nss || '101051913012'} | {profil.alamat}, Kec. {profil.kecamatan}, Kab. {profil.kabupaten} 67154
+                      </div>
+                      <div className="text-[10px] text-slate-600 font-sans">
+                        Email: {profil.email} | Telepon: {profil.telepon}
+                      </div>
+                    </div>
+                    <div className="w-14 shrink-0 hidden sm:block" />
                   </div>
                 </div>
 

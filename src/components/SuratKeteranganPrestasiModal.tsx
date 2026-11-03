@@ -14,6 +14,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { formatIndoDate } from '../utils/helpers';
+import { LogoPasuruan } from './LogoPasuruan';
 
 interface SuratKeteranganPrestasiModalProps {
   item: ProcessedRapor | null;
@@ -127,33 +128,33 @@ NIP: ${profil.nipKepalaSekolah}
         <div className="p-8 sm:p-12 text-slate-900 bg-white font-serif print:p-0 print:m-0" id="printable-skp">
           {/* KOP SURAT RESMI */}
           <div className="border-b-4 border-double border-slate-900 pb-3 mb-6 text-center relative font-sans">
-            <div className="flex items-center justify-between">
-              <div className="w-20 h-20 flex items-center justify-center">
-                <School className="w-16 h-16 text-emerald-800" />
+            <div className="flex items-center justify-between gap-4">
+              <div className="w-20 shrink-0 flex items-center justify-center">
+                <LogoPasuruan className="w-18 h-22 object-contain" />
               </div>
-              <div className="flex-1 px-4 text-center">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
+              <div className="flex-1 px-2 text-center">
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-700">
                   Pemerintah Kabupaten Pasuruan
                 </h3>
-                <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">
+                <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-slate-900">
                   Dinas Pendidikan dan Kebudayaan
                 </h2>
-                <h4 className="text-xs font-semibold uppercase text-slate-700">
+                <h4 className="text-[11px] font-semibold uppercase text-slate-700">
                   Wilayah Kerja Satuan Pendidikan Kecamatan Beji
                 </h4>
-                <h1 className="text-lg font-black uppercase text-emerald-900 mt-0.5">
+                <h1 className="text-base sm:text-lg font-black uppercase text-emerald-950 mt-0.5">
                   SDN Kedungringin I Beji
                 </h1>
                 <p className="text-[10px] text-slate-600 font-normal mt-0.5 font-sans">
-                  NPSN: {profil.npsn} | NSS: 101051908001 | Status Akreditasi: {profil.akreditasi}
+                  NPSN: {profil.npsn} | NSS: {profil.nss || '101051913012'} | Status Akreditasi: {profil.akreditasi}
                   <br />
                   {profil.alamat}, {profil.kelurahan}, {profil.kecamatan}, {profil.kabupaten} {profil.kodePos}
                   <br />
                   Surel: {profil.email} | Kontak Resmi: {profil.telepon}
                 </p>
               </div>
-              <div className="w-20 h-20 flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full border-2 border-emerald-800 flex items-center justify-center text-[10px] font-bold text-emerald-900 text-center uppercase p-1">
+              <div className="w-20 shrink-0 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full border-2 border-emerald-900 flex items-center justify-center text-[10px] font-bold text-emerald-950 text-center uppercase p-1 font-sans">
                   SDN KDR 1
                 </div>
               </div>

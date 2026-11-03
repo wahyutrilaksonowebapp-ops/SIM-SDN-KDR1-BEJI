@@ -18,7 +18,8 @@ import {
   PresensiRekapBulan,
   PenilaianHarian,
   HasilPenilaianSiswa,
-  ProgramRemedialPengayaan
+  ProgramRemedialPengayaan,
+  LaporanAsnReportType
 } from './types';
 import { 
   INITIAL_PROFIL, 
@@ -56,6 +57,7 @@ import { CertificateModal } from './components/CertificateModal';
 import { TranscriptModal } from './components/TranscriptModal';
 import { LetterPrintModal } from './components/LetterPrintModal';
 import { SuratKeteranganPrestasiModal } from './components/SuratKeteranganPrestasiModal';
+import { LaporanBulananAsnModal } from './components/LaporanBulananAsnModal';
 import { LoginModal } from './components/LoginModal';
 import { LoginMenu } from './components/LoginMenu';
 import { ToastContainer, ToastMessage } from './components/Toast';
@@ -266,6 +268,16 @@ export default function App() {
   const [activeTranscript, setActiveTranscript] = useState<ProcessedRapor | null>(null);
   const [activeLetterPrint, setActiveLetterPrint] = useState<LetterGenerationResult | null>(null);
   const [activeSKP, setActiveSKP] = useState<ProcessedRapor | null>(null);
+
+  // Laporan Bulanan ASN (A4 Potret & Lanskape Dokumen Resmi Pasuruan)
+  const [isLaporanAsnModalOpen, setIsLaporanAsnModalOpen] = useState(false);
+  const [laporanAsnReportType, setLaporanAsnReportType] = useState<LaporanAsnReportType>('data_guru');
+  const [laporanAsnBulan, setLaporanAsnBulan] = useState<string>('Oktober 2026');
+  const handleOpenLaporanAsn = (type: LaporanAsnReportType = 'data_guru', bulan?: string) => {
+    setLaporanAsnReportType(type);
+    if (bulan) setLaporanAsnBulan(bulan);
+    setIsLaporanAsnModalOpen(true);
+  };
 
   // Guest Chat & Admin Feedback Modal States
   const [isGuestChatModalOpen, setIsGuestChatModalOpen] = useState(false);
@@ -1238,6 +1250,7 @@ export default function App() {
               onDeletePegawai={handleDeletePegawai}
               onSavePresensi={handleSavePresensi}
               onSaveSkp={handleSaveSkp}
+              onOpenLaporanAsnModal={handleOpenLaporanAsn}
             />
           )}
 
@@ -1257,6 +1270,7 @@ export default function App() {
               onOpenTranscriptModal={setActiveTranscript}
               onOpenCertificateModal={setActiveCertificate}
               onOpenSKPModal={setActiveSKP}
+              onOpenLaporanAsnModal={handleOpenLaporanAsn}
               tabunganList={tabunganList}
               saldoAwalList={saldoAwalList}
               onSaveTransaksi={handleSaveTransaksiTabungan}
@@ -1482,6 +1496,18 @@ export default function App() {
         profil={profil}
         siswaData={siswa.find((s) => s.id === activeSKP?.siswaId)}
         onClose={() => setActiveSKP(null)}
+      />
+
+      {/* Laporan Bulanan ASN (Format Pasuruan: A4 Potret & Lanskape) */}
+      <LaporanBulananAsnModal
+        isOpen={isLaporanAsnModalOpen}
+        initialReport={laporanAsnReportType}
+        initialBulan={laporanAsnBulan}
+        profil={profil}
+        pegawai={pegawai}
+        siswa={siswa}
+        sarpras={sarpras}
+        onClose={() => setIsLaporanAsnModalOpen(false)}
       />
 
       {/* Login Multi-Role (Guest, Admin, Guru) Modal */}

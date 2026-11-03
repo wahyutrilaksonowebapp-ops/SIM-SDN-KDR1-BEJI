@@ -3,6 +3,7 @@ import { ProcessedRapor } from './Kesiswaan/RekapRapor';
 import { ProfilSekolah } from '../types';
 import { MAPEL_LIST } from '../data/initialData';
 import { X, Printer, Award, FileSpreadsheet } from 'lucide-react';
+import { LogoPasuruan } from './LogoPasuruan';
 
 interface TranscriptModalProps {
   item: ProcessedRapor | null;
@@ -68,22 +69,31 @@ export const TranscriptModal: React.FC<TranscriptModalProps> = ({
 
         {/* Printable Transcript Area */}
         <div className="p-8 sm:p-12 text-slate-900 bg-white select-text print:p-0 print:m-0" id="transcript-print-area">
-          {/* School Header */}
-          <div className="text-center border-b-2 border-slate-900 pb-3 leading-tight space-y-0.5">
-            <div className="font-bold text-[11px] tracking-wider uppercase text-slate-800">
-              PEMERINTAH KABUPATEN PASURUAN
-            </div>
-            <div className="font-bold text-[12px] tracking-wide uppercase text-slate-800">
-              DINAS PENDIDIKAN DAN KEBUDAYAAN
-            </div>
-            <div className="font-black text-base sm:text-lg tracking-wide uppercase text-slate-950">
-              {profil.nama.toUpperCase()}
-            </div>
-            <div className="text-[10px] text-slate-600 font-sans">
-              NPSN: {profil.npsn} | {profil.alamat}, Kec. {profil.kecamatan}, Kab. {profil.kabupaten} 67154
-            </div>
-            <div className="text-[10px] text-slate-600 font-sans">
-              Email: {profil.email} | Akreditasi: {profil.akreditasi}
+          {/* Official Kop Surat Dinas Pendidikan Kabupaten Pasuruan */}
+          <div className="border-b-4 border-double border-black pb-3 mb-5 relative font-sans text-black">
+            <div className="flex items-center justify-between gap-4">
+              <div className="w-20 shrink-0 flex items-center justify-center">
+                <LogoPasuruan className="w-18 h-22 object-contain" />
+              </div>
+              <div className="flex-1 text-center leading-tight space-y-0.5">
+                <div className="font-bold text-xs tracking-wider uppercase text-black">
+                  PEMERINTAH KABUPATEN PASURUAN
+                </div>
+                <div className="font-bold text-sm tracking-wide uppercase text-black">
+                  DINAS PENDIDIKAN DAN KEBUDAYAAN
+                </div>
+                <div className="font-black text-base sm:text-lg tracking-wide uppercase text-black">
+                  {profil.nama.toUpperCase()}
+                </div>
+                <div className="text-[10px] text-black font-sans">
+                  NPSN: {profil.npsn} | NSS: {profil.nss || '101051913012'} | Akreditasi: {profil.akreditasi}
+                  <br />
+                  {profil.alamat}, Kec. {profil.kecamatan}, Kab. {profil.kabupaten} Kode Pos 67154
+                  <br />
+                  Surel: {profil.email} | Kontak: {profil.telepon}
+                </div>
+              </div>
+              <div className="w-20 shrink-0 hidden sm:block print:block" />
             </div>
           </div>
 

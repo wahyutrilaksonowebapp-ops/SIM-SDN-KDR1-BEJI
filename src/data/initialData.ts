@@ -16,6 +16,7 @@ import {
 export const INITIAL_PROFIL: ProfilSekolah = {
   nama: 'SDN Kedungringin 1 Beji',
   npsn: '20519482',
+  nss: '101051913012',
   bentukPendidikan: 'SD',
   status: 'Negeri',
   akreditasi: 'B (Baik)',

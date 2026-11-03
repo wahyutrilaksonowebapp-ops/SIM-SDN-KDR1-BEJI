@@ -7,7 +7,8 @@ import {
   FaceprintPresensi, 
   SkpEKinerja,
   SKPangkat,
-  SKBerkala
+  SKBerkala,
+  LaporanAsnReportType
 } from '../types';
 import { 
   Users, 
@@ -56,6 +57,14 @@ import {
   calculateBupPensiun 
 } from '../utils/helpers';
 import { ConfirmModal } from './ConfirmModal';
+import { getMergedAsnReportList } from '../data/laporanBulananAsnData';
+
+export const BULAN_NAMES = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+
+export const TAHUN_BERJALAN_LIST = [2026, 2027, 2028, 2029, 2030];
 
 interface KepegawaianProps {
   pegawai: Pegawai[];
@@ -68,6 +77,7 @@ interface KepegawaianProps {
   onDeletePegawai: (id: string) => void;
   onSavePresensi?: (presensi: FaceprintPresensi) => void;
   onSaveSkp?: (skp: SkpEKinerja) => void;
+  onOpenLaporanAsnModal?: (report?: LaporanAsnReportType, bulan?: string) => void;
 }
 
 type KepegawaianTab = 'daftar' | 'laporan_asn' | 'faceprint' | 'skp_tribulan';
@@ -83,6 +93,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
   onDeletePegawai,
   onSavePresensi,
   onSaveSkp,
+  onOpenLaporanAsnModal,
 }) => {
   const [activeTab, setActiveTab] = useState<KepegawaianTab>('daftar');
 
@@ -152,7 +163,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
   });
 
   // State for Laporan Bulanan ASN
-  const [bulanLaporan, setBulanLaporan] = useState('Oktober 2024');
+  const [bulanLaporan, setBulanLaporan] = useState('Oktober 2026');
   const [filterAsnType, setFilterAsnType] = useState<'ALL' | 'PNS' | 'PPPK'>('ALL');
 
   // State for Presensi Faceprint
@@ -801,35 +812,13 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'daftar' && (
         <div className="space-y-4">
-          {/* Banner Informasi DUK Resmi */}
-          <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-5 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 border border-emerald-800/40">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl bg-amber-400 text-amber-950 flex items-center justify-center shrink-0 shadow-sm font-black">
-                <Award className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm font-bold text-white tracking-wide">
-                    Daftar Urutan Kepangkatan (DUK) Resmi Pegawai & GTK
-                  </h3>
-                  <span className="text-[10px] bg-amber-400 text-amber-950 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Standar BKN
-                  </span>
-                  <span className="text-[10px] bg-emerald-700/80 text-emerald-100 font-semibold px-2 py-0.5 rounded-full">
-                    Auto-Urut DUK
-                  </span>
-                </div>
-                <p className="text-xs text-emerald-200 mt-1 leading-relaxed max-w-3xl">
-                  Hierarki DUK Otomatis: <strong>Kepala Sekolah</strong> posisi teratas (#1) &rarr; <strong>PNS Golongan IV, III, II, I</strong> &rarr; <strong>PPPK</strong> &rarr; <strong>Non-ASN (GTT/PTT)</strong>. Apabila golongan sama, diprioritaskan berdasarkan <strong>tahun kelahiran tertua</strong> (tanggal lahir lebih awal).
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Toolbar Aksi DUK Pegawai & GTK */}
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-end gap-3">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
               {userRole === 'admin' && (
                 <button
                   onClick={handleOpenAdd}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold text-xs transition-colors cursor-pointer shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs transition-colors cursor-pointer shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Tambah Pegawai</span>
@@ -838,18 +827,18 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
               {userRole !== 'guest' && (
                 <button
                   onClick={handleExportDUKCSV}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors cursor-pointer border border-white/20 shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border border-slate-200 shadow-2xs"
                   title="Unduh DUK Resmi dalam format CSV / Excel"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Unduh DUK (CSV)</span>
                 </button>
               )}
-              <div className="flex items-center bg-slate-950/70 p-1 rounded-xl border border-emerald-800">
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
                 <button
                   onClick={() => setDukViewMode('table')}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    dukViewMode === 'table' ? 'bg-amber-400 text-amber-950 shadow-xs' : 'text-slate-300 hover:text-white'
+                    dukViewMode === 'table' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Tabel DUK
@@ -857,16 +846,16 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                 <button
                   onClick={() => setDukViewMode('sk_kgb')}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                    dukViewMode === 'sk_kgb' ? 'bg-amber-400 text-amber-950 shadow-xs' : 'text-slate-300 hover:text-white'
+                    dukViewMode === 'sk_kgb' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <span>Rekap SK & KGB</span>
-                  <span className="text-[9px] px-1 rounded-full bg-emerald-700 text-white font-mono">2 Th</span>
+                  <span className="text-[9px] px-1 rounded-full bg-emerald-100 text-emerald-800 font-mono font-bold">2 Th</span>
                 </button>
                 <button
                   onClick={() => setDukViewMode('card')}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    dukViewMode === 'card' ? 'bg-amber-400 text-amber-950 shadow-xs' : 'text-slate-300 hover:text-white'
+                    dukViewMode === 'card' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Kartu GTK
@@ -1733,12 +1722,26 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                 <select
                   value={bulanLaporan}
                   onChange={(e) => setBulanLaporan(e.target.value)}
-                  className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-bold text-emerald-950 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                  className="px-3 py-1.5 bg-white border-2 border-emerald-600/70 rounded-lg font-bold text-emerald-950 text-xs shadow-2xs hover:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 cursor-pointer transition-all"
+                  title="Pilih Bulan dan Tahun Berjalan Mulai Tahun 2026"
                 >
-                  <option value="Oktober 2024">Oktober 2024 (Aktif)</option>
-                  <option value="November 2024">November 2024</option>
-                  <option value="Desember 2024">Desember 2024</option>
-                  <option value="Januari 2025">Januari 2025</option>
+                  {TAHUN_BERJALAN_LIST.map((tahun) => (
+                    <optgroup
+                      key={tahun}
+                      label={`Tahun ${tahun} ${tahun === 2026 ? '• TP 2026/2027 (Tahun Berjalan)' : ''}`}
+                      className="font-bold text-slate-800 bg-slate-100"
+                    >
+                      {BULAN_NAMES.map((bulan) => {
+                        const val = `${bulan} ${tahun}`;
+                        const isMaster = val === 'Oktober 2026';
+                        return (
+                          <option key={val} value={val} className="text-slate-900 bg-white font-medium py-1">
+                            {bulan} {tahun} {isMaster ? '★ (Basis Sinkron Master SDN Kedungringin 1)' : ''}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
 
@@ -1756,7 +1759,7 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {userRole !== 'guest' && (
                 <button
                   onClick={handleExportAsnCSV}
@@ -1767,13 +1770,44 @@ export const Kepegawaian: React.FC<KepegawaianProps> = ({
                 </button>
               )}
 
-              <button
-                onClick={handlePrintDocument}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Cetak Format BKN / Dinas (A4)</span>
-              </button>
+              {/* Tombol Cetak 4 Format Resmi PDF */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => onOpenLaporanAsnModal ? onOpenLaporanAsnModal('data_guru', bulanLaporan) : handlePrintDocument()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  title={`Cetak Laporan Bulan - Data Guru Periode ${bulanLaporan} (Format A4 Potret)`}
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>1. Data Guru (A4 Potret)</span>
+                </button>
+
+                <button
+                  onClick={() => onOpenLaporanAsnModal ? onOpenLaporanAsnModal('laporan_presensi', bulanLaporan) : handlePrintDocument()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  title={`Cetak Laporan Presensi PNS/PPPK Periode ${bulanLaporan} (Format A4 Potret)`}
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>2. Laporan Presensi (A4 Potret)</span>
+                </button>
+
+                <button
+                  onClick={() => onOpenLaporanAsnModal ? onOpenLaporanAsnModal('format_presensi_bulan', bulanLaporan) : handlePrintDocument()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  title={`Cetak Format Presensi Bulan Tanggal 1-30 Periode ${bulanLaporan} (Format A4 Lanskape)`}
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>3. Format Presensi (A4 Lanskape)</span>
+                </button>
+
+                <button
+                  onClick={() => onOpenLaporanAsnModal ? onOpenLaporanAsnModal('data_siswa', bulanLaporan) : handlePrintDocument()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-900 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  title={`Cetak Data Siswa Daftar Lapor Bulan Periode ${bulanLaporan} (Format A4 Lanskape)`}
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>4. Data Siswa (A4 Lanskape)</span>
+                </button>
+              </div>
             </div>
           </div>
 

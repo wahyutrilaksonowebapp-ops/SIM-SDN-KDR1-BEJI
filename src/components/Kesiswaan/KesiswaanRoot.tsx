@@ -13,7 +13,8 @@ import {
   PresensiRekapBulan,
   PenilaianHarian,
   HasilPenilaianSiswa,
-  ProgramRemedialPengayaan
+  ProgramRemedialPengayaan,
+  LaporanAsnReportType
 } from '../../types';
 import { DataSiswa } from './DataSiswa';
 import { PenilaianTerpadu } from './PenilaianTerpadu';
@@ -69,6 +70,7 @@ interface KesiswaanRootProps {
   onSaveProgramRemedial?: (p: ProgramRemedialPengayaan) => void;
   onDeleteProgramRemedial?: (id: string) => void;
   onSaveRemedialSubmission?: (programId: string, siswaId: string, answers: Record<number, string>, calculatedScore: number) => void;
+  onOpenLaporanAsnModal?: (report?: LaporanAsnReportType) => void;
 }
 
 export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
@@ -105,6 +107,7 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
   onSaveProgramRemedial = () => {},
   onDeleteProgramRemedial = () => {},
   onSaveRemedialSubmission = () => {},
+  onOpenLaporanAsnModal,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<KesiswaanSubTab>(() => {
     if (userRole === 'siswa') return 'penilaian_harian';
@@ -207,6 +210,7 @@ export const KesiswaanRoot: React.FC<KesiswaanRootProps> = ({
           currentUser={currentUser}
           onSaveSiswa={onSaveSiswa}
           onDeleteSiswa={onDeleteSiswa}
+          onOpenLaporanAsnModal={onOpenLaporanAsnModal}
         />
       )}
 

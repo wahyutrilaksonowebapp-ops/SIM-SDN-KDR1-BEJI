@@ -16,6 +16,7 @@ export type SarprasSubTab = 'inventaris' | 'perpustakaan' | 'ruang_kelas';
 export interface ProfilSekolah {
   nama: string;
   npsn: string;
+  nss?: string; // Nomor Statistik Sekolah, misal '101051913012'
   bentukPendidikan: string;
   status: string;
   akreditasi: string;
@@ -35,6 +36,8 @@ export interface ProfilSekolah {
   tahunPelajaranAktif: string;
   tanggalAcuanUsia: string; // Misal '2024-07-01'
 }
+
+export type LaporanAsnReportType = 'data_guru' | 'laporan_presensi' | 'format_presensi_bulan' | 'data_siswa';
 
 export interface SKPangkat {
   nomor: string;
@@ -91,7 +94,27 @@ export interface Pegawai {
   karpeg?: string;    // Kartu Pegawai
   nomorTaspen?: string;
   npwp?: string;
-  unitKerja?: string; // SDN Kedungringin I  Beji
+  unitKerja?: string; // SDN Kedungringin I Beji
+  // Kolom Format Laporan Bulanan ASN Kabupaten Pasuruan
+  ijazahTertinggiSingkat?: string; // 'S.2', 'S.1', 'SMA', dll
+  ijazahTahun?: string;            // '2023', '2008', '2016', dll
+  tanggalMulaiDiangkat?: string;   // '01/01/2005'
+  tanggalMulaiDiSdIni?: string;    // '01/09/2025'
+  skTerakhirNomor?: string;        // '813.2/118/424.081/2005'
+  skTerakhirTanggal?: string;      // '22-03-2005'
+  mkgTeks?: string;                // '20 THN 00 BLN'
+  ketidakhadiran?: {
+    sakit?: number;
+    ijin?: number;
+    cuti?: number;
+    dinasLuar?: number;
+    pendidikan?: number;
+    alpha?: number;
+    cutiHamil?: number;
+    cutiTahunan?: number;
+    cutiBesar?: number;
+  };
+  catatanLaporan?: string;
 }
 
 export interface FaceprintPresensi {
